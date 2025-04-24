@@ -1,6 +1,6 @@
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState, useEffect } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { MapPin, Phone, Calendar, Package, IndianRupee } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
@@ -27,7 +27,6 @@ export default function UpdateOrderScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [paymentStatus, setPaymentStatus] = useState('PENDING');
   const [deliveryStatus, setDeliveryStatus] = useState('OUT_FOR_DELIVERY');
 
@@ -37,10 +36,8 @@ export default function UpdateOrderScreen() {
         const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
         const orderData: Order = response.data;
         setOrder(orderData);
-        console.log("clicked")
-        console.log(orderData.deliveryStatus)
-        setPaymentStatus(orderData.paymentStatus ? orderData.paymentStatus.toUpperCase() : 'PENDING');
-        setDeliveryStatus(orderData.deliveryStatus ? orderData.deliveryStatus.toUpperCase() : 'OUT_FOR_DELIVERY');
+        setPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
+        setDeliveryStatus(orderData.deliveryStatus ?? 'OutForDelivery');
       } catch (error) {
         console.error('Error fetching order:', error);
       } finally {
@@ -49,35 +46,30 @@ export default function UpdateOrderScreen() {
     };
 
     if (orderId) fetchOrder();
-  }, [orderId,]);
+  }, [orderId]);
 
-  const handleUpdateOrder = () => {
-    console.log('Updating order:', {
-      orderId,
-      paymentStatus,
-      deliveryStatus,
-    });
+  const handleUpdateOrder = async () => {
+    try {
+      await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
+        params: { paymentReceived: paymentStatus === "COMPLETED" },
+      });
 
-    // You can call the API to update the order status here
-    // await axiosInstance.put(`/orders/${orderId}/update`, { paymentStatus, deliveryStatus });
+      await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+        params: { deliveryStatus },
+      });
 
-    router.back();
+      router.back();
+    } catch (error) {
+      console.error('Error updating order:', error);
+    }
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={{ padding: 20 }}>Loading...</Text>
-      </View>
-    );
+    return <View style={styles.container}><Text style={{ padding: 20 }}>Loading...</Text></View>;
   }
 
   if (!order) {
-    return (
-      <View style={styles.container}>
-        <Text style={{ padding: 20 }}>Order not found</Text>
-      </View>
-    );
+    return <View style={styles.container}><Text style={{ padding: 20 }}>Order not found</Text></View>;
   }
 
   const items = order.itemName.split(', ');
@@ -140,9 +132,7 @@ export default function UpdateOrderScreen() {
           )}
           <View style={styles.detailItem}>
             <Calendar size={20} color="#666" />
-            <Text style={styles.detailText}>
-              {formattedDate} at {formattedTime}
-            </Text>
+            <Text style={styles.detailText}>{formattedDate} at {formattedTime}</Text>
           </View>
         </View>
 
@@ -158,7 +148,7 @@ export default function UpdateOrderScreen() {
                 onPress={() => setPaymentStatus(status)}
               >
                 <Text style={[styles.buttonText, paymentStatus === status && styles.activeButtonText]}>
-                  {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+                  {status}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -166,14 +156,14 @@ export default function UpdateOrderScreen() {
 
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
-            {['OUT_FOR_DELIVERY', 'DELIVERED', 'ORDER_RECEIVED', 'CANCELED'].map((status) => (
+            {['OutForDelivery', 'Delivered', 'OrderReceived', 'Cancelled'].map((status) => (
               <TouchableOpacity
                 key={status}
                 style={[styles.button, deliveryStatus === status && styles.activeButton]}
                 onPress={() => setDeliveryStatus(status)}
               >
                 <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
-                  {status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
+                  {status.replace(/\b\w/g, c => c.toUpperCase())}
                 </Text>
               </TouchableOpacity>
             ))}
