@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken } from '../services/tokenService';
 
-const API_URL = 'http://172.20.10.3:8142';
+const API_URL = 'http://192.168.247.145:8142';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
