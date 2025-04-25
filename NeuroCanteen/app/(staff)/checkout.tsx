@@ -151,7 +151,7 @@ export default function Checkout() {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
       const { orderId, amount } = payment_metadata.data;
       
-
+      // For mobile, we'll use deep linking to open the Razorpay app or UPI app
       const options = {
         key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
@@ -169,16 +169,16 @@ export default function Checkout() {
         },
       };
 
-
+      // Create a URL with the payment details
       const paymentUrl = `upi://pay?pa=your-upi-id@upi&pn=Your%20Company&am=${amount}&cu=INR&tn=Order%20Payment`;
       
-    
+      // Check if the device can handle the UPI URL
       const canOpen = await Linking.canOpenURL(paymentUrl);
       
       if (canOpen) {
         await Linking.openURL(paymentUrl);
         
-       //payment
+        // After payment, verify and create order
         const orderDetails = {
           orderedRole: "Staff",
           orderedName: username,

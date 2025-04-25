@@ -8,7 +8,7 @@ export const loginAdmin = async (username: string, password: string) => {
     const response = await axios.post(`${API_URL}/authenticate/admin`, {
       username,
       password,
-    }, {  
+    }, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -53,9 +53,10 @@ export const loginDelivery = async (username: string, password: string) => {
   }
 };
 
-export const loginDietitian = async (username: string, password: string) => {
+
+export const loginStaff = async (username: string, password: string) => {
   try {
-    const response = await axios.post(`${API_URL}/authenticate/dietitian`, {
+    const response = await axios.post(`${API_URL}/authenticate/staff`, {
       username,
       password,
     }, {
