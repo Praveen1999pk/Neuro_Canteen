@@ -17,6 +17,7 @@ import { ArrowLeft, CreditCard, Cast as CashIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import axiosInstance from '@/app/api/axiosInstance';
+import WebView from 'react-native-webview';
 
 type MenuItem = {
   id: number;
@@ -40,6 +41,8 @@ export default function Checkout() {
   const [tip, setTip] = useState(0);
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
+  const [showRazorpay, setShowRazorpay] = useState(false);
+  const [razorpayUrl, setRazorpayUrl] = useState('');
   
   const cartItems: CartItems = params.cartItems 
     ? JSON.parse(params.cartItems as string) 
@@ -120,7 +123,7 @@ export default function Checkout() {
       price: orderTotal,
       orderStatus: null,
       paymentType: "COD",
-      paymentStatus: null,
+      paymentStatus: "PENDING",
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
     };
@@ -151,7 +154,6 @@ export default function Checkout() {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
       const { orderId, amount } = payment_metadata.data;
       
-      // For mobile, we'll use deep linking to open the Razorpay app or UPI app
       const options = {
         key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
@@ -169,52 +171,80 @@ export default function Checkout() {
         },
       };
 
-      // Create a URL with the payment details
-      const paymentUrl = `upi://pay?pa=your-upi-id@upi&pn=Your%20Company&am=${amount}&cu=INR&tn=Order%20Payment`;
-      
-      // Check if the device can handle the UPI URL
-      const canOpen = await Linking.canOpenURL(paymentUrl);
-      
-      if (canOpen) {
-        await Linking.openURL(paymentUrl);
-        
-        // After payment, verify and create order
-        const orderDetails = {
-          orderedRole: "Staff",
-          orderedName: username,
-          orderedUserId: username,
-          itemName: Object.keys(cartItems).map(itemId => {
-            const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-            return item ? item.name : '';
-          }).filter(Boolean).join(", "),
-          quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-          category: "South",
-          price: orderTotal,
-          orderStatus: null,
-          paymentType: "UPI",
-          paymentStatus: "Pending",
-          orderDateTime: new Date().toISOString(),
-          address: submittedAddress,
-        };
-
-        const response = await axiosInstance.post("/orders", orderDetails);
-        console.log("Order submitted successfully", response.data);
-        
-        await AsyncStorage.removeItem('staff_cart');
-        router.push('/(staff)/order-success');
+      if (Platform.OS === 'web') {
+        // For web platform
+        const Razorpay = (window as any).Razorpay;
+        if (Razorpay) {
+          const rzp = new Razorpay(options);
+          rzp.open();
+        } else {
+          Alert.alert('Error', 'Razorpay SDK not loaded');
+        }
       } else {
-        Alert.alert(
-          "UPI Not Available",
-          "No UPI payment app found on your device. Please install a UPI app or choose a different payment method."
-        );
+        // For mobile platforms
+        const razorpayCheckoutUrl = `https://api.razorpay.com/v1/checkout/embedded/${orderId}`;
+        setRazorpayUrl(razorpayCheckoutUrl);
+        setShowRazorpay(true);
       }
+
+      // Create order with PENDING status
+      const orderDetails = {
+        orderedRole: "Staff",
+        orderedName: username,
+        orderedUserId: username,
+        itemName: Object.keys(cartItems).map(itemId => {
+          const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+          return item ? item.name : '';
+        }).filter(Boolean).join(", "),
+        quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+        category: "South",
+        price: orderTotal,
+        orderStatus: null,
+        paymentType: "UPI",
+        paymentStatus: "PENDING",
+        orderDateTime: new Date().toISOString(),
+        address: submittedAddress,
+      };
+
+      const response = await axiosInstance.post("/orders", orderDetails);
+      console.log("Order submitted successfully", response.data);
+      
+      await AsyncStorage.removeItem('staff_cart');
     } catch (error) {
       console.error("Payment processing failed", error);
       Alert.alert("Error", "There was an issue processing your payment. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleRazorpayResponse = async (data: any) => {
+    setShowRazorpay(false);
+    if (data.razorpay_payment_id) {
+      // Payment successful
+      await AsyncStorage.removeItem('staff_cart');
+      router.push('/(staff)/order-success');
+    } else {
+      Alert.alert('Payment Failed', 'Please try again or choose a different payment method.');
+    }
+    setLoading(false);
+  };
+
+  if (showRazorpay) {
+    return (
+      <WebView
+        source={{ uri: razorpayUrl }}
+        style={{ flex: 1 }}
+        onNavigationStateChange={(navState) => {
+          // Handle navigation state changes and payment completion
+          if (navState.url.includes('razorpay_payment_id')) {
+            handleRazorpayResponse({ razorpay_payment_id: true });
+          } else if (navState.url.includes('payment_failed')) {
+            handleRazorpayResponse({});
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

@@ -14,8 +14,9 @@ export default function StaffLayout() {
         headerTitleStyle: styles.headerTitle,
       }}
     >
+      {/* Order Food Screen */}
       <Tabs.Screen
-        name="order"
+        name="order"  // Points to /app/(staff)/order.tsx
         options={{
           title: 'Order Food',
           tabBarIcon: ({ size, color }) => (
@@ -23,8 +24,10 @@ export default function StaffLayout() {
           ),
         }}
       />
+      
+      {/* Checkout Screen */}
       <Tabs.Screen
-        name="checkout"
+        name="checkout"  // Points to /app/(staff)/checkout.tsx
         options={{
           title: 'Checkout',
           tabBarIcon: ({ size, color }) => (
@@ -32,8 +35,10 @@ export default function StaffLayout() {
           ),
         }}
       />
+      
+      {/* Order History Screen */}
       <Tabs.Screen
-        name="order-history"
+        name="order-history"  // Points to /app/(staff)/order-history.tsx
         options={{
           title: 'Order History',
           tabBarIcon: ({ size, color }) => (

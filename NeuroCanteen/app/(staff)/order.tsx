@@ -9,144 +9,69 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Dimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Minus, Plus, ChevronRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axiosInstance from '../api/axiosInstance';
 
-// Menu categories and items
-const MENU_ITEMS = {
-  solid: [
-    {
-      id: 1,
-      name: 'Masala Dosa',
-      description: 'Crispy rice crepe filled with spiced potato mixture',
-      staffPrice: 80,
-      picture: 'https://images.pexels.com/photos/5560763/pexels-photo-5560763.jpeg',
-      available: true,
-      category: 'solid'
-    },
-    {
-      id: 2,
-      name: 'Plain Dosa',
-      description: 'Traditional crispy rice crepe',
-      staffPrice: 60,
-      picture: 'https://images.pexels.com/photos/5560763/pexels-photo-5560763.jpeg',
-      available: true,
-      category: 'solid'
-    },
-    {
-      id: 3,
-      name: 'Idli',
-      description: 'Steamed rice cakes served with chutney',
-      staffPrice: 40,
-      picture: 'https://images.pexels.com/photos/4331491/pexels-photo-4331491.jpeg',
-      available: true,
-      category: 'solid'
-    },
-    {
-      id: 4,
-      name: 'Chapathi',
-      description: 'Whole wheat flatbread',
-      staffPrice: 30,
-      picture: 'https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg',
-      available: true,
-      category: 'solid'
-    }
-  ],
-  semiSolid: [
-    {
-      id: 5,
-      name: 'Pongal',
-      description: 'Rice and lentils cooked with pepper and cumin',
-      staffPrice: 70,
-      picture: 'https://images.pexels.com/photos/11170284/pexels-photo-11170284.jpeg',
-      available: true,
-      category: 'semiSolid'
-    },
-    {
-      id: 6,
-      name: 'Sambar Rice',
-      description: 'Rice mixed with lentil-based vegetable stew',
-      staffPrice: 65,
-      picture: 'https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg',
-      available: true,
-      category: 'semiSolid'
-    },
-    {
-      id: 7,
-      name: 'Ghee Rice',
-      description: 'Aromatic rice cooked with clarified butter',
-      staffPrice: 75,
-      picture: 'https://images.pexels.com/photos/7426864/pexels-photo-7426864.jpeg',
-      available: true,
-      category: 'semiSolid'
-    }
-  ],
-  liquid: [
-    {
-      id: 8,
-      name: 'Mango Smoothie',
-      description: 'Fresh mango blended with yogurt',
-      staffPrice: 50,
-      picture: 'https://images.pexels.com/photos/3625372/pexels-photo-3625372.jpeg',
-      available: true,
-      category: 'liquid'
-    },
-    {
-      id: 9,
-      name: 'Filter Coffee',
-      description: 'Traditional South Indian coffee',
-      staffPrice: 25,
-      picture: 'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg',
-      available: true,
-      category: 'liquid'
-    },
-    {
-      id: 10,
-      name: 'Orange Juice',
-      description: 'Freshly squeezed orange juice',
-      staffPrice: 40,
-      picture: 'https://images.pexels.com/photos/96974/pexels-photo-96974.jpeg',
-      available: true,
-      category: 'liquid'
-    },
-    {
-      id: 11,
-      name: 'Apple Juice',
-      description: 'Fresh apple juice',
-      staffPrice: 40,
-      picture: 'https://images.pexels.com/photos/616833/pexels-photo-616833.jpeg',
-      available: true,
-      category: 'liquid'
-    },
-    {
-      id: 12,
-      name: 'Milk',
-      description: 'Fresh dairy milk',
-      staffPrice: 20,
-      picture: 'https://images.pexels.com/photos/2064354/pexels-photo-2064354.jpeg',
-      available: true,
-      category: 'liquid'
-    }
-  ]
+type MenuItem = {
+  id: number;
+  name: string;
+  description: string;
+  staffPrice: number;
+  patientPrice: number;
+  dietitianPrice: number;
+  picture: string | null;
+  category: string;
+  available: boolean;
+  role: string;
 };
 
-type MenuItem = typeof MENU_ITEMS.solid[0];
 type CartItems = { [key: string]: number };
-type Category = 'solid' | 'semiSolid' | 'liquid';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 8;
+const CARD_WIDTH = Platform.OS === 'web' ? 300 : (width - (CARD_MARGIN * 4)) / 2;
 
 export default function StaffOrder() {
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItems>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category>('solid');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Clear liquid');
+  const [categories, setCategories] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     loadCart();
+    fetchMenuItems();
   }, []);
+
+  const fetchMenuItems = async () => {
+    try {
+      const response = await axiosInstance.get('/menu-items');
+      if (Array.isArray(response.data)) {
+        setMenuItems(response.data);
+        const uniqueCategories = [...new Set(response.data.map((item: MenuItem) => item.category))];
+        setCategories(uniqueCategories);
+      } else {
+        console.error('API response is not an array:', response.data);
+        setMenuItems([]);
+        setCategories([]);
+      }
+      setLoading(false);
+      setRefreshing(false);
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+      setMenuItems([]);
+      setCategories([]);
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const loadCart = async () => {
     try {
@@ -172,7 +97,7 @@ export default function StaffOrder() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    fetchMenuItems();
   };
 
   const handleAddToCart = (item: MenuItem) => {
@@ -207,20 +132,18 @@ export default function StaffOrder() {
       return;
     }
     
-    const allMenuItems = [...MENU_ITEMS.solid, ...MENU_ITEMS.semiSolid, ...MENU_ITEMS.liquid];
     router.push({
       pathname: '/(staff)/checkout',
       params: { 
         cartItems: JSON.stringify(cartItems),
-        menuItems: JSON.stringify(allMenuItems)
+        menuItems: JSON.stringify(menuItems)
       }
     });
   };
 
   const calculateTotal = () => {
-    const allMenuItems = [...MENU_ITEMS.solid, ...MENU_ITEMS.semiSolid, ...MENU_ITEMS.liquid];
     return Object.keys(cartItems).reduce((total, itemId) => {
-      const item = allMenuItems.find(item => item.id === parseInt(itemId));
+      const item = menuItems.find(item => item.id === parseInt(itemId));
       if (!item) return total;
       return total + (item.staffPrice * cartItems[itemId]);
     }, 0);
@@ -228,21 +151,9 @@ export default function StaffOrder() {
 
   const totalItems = Object.values(cartItems).reduce((sum, quantity) => sum + quantity, 0);
 
-  const CategoryButton = ({ category, title }: { category: Category; title: string }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryButton,
-        selectedCategory === category && styles.categoryButtonActive
-      ]}
-      onPress={() => setSelectedCategory(category)}
-    >
-      <Text style={[
-        styles.categoryButtonText,
-        selectedCategory === category && styles.categoryButtonTextActive
-      ]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
+  const filteredMenuItems = menuItems.filter(item => 
+    item.category === selectedCategory 
+    // && item.role === 'Staff'
   );
 
   if (loading) {
@@ -256,52 +167,80 @@ export default function StaffOrder() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.categoryContainer}>
-        <CategoryButton category="solid" title="Solid" />
-        <CategoryButton category="semiSolid" title="Semi Solid" />
-        <CategoryButton category="liquid" title="Liquid" />
+      <View style={styles.categoryWrapper}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.categoryContainer}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category && styles.categoryButtonActive
+              ]}
+              onPress={() => setSelectedCategory(category)}
+            >
+              <Text style={[
+                styles.categoryButtonText,
+                selectedCategory === category && styles.categoryButtonTextActive
+              ]}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <ScrollView
         style={styles.menuArea}
+        contentContainerStyle={styles.menuGrid}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {MENU_ITEMS[selectedCategory].map((item) => (
+        {filteredMenuItems.map((item) => (
           <View key={item.id} style={styles.menuItem}>
-            <Image source={{ uri: item.picture }} style={styles.itemImage} />
+            <Image 
+              source={item.picture ? { uri: item.picture } : require('../../assets/images/icon.png')} 
+              style={styles.itemImage}
+            />
             <View style={styles.menuItemDetails}>
-              <Text style={styles.itemName}>{item.name}</Text>
+              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
               <Text style={styles.itemDescription} numberOfLines={2}>
                 {item.description}
               </Text>
-              <Text style={styles.itemPrice}>₹{item.staffPrice}</Text>
-
-              {cartItems[item.id] ? (
-                <View style={styles.quantityControls}>
+              <View style={styles.priceActionContainer}>
+                <Text style={styles.itemPrice}>₹{item.staffPrice}</Text>
+                {cartItems[item.id] ? (
+                  <View style={styles.quantityControls}>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={() => handleDecreaseQuantity(item.id)}
+                    >
+                      <Minus size={14} color="#4A8F47" />
+                    </TouchableOpacity>
+                    <Text style={styles.quantityText}>{cartItems[item.id]}</Text>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={() => handleIncreaseQuantity(item.id)}
+                    >
+                      <Plus size={14} color="#4A8F47" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
                   <TouchableOpacity
-                    style={styles.quantityButton}
-                    onPress={() => handleDecreaseQuantity(item.id)}
+                    style={styles.addButton}
+                    onPress={() => handleAddToCart(item)}
+                    disabled={!item.available}
                   >
-                    <Minus size={16} color="#4A8F47" />
+                    <Text style={styles.addButtonText}>
+                      {item.available ? 'ADD' : 'UNAVAILABLE'}
+                    </Text>
                   </TouchableOpacity>
-                  <Text style={styles.quantityText}>{cartItems[item.id]}</Text>
-                  <TouchableOpacity
-                    style={styles.quantityButton}
-                    onPress={() => handleIncreaseQuantity(item.id)}
-                  >
-                    <Plus size={16} color="#4A8F47" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => handleAddToCart(item)}
-                >
-                  <Text style={styles.addButtonText}>ADD</Text>
-                </TouchableOpacity>
-              )}
+                )}
+              </View>
             </View>
           </View>
         ))}
@@ -330,27 +269,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9f9f9',
   },
-  categoryContainer: {
-    flexDirection: 'row',
-    padding: 15,
+  categoryWrapper: {
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  categoryContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   categoryButton: {
-    flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 6,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 20,
     backgroundColor: '#f0f0f0',
     marginHorizontal: 4,
-    alignItems: 'center',
   },
   categoryButtonActive: {
     backgroundColor: '#4A8F47',
   },
   categoryButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
   },
@@ -370,12 +314,18 @@ const styles = StyleSheet.create({
   menuArea: {
     flex: 1,
   },
+  menuGrid: {
+    padding: CARD_MARGIN,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
   menuItem: {
+    width: CARD_WIDTH,
     backgroundColor: 'white',
-    marginHorizontal: 15,
-    marginTop: 15,
     borderRadius: 12,
     overflow: 'hidden',
+    marginBottom: CARD_MARGIN * 2,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -384,56 +334,61 @@ const styles = StyleSheet.create({
   },
   itemImage: {
     width: '100%',
-    height: 200,
+    height: 120,
     resizeMode: 'cover',
   },
   menuItemDetails: {
-    padding: 15,
+    padding: 12,
   },
   itemName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
   itemDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     marginBottom: 8,
+    lineHeight: 18,
+  },
+  priceActionContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   itemPrice: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#4A8F47',
-    marginBottom: 12,
   },
   addButton: {
     backgroundColor: '#4A8F47',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 6,
-    alignSelf: 'flex-start',
   },
   addButtonText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 12,
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 6,
+    padding: 2,
   },
   quantityButton: {
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#4A8F47',
-    borderRadius: 6,
+    borderRadius: 4,
   },
   quantityText: {
-    marginHorizontal: 12,
-    fontSize: 16,
+    marginHorizontal: 8,
+    fontSize: 14,
     fontWeight: '600',
   },
   cartBar: {
@@ -443,7 +398,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#4A8F47',
     padding: 15,
     paddingBottom: Platform.OS === 'ios' ? 30 : 15,
-    marginTop: 15,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   cartInfo: {
     flexDirection: 'row',

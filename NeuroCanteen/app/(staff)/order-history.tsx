@@ -14,7 +14,6 @@ import axiosInstance from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 
-// Define types
 type Order = {
   id: number;
   orderedName: string;
@@ -35,9 +34,7 @@ export default function OrderHistory() {
   const [username, setUsername] = useState('');
 
   useEffect(() => {
-    getUsernameFromToken().then(() => {
-      fetchOrders();
-    });
+    getUsernameFromToken();
   }, []);
 
   const getUsernameFromToken = async () => {
@@ -45,28 +42,30 @@ export default function OrderHistory() {
       const token = await AsyncStorage.getItem('jwtToken');
       if (token) {
         const decoded: any = jwtDecode(token);
-        setUsername(decoded.sub || '');
-        return decoded.sub;
+        const user = decoded.sub || '';
+        setUsername(user);
+        fetchOrders(token, user);  // ✅ fetch orders after setting username
       }
-      return '';
     } catch (error) {
       console.error('Error decoding token:', error);
-      return '';
+      setLoading(false);
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (token: string, user: string) => {
     setLoading(true);
     try {
-      const user = username || await getUsernameFromToken();
-      if (!user) {
-        console.error('No username found in token');
-        setLoading(false);
-        return;
-      }
+      const response = await axiosInstance.get(`/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const response = await axiosInstance.get(`/orders/user/${user}/Staff`);
-      setOrders(response.data);
+      // ✅ Filter orders matching the logged-in user
+      const userOrders = response.data.filter((order: Order) => order.orderedName === user);
+
+      setOrders(userOrders);
+      console.log('User Orders fetched:', userOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -75,9 +74,12 @@ export default function OrderHistory() {
     }
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchOrders();
+    const token = await AsyncStorage.getItem('jwtToken');
+    if (token && username) {
+      fetchOrders(token, username);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -190,7 +192,8 @@ export default function OrderHistory() {
       <FlatList
         data={orders}
         renderItem={renderOrderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => item?.id ? String(item.id) : `order-${index}`}
+
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -201,7 +204,7 @@ export default function OrderHistory() {
             <Text style={styles.emptyText}>No orders found</Text>
             <TouchableOpacity 
               style={styles.retryButton}
-              onPress={fetchOrders}
+              onPress={onRefresh}
             >
               <Text style={styles.retryButtonText}>Refresh</Text>
             </TouchableOpacity>
@@ -211,6 +214,9 @@ export default function OrderHistory() {
     </SafeAreaView>
   );
 }
+
+
+
 
 const styles = StyleSheet.create({
   container: {
