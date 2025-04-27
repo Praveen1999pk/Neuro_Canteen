@@ -3,7 +3,11 @@ import { View, Text } from 'react-native';
 
 import LoginScreen from './admin';
 import Handledeliverylogin from './delivery';
+
+import HandleStaffLogin  from  './staff'; 
+
 import Handledietitianlogin from './dietitian';
+
 
 export default function RolePage() {
   const { id } = useLocalSearchParams();
@@ -11,6 +15,9 @@ export default function RolePage() {
 
   if (id === 'admin') return <LoginScreen />;
   if (id === 'delivery') return <Handledeliverylogin />;
+
+  if (id === 'staff') return <HandleStaffLogin />;
+
   if (id === 'dietitian') return <Handledietitianlogin/>;
 
   return (
