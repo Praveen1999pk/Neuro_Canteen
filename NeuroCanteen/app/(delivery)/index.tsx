@@ -1,3 +1,4 @@
+// app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
 import { Link } from 'expo-router';
 import { Package, ShoppingCart, Wallet, Search, Filter } from 'lucide-react-native';
@@ -7,10 +8,10 @@ import axiosInstance from '../api/axiosInstance';
 type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELED' | 'ORDER RECEIVED';
 
-export default function DeliveryScreen() {
+export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('OUT_FOR_DELIVERY');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('ALL');
   const [showFilters, setShowFilters] = useState(false);
   type Order = {
     orderId: number;
@@ -23,15 +24,15 @@ export default function DeliveryScreen() {
     paymentType: string;
     paymentRecived: boolean;
     address: string;
-    deliveryStatus:string
-  };
+    deliveryStatus: string;
+  };  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/orders/out-for-delivery", { timeout: 8000 });
+      const response = await axiosInstance.get("/orders/out-for-delivery", { timeout: 5000 });
       setOrders(response.data);
     } catch (error: any) {
       if (error.code === 'ECONNABORTED') {
@@ -46,12 +47,11 @@ export default function DeliveryScreen() {
 
   useEffect(() => {
     fetchOrders();
-    console.log(orders)
   }, []);
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
-      const matchesSearch = order.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
         order.orderId.toString().includes(searchQuery);
 
       const matchesPayment = paymentFilter === 'ALL' ||
@@ -59,14 +59,11 @@ export default function DeliveryScreen() {
         (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
 
       const matchesStatus = statusFilter === 'ALL' ||
-      (statusFilter === 'OUT_FOR_DELIVERY' && order.deliveryStatus === "OutForDelivery") ||
-      (statusFilter === 'CANCELED' && order.deliveryStatus === "Cancelled") ||
-      (statusFilter === 'ORDER RECEIVED' && order.deliveryStatus === "OrderReceived") ||
-      (statusFilter === 'DELIVERED' && order.deliveryStatus === "Delivered");
-
-
-        // order.orderStatus === statusFilter;
-
+        (statusFilter === 'OUT_FOR_DELIVERY' && order.deliveryStatus === "OutForDelivery") ||
+        (statusFilter === 'CANCELED' && order.deliveryStatus === "Cancelled") ||
+        (statusFilter === 'ORDER RECEIVED' && order.deliveryStatus === "OrderReceived") ||
+        (statusFilter === 'DELIVERED' && order.deliveryStatus === "Delivered");
+        
       return matchesSearch && matchesPayment && matchesStatus;
     });
   }, [orders, searchQuery, paymentFilter, statusFilter]);
@@ -126,7 +123,6 @@ export default function DeliveryScreen() {
               <FilterButton title="Delivered" isActive={statusFilter === 'DELIVERED'} onPress={() => setStatusFilter('DELIVERED')} />
               <FilterButton title="Canceled" isActive={statusFilter === 'CANCELED'} onPress={() => setStatusFilter('CANCELED')} />
               <FilterButton title="Order Received" isActive={statusFilter === 'ORDER RECEIVED'} onPress={() => setStatusFilter('ORDER RECEIVED')} />
-
             </ScrollView>
           </View>
         </View>
@@ -147,48 +143,48 @@ export default function DeliveryScreen() {
         >
           {filteredOrders.map((order) => (
             <Link
-              key={order.orderId}
-              href={{ pathname: "./update", params: { orderId: order.orderId } }}
-              asChild
-            >
-              <TouchableOpacity style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <View style={styles.orderInfo}>
-                    <Text style={styles.orderId}>#{order.orderId}</Text>
-                    <View style={styles.statusBadge}>
-                      <Package size={16} color="#4CAF50" />
-                      <Text style={styles.statusText}>{order.deliveryStatus}</Text>
-                    </View>
+            key={order.orderId}
+            href={{ pathname: "/delivery_orders/[orderId]", params: { orderId: order.orderId } }}
+            asChild
+          >
+            <TouchableOpacity style={styles.orderCard}>
+              <View style={styles.orderHeader}>
+                <View style={styles.orderInfo}>
+                  <Text style={styles.orderId}>#{order.orderId}</Text>
+                  <View style={styles.statusBadge}>
+                    <Package size={16} color="#4CAF50" />
+                    <Text style={styles.statusText}>{order.deliveryStatus}</Text>
                   </View>
-                  <Text style={styles.price}>₹{order.price}</Text>
                 </View>
-
-                <View style={styles.itemsContainer}>
-                  <Text style={styles.itemsText} numberOfLines={2}>
-                    {order.itemName}
+                <Text style={styles.price}>₹{order.price}</Text>
+              </View>
+          
+              <View style={styles.itemsContainer}>
+                <Text style={styles.itemsText} numberOfLines={2}>
+                  {order.itemName}
+                </Text>
+              </View>
+          
+              <View style={styles.orderFooter}>
+                <View style={styles.footerInfo}>
+                  <ShoppingCart size={16} color="#666" />
+                  <Text style={styles.footerText}>{order.quantity} items</Text>
+                </View>
+                <View style={styles.footerInfo}>
+                  <Wallet size={16} color="#666" />
+                  <Text style={styles.footerText}>
+                    {order.paymentRecived ? "Paid" : "Pending"}
                   </Text>
                 </View>
-
-                <View style={styles.orderFooter}>
-                  <View style={styles.footerInfo}>
-                    <ShoppingCart size={16} color="#666" />
-                    <Text style={styles.footerText}>{order.quantity} items</Text>
-                  </View>
-                  <View style={styles.footerInfo}>
-                    <Wallet size={16} color="#666" />
-                    <Text style={styles.footerText}>
-                      {order.paymentRecived ? "Paid" : "Pending"}
-                    </Text>
-                  </View>
-                  <Text style={[styles.roleTag, {
-                    backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
-                  }]}>
-                    {order.orderedRole}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </Link>
-          ))}
+                <Text style={[styles.roleTag, {
+                  backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
+                }]}>
+                  {order.orderedRole}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Link>
+            ))}
         </ScrollView>
       )}
     </View>
