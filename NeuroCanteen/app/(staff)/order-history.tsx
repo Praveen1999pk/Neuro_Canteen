@@ -48,7 +48,7 @@ export default function OrderHistory() {
       }
     } catch (error) {
       console.error('Error decoding token:', error);
-      setLoading(false);
+      setLoading(false); 
     }
   };
 
@@ -123,7 +123,7 @@ export default function OrderHistory() {
   const renderOrderItem = ({ item }: { item: Order }) => (
     <View style={styles.orderCard}>
       <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>Order #{item.id}</Text>
+        <Text style={styles.orderId}>Order #{item.orderId}</Text>
         <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
       </View>
       

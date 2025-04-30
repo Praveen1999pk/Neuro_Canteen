@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CreditCard, Cast as CashIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import axiosInstance from '@/app/api/axiosInstance';
+import axiosInstance from '../api/axiosInstance';
 import WebView from 'react-native-webview';
 
 type MenuItem = {
@@ -158,7 +158,7 @@ export default function Checkout() {
         key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
         currency: "INR",
-        name: "Your Company Name",
+        name: " Crimpson Owl Tech",
         description: "Payment for Order",
         order_id: orderId,
         prefill: {

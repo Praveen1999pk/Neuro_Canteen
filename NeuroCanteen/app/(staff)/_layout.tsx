@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import { ShoppingCart, Clock, Utensils } from 'lucide-react-native';
+import { Tabs } from 'expo-router'; 
+import { ShoppingCart, Clock, Utensils, User } from 'lucide-react-native';
 import { StyleSheet } from 'react-native';
 
 export default function StaffLayout() {
@@ -14,9 +14,8 @@ export default function StaffLayout() {
         headerTitleStyle: styles.headerTitle,
       }}
     >
-      {/* Order Food Screen */}
       <Tabs.Screen
-        name="order"  // Points to /app/(staff)/order.tsx
+        name="order"
         options={{
           title: 'Order Food',
           tabBarIcon: ({ size, color }) => (
@@ -24,21 +23,17 @@ export default function StaffLayout() {
           ),
         }}
       />
-      
-      {/* Checkout Screen */}
-      <Tabs.Screen
-        name="checkout"  // Points to /app/(staff)/checkout.tsx
+      {/* <Tabs.Screen
+        name="checkout"
         options={{
           title: 'Checkout',
           tabBarIcon: ({ size, color }) => (
             <ShoppingCart size={size} color={color} />
           ),
         }}
-      />
-      
-      {/* Order History Screen */}
+      /> */}
       <Tabs.Screen
-        name="order-history"  // Points to /app/(staff)/order-history.tsx
+        name="order-history"
         options={{
           title: 'Order History',
           tabBarIcon: ({ size, color }) => (
@@ -46,6 +41,20 @@ export default function StaffLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ size, color }) => (
+            <User size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 🚫 Hide unwanted screens */}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="order-success" options={{ href: null }} />
+      <Tabs.Screen name="checkout" options={{ href: null }} />
     </Tabs>
   );
 }
