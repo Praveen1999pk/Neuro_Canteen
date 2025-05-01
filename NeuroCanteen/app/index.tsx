@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'rea
 import { useRouter } from 'expo-router';
 import { Users, User, Bed, Stethoscope, Bike, UtensilsCrossed } from 'lucide-react-native';
 
+
 const roles = [
   { id: 'admin', name: 'Admin', icon: User, color: '#0F5132' },
   { id: 'staff', name: 'Staff', icon: Users, color: '#0F5132' },
@@ -22,7 +23,7 @@ export default function HomeScreen() {
     >
       <View style={styles.header}>
         <Image
-          source={{ uri: 'https://scontent.fmaa12-2.fna.fbcdn.net/v/t39.30808-6/461422381_3354642994665738_5310835880152761256_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=a5f93a&_nc_ohc=gBoTwlzQYV8Q7kNvwFKQSNt&_nc_oc=AdkYAt1WYQSWkHSXBglvaVsgpp9mfDUwdBVUgLON7DtAYKiGgZ58XgKh0Y2QsG8V25UZS3TVmEXoAVRq7Odfs-KP&_nc_zt=23&_nc_ht=scontent.fmaa12-2.fna&_nc_gid=ikjeI72Bjze3UbUwKf5E5Q&oh=00_AYEPnwtDDl9LKJpdPfAX-5DPHTav243akR8f4-4l7m-fRA&oe=67F56E2B' }}
+          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREMyZ6LLQj-3cAzG1Qo_S-9X9JeKwD0ayH3A&s' }}
           style={styles.logo} 
           resizeMode='stretch'
         />

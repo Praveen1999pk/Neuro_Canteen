@@ -7,6 +7,7 @@ import Handledeliverylogin from './delivery';
 import HandleStaffLogin  from  './staff'; 
 
 import Handledietitianlogin from './dietitian';
+import Handlekitchenlogin from './kitchen';
 
 
 export default function RolePage() {
@@ -19,6 +20,8 @@ export default function RolePage() {
   if (id === 'staff') return <HandleStaffLogin />;
 
   if (id === 'dietitian') return <Handledietitianlogin/>;
+  if (id === 'kitchen') return <Handlekitchenlogin/>;
+
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

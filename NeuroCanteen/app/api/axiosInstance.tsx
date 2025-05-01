@@ -7,7 +7,9 @@ import { getToken } from '../services/tokenService'; // Adjust the path if neede
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-const API_URL = 'http://192.168.57.53:8142';
+
+
+const API_URL = 'http://172.20.10.7:8142';
 
 
 const axiosInstance = axios.create({

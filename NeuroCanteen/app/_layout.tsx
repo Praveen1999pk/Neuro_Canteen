@@ -20,6 +20,21 @@ export default function RootLayout() {
             headerShown: false, // Optionally hide the header
           }}
         />
+          <Stack.Screen
+            name="(dietitians)" // This pattern matches any screen under the "(dietitians)" folder
+            options={{
+            gestureEnabled: false, // Disable swipe gestures (left-to-right)
+            headerShown: false, // Optionally hide the header
+          }}
+        />
+
+          <Stack.Screen
+            name="(kitchen)" // This pattern matches any screen under the "(dietitians)" folder
+            options={{
+            gestureEnabled: false, // Disable swipe gestures (left-to-right)
+            headerShown: false, // Optionally hide the header
+          }}
+        />
       </Stack>
     </>
   );
