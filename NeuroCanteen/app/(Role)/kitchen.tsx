@@ -2,32 +2,22 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Keyboa
 import { useRouter, useLocalSearchParams, router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { useState,useEffect } from 'react';
-import { loginAdmin } from '../api/auth';
-export default function LoginScreen() {
+import { loginKitchen } from '../api/auth';
+import { UtensilsCrossed } from 'lucide-react-native';
+import axiosInstance from '../api/axiosInstance';
+
+export default function Handlekitchenlogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // const MenuScreen = () => {
-  //     const fetchMenuItems = async () => {
-  //       try {
-  //         const response = await axiosInstance.get('/menu-items');
-  //         console.log('Menu Items:', response.data);
-  //       } catch (error) {
-  //         console.log('Error fetching menu items:', error);
-  //       }
-  //     };
-  //     fetchMenuItems()
-  // }
-
   const handleLogin = async () => {
     setLoading(true);
-  
-    const result = await loginAdmin(username, password);
-    console.log()
+    const result = await loginKitchen(username, password);
+    console.log(result)
+    console.log(result.success)
     if (result.success) {
-      // MenuScreen()
-      router.replace('/(admin)');
+      router.replace('/(kitchen)');
     } else {
       Alert.alert('Login Failed', result.message);
     }
@@ -62,6 +52,13 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
+
+          <View style={styles.deliveryHeader}>
+          <UtensilsCrossed color="#0F5132" size={32} />
+          <Text style={styles.deliveryTitle}>Kitchen Login</Text>
+        </View>
+
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Username</Text>
             <TextInput
@@ -100,6 +97,9 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.footer}>
+  <Text style={styles.footerText}>Supported by Crimson Owl Tech</Text>
+</View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -183,5 +183,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
+  deliveryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 30,
+    marginBottom: 30,
+  },
+  deliveryTitle: {
+    fontSize: 22,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#0F5132',
+    marginLeft: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 40,
+    paddingBottom: 20,
+  },
+  
+  footerText: {
+    fontSize: 12,
+    color: '#6B7280', // subtle gray
+    fontFamily: 'Poppins-Regular',
+  },
+  
 });
 

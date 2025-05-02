@@ -18,7 +18,7 @@ export default function Handledietitianlogin() {
     console.log(result)
     console.log(result.success)
     if (result.success) {
-      router.replace('/(delivery)');
+      router.replace('/(dietitians)');
     } else {
       Alert.alert('Login Failed', result.message);
     }

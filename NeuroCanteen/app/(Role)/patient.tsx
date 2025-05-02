@@ -1,39 +1,29 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
-import { useState,useEffect } from 'react';
-import { loginAdmin } from '../api/auth';
-export default function LoginScreen() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+import { router } from 'expo-router';
+import { ArrowLeft, Truck } from 'lucide-react-native';
+import { useState } from 'react';
+import { loginpatient } from '../api/auth';
+
+export default function HandlepatientLogin() {
+  const [uhid, setUhid] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // const MenuScreen = () => {
-  //     const fetchMenuItems = async () => {
-  //       try {
-  //         const response = await axiosInstance.get('/menu-items');
-  //         console.log('Menu Items:', response.data);
-  //       } catch (error) {
-  //         console.log('Error fetching menu items:', error);
-  //       }
-  //     };
-  //     fetchMenuItems()
-  // }
-
   const handleLogin = async () => {
+    if (!uhid.trim()) {
+      Alert.alert('Error', 'Please enter your UHID');
+      return;
+    }
+
     setLoading(true);
-  
-    const result = await loginAdmin(username, password);
-    console.log()
+    const result = await loginpatient(uhid);
+    
     if (result.success) {
-      // MenuScreen()
-      router.replace('/(admin)');
+      router.replace('/(patient)');
     } else {
-      Alert.alert('Login Failed', result.message);
+      Alert.alert('Login Failed', 'Invalid UHID. Please try again.');
     }
     setLoading(false);
   };
-  
 
   const handleBack = () => {
     router.replace('/');
@@ -62,31 +52,26 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
+          <View style={styles.PatientHeader}>
+            
+            <Text style={styles.PatientTitle}>Patient Login</Text>
+          </View>
+
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>UHID</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username"
-              value={username}
-              onChangeText={setUsername}
+              placeholder="Enter your UHID"
+              value={uhid}
+              onChangeText={setUhid}
               autoCapitalize="none"
+              keyboardType="default"
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
-
-          <View style={styles.rememberContainer}>
+          <View style={styles.helpContainer}>
             <TouchableOpacity>
-              <Text style={styles.forgotPassword}>Forgot password?</Text>
+              <Text style={styles.helpText}>Need help finding your UHID?</Text>
             </TouchableOpacity>
           </View>
 
@@ -99,6 +84,10 @@ export default function LoginScreen() {
               {loading ? 'Logging in...' : 'Login'}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Supported by Crimson Owl Tech</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -143,7 +132,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
     fontFamily: 'Poppins-Medium',
@@ -159,12 +148,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Regular',
     fontSize: 16,
   },
-  rememberContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+  helpContainer: {
+    alignItems: 'center',
     marginBottom: 24,
   },
-  forgotPassword: {
+  helpText: {
     fontFamily: 'Poppins-Medium',
     fontSize: 14,
     color: '#0F5132',
@@ -183,5 +171,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
+  PatientHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 30,
+    marginBottom: 30,
+  },
+  PatientTitle: {
+    fontSize: 22,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#0F5132',
+    marginLeft: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 40,
+    paddingBottom: 20,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Poppins-Regular',
+  },
 });
-
