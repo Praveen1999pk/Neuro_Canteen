@@ -62,7 +62,7 @@ export default function Checkout() {
       if (token) {
         const decoded: any = jwtDecode(token);
         setUsername(decoded.sub || '');
-      }
+      } 
     } catch (error) {
       console.error('Error decoding token:', error);
     }
