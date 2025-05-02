@@ -1,83 +1,94 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
 import {
   Chrome as Home,
-  User,
   Users,
-  Stethoscope,
+  User,
   Truck,
-  Utensils,
-  LogOut,
+  ChefHat,
+  UtensilsCrossed,
 } from 'lucide-react-native';
+import { View, StyleSheet } from 'react-native';
+import { useHrefAttrs } from 'expo-router/build/link/useLinkHooks';
 
 export default function AdminLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: true,
-        tabBarActiveTintColor: '#166534',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarActiveTintColor: '#2E7D32',
+        tabBarInactiveTintColor: '#757575',
         tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E0E0E0',
           height: 60,
           paddingBottom: 10,
+          paddingTop: 10,
+        },
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#2E7D32',
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: 'bold',
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="staff"
         options={{
           title: 'Staff',
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="patient"
         options={{
-          title: 'Patient',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          title: 'Patients',
+          tabBarIcon: ({ color }) => <User size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="dietitian"
         options={{
           title: 'Dietitian',
-          tabBarIcon: ({ color, size }) => <Stethoscope size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="delivery"
-        options={{
-          title: 'Delivery',
-          tabBarIcon: ({ color, size }) => <Truck size={size} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <View style={styles.icon}>
+              <UtensilsCrossed size={24} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="kitchen"
         options={{
           title: 'Kitchen',
-          tabBarIcon: ({ color, size }) => <Utensils size={size} color={color} />,
+          tabBarIcon: ({ color }) => <ChefHat size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="logout"
+        name="delivery"
         options={{
-          title: 'Logout',
-          tabBarIcon: ({ color, size }) => <LogOut size={size} color={color} />,
+          title: 'Delivery',
+          tabBarIcon: ({ color }) => <Truck size={24} color={color} />,
         }}
       />
     </Tabs>
+   
   );
 }
+
+const styles = StyleSheet.create({
+  icon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

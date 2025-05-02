@@ -30,7 +30,7 @@ export default function ProfileScreen() {
           text: 'Logout',
           onPress: async () => {
             await logout();
-            router.replace('/login');
+            router.replace('(Role)/staff');
           },
         },
       ]
@@ -48,10 +48,7 @@ export default function ProfileScreen() {
       </View>
       
       <View style={styles.optionsContainer}>
-        <TouchableOpacity style={styles.optionItem}>
-          <Settings size={24} color="#666" />
-          <Text style={styles.optionText}>Account Settings</Text>
-        </TouchableOpacity>
+  
         
         <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
           <LogOut size={24} color="#FF3B30" />
