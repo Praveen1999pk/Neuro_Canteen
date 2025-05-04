@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { saveToken, removeToken, isTokenValid } from './tokenService';
-
-const API_URL = 'http://192.168.91.145:8142';
+import { API_URL } from '../../config';
 
 export const loginStaff = async (username: string, password: string) => {
   try {

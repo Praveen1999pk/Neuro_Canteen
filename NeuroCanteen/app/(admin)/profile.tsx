@@ -43,7 +43,7 @@ export default function ProfileScreen() {
           <User size={40} color="#FF6B00" />
         </View>
         <Text style={styles.username}>
-          {loading ? 'Loading...' : `Welcome, ${username || 'Staff User'}`}
+          {loading ? 'Loading...' : `Welcome, ${username || 'admin User'}`}
         </Text>
         <Text style={styles.role}>Staff Account</Text>
       </View>

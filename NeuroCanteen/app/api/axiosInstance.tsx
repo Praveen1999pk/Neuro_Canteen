@@ -5,14 +5,7 @@ import { Users, User, Bed, Stethoscope, Bike, UtensilsCrossed } from 'lucide-rea
 import axios from 'axios';
 import { getToken } from '../services/tokenService'; // Adjust the path if needed
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
-
-
-
-const API_URL = 'http://172.20.10.7:8142';
-
-
+import { API_URL } from '../../config';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
