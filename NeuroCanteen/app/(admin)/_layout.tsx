@@ -81,6 +81,13 @@ export default function AdminLayout() {
           tabBarIcon: ({ color }) => <Truck size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ color }) => <Truck size={24} color={color} />,
+        }}
+      />
     </Tabs>
    
   );

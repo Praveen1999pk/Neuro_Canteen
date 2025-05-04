@@ -12,9 +12,9 @@ export default function RootLayout() {
         {/* Index page */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
         
-        {/* Disable gestures for screens under the "(delivery)" folder */}
+       
         <Stack.Screen
-          name="(delivery)" // This pattern matches any screen under the "(delivery)" folder
+          name="(delivery)" 
           options={{
             gestureEnabled: false, // Disable swipe gestures (left-to-right)
             headerShown: false, // Optionally hide the header
