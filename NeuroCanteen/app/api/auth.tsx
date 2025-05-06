@@ -130,3 +130,24 @@ export const loginKitchen = async (username: string, password: string) => {
   }
 };
 
+export const loginpatient = async (uhid: string) => {
+  try {
+    const response = await axios.post(`${API_URL}/authenticate/patient`, {
+      uhid,
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = response.data;
+    if (response.status === 200 && data.jwt) {
+      await AsyncStorage.setItem('jwtToken', data.jwt);
+      return { success: true };
+    } else {
+      return { success: false, message: 'Invalid UHID' };
+    }
+  } catch (error) {
+    return { success: false, message: 'Server error' };
+  }
+};
