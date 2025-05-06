@@ -1,24 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { getUsernameFromToken, removeToken } from '../services/tokenService';
 import { logout } from '../services/authService';
 import { User, LogOut } from 'lucide-react-native';
 
 export default function ProfileScreen() {
-  const [username, setUsername] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUsername = async () => {
-      const name = await getUsernameFromToken();
-      setUsername(name);
-      setLoading(false);
-    };
-
-    fetchUsername();
-  }, []);
-
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -29,7 +15,7 @@ export default function ProfileScreen() {
           text: 'Logout',
           onPress: async () => {
             await logout();
-            router.replace('(Role)/admin'); // change path as needed
+            router.replace('/(Role)/admin'); // change path as needed
           },
         },
       ]
@@ -42,10 +28,8 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           <User size={40} color="#FF6B00" />
         </View>
-        <Text style={styles.username}>
-          {loading ? 'Loading...' : `Welcome, ${username || 'admin User'}`}
-        </Text>
-        <Text style={styles.role}>Staff Account</Text>
+        <Text style={styles.username}>Welcome, Admin User</Text>
+        <Text style={styles.role}>Admin Account</Text>
       </View>
 
       <View style={styles.optionsContainer}>
