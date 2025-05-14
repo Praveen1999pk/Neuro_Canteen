@@ -16,8 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CreditCard, Cast as CashIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import axiosInstance from '@/app/api/axiosInstance';
-import WebView from 'react-native-webview';
+import axiosInstance from '../api/axiosInstance';
+import RazorpayCheckout from 'react-native-razorpay';
 
 type MenuItem = {
   id: number;
@@ -62,7 +62,7 @@ export default function Checkout() {
       if (token) {
         const decoded: any = jwtDecode(token);
         setUsername(decoded.sub || '');
-      }
+      } 
     } catch (error) {
       console.error('Error decoding token:', error);
     }
@@ -111,7 +111,7 @@ export default function Checkout() {
     setLoading(true);
     
     const orderDetails = {
-      orderedRole: "Patient",
+      orderedRole: "patient",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -132,7 +132,7 @@ export default function Checkout() {
       const response = await axiosInstance.post("/orders", orderDetails);
       console.log("Order submitted successfully", response.data);
       
-      await AsyncStorage.removeItem('staff_cart');
+      await AsyncStorage.removeItem('patient_cart');
       router.push('/(patient)/order-success');
     } catch (error) {
       console.error("Order submission failed", error);
@@ -147,104 +147,69 @@ export default function Checkout() {
       Alert.alert('Address Required', 'Please submit a delivery address');
       return;
     }
-
+  
     setLoading(true);
-    
+  
     try {
+      // Step 1: Create Razorpay order
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
       const { orderId, amount } = payment_metadata.data;
-      
+  
       const options = {
-        key: "rzp_test_0oZHIWIDL59TxD",
+        description: 'Payment for Order',
+        image: 'https://your-logo-url.com/logo.png', // optional
+        currency: 'INR',
+        key: 'rzp_test_0oZHIWIDL59TxD',
         amount: amount * 100,
-        currency: "INR",
-        name: "Your Company Name",
-        description: "Payment for Order",
+        name: 'Crimpson Owl Tech',
         order_id: orderId,
         prefill: {
+          email: 'user@example.com',
+          contact: '9876543210',
           name: username,
-          email: "user@example.com",
-          contact: "1234567890",
         },
-        notes: {
-          address: submittedAddress,
-        },
+        theme: { color: '#4A8F47' },
       };
-
-      if (Platform.OS === 'web') {
-        // For web platform
-        const Razorpay = (window as any).Razorpay;
-        if (Razorpay) {
-          const rzp = new Razorpay(options);
-          rzp.open();
-        } else {
-          Alert.alert('Error', 'Razorpay SDK not loaded');
-        }
-      } else {
-        // For mobile platforms
-        const razorpayCheckoutUrl = `https://api.razorpay.com/v1/checkout/embedded/${orderId}`;
-        setRazorpayUrl(razorpayCheckoutUrl);
-        setShowRazorpay(true);
-      }
-
-      // Create order with PENDING status
-      const orderDetails = {
-        orderedRole: "Patient",
-        orderedName: username,
-        orderedUserId: username,
-        itemName: Object.keys(cartItems).map(itemId => {
-          const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-          return item ? item.name : '';
-        }).filter(Boolean).join(", "),
-        quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-        category: "South",
-        price: orderTotal,
-        orderStatus: null,
-        paymentType: "UPI",
-        paymentStatus: "PENDING",
-        orderDateTime: new Date().toISOString(),
-        address: submittedAddress,
-      };
-
-      const response = await axiosInstance.post("/orders", orderDetails);
-      console.log("Order submitted successfully", response.data);
-      
-      await AsyncStorage.removeItem('staff_cart');
+  
+      // Step 2: Open Razorpay UI
+      RazorpayCheckout.open(options)
+        .then(async (data: any) => {
+          console.log('Payment successful:', data);
+  
+          // Step 3: Submit order only after payment success
+          const orderDetails = {
+            orderedRole: "patient",
+            orderedName: username,
+            orderedUserId: username,
+            itemName: Object.keys(cartItems).map(itemId => {
+              const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+              return item ? item.name : '';
+            }).filter(Boolean).join(", "),
+            quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+            category: "South",
+            price: orderTotal,
+            orderStatus: null,
+            paymentType: "UPI",
+            paymentStatus: "SUCCESS",
+            orderDateTime: new Date().toISOString(),
+            address: submittedAddress,
+          };
+  
+          await axiosInstance.post("/orders", orderDetails);
+          await AsyncStorage.removeItem('patient_cart');
+          router.push('/(patient)/order-success');
+        })
+        .catch((error: any) => {
+          console.error('Payment failed:', error);
+          Alert.alert('Payment Failed', 'Please try again or choose a different payment method.');
+        });
     } catch (error) {
-      console.error("Payment processing failed", error);
+      console.error("Payment initiation failed", error);
       Alert.alert("Error", "There was an issue processing your payment. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
-
-  const handleRazorpayResponse = async (data: any) => {
-    setShowRazorpay(false);
-    if (data.razorpay_payment_id) {
-      // Payment successful
-      await AsyncStorage.removeItem('staff_cart');
-      router.push('/(patient)/order-success');
-    } else {
-      Alert.alert('Payment Failed', 'Please try again or choose a different payment method.');
-    }
-    setLoading(false);
-  };
-
-  if (showRazorpay) {
-    return (
-      <WebView
-        source={{ uri: razorpayUrl }}
-        style={{ flex: 1 }}
-        onNavigationStateChange={(navState) => {
-          // Handle navigation state changes and payment completion
-          if (navState.url.includes('razorpay_payment_id')) {
-            handleRazorpayResponse({ razorpay_payment_id: true });
-          } else if (navState.url.includes('payment_failed')) {
-            handleRazorpayResponse({});
-          }
-        }}
-      />
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
