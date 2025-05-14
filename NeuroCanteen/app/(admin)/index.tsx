@@ -1,7 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { ChartBar as BarChart2, Users, User, UtensilsCrossed, Truck, ChefHat, Menu } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
+import {
+  ChartBar as BarChart2,
+  Users,
+  User,
+  UtensilsCrossed,
+  Truck,
+  ChefHat,
+  Menu,
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function AdminDashboard() {
@@ -9,41 +25,56 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalStaff: 0,
-    totalPatients: 0
+    totalPatients: 0,
   });
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchStats = async () => {
     try {
+      if (!refreshing) setLoading(true);
+
       const [ordersRes, staffRes, patientsRes] = await Promise.all([
         axiosInstance.get('/orders'),
-         axiosInstance.get('/staff'),
-        axiosInstance.get('/patient/all')
+        axiosInstance.get('/staff'),
+        axiosInstance.get('/patient/all'),
       ]);
 
       setStats({
         totalOrders: ordersRes.data.length || 0,
         totalStaff: staffRes.data.length || 0,
-        totalPatients: patientsRes.data.length || 0
+        totalPatients: patientsRes.data.length || 0,
       });
     } catch (error) {
-      console.log("hello world");
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchStats();
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, [])
+  );
 
   const navigateTo = (route: string) => {
     router.push(`/(admin)/${route}`);
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Neuro Canteen Admin</Text>
       </View>
@@ -74,47 +105,47 @@ export default function AdminDashboard() {
 
       <Text style={styles.sectionTitle}>Management</Text>
       <View style={styles.managementGrid}>
-        <TouchableOpacity 
-          style={styles.managementCard} 
+        <TouchableOpacity
+          style={styles.managementCard}
           onPress={() => navigateTo('staff')}
         >
           <Users size={32} color="#2E7D32" />
           <Text style={styles.managementTitle}>Staff</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.managementCard}
           onPress={() => navigateTo('patient')}
         >
           <User size={32} color="#2E7D32" />
           <Text style={styles.managementTitle}>Patients</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.managementCard}
           onPress={() => navigateTo('dietitian')}
         >
           <UtensilsCrossed size={32} color="#2E7D32" />
           <Text style={styles.managementTitle}>Dietitian</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.managementCard}
           onPress={() => navigateTo('kitchen')}
         >
           <ChefHat size={32} color="#2E7D32" />
           <Text style={styles.managementTitle}>Kitchen</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.managementCard}
           onPress={() => navigateTo('delivery')}
         >
           <Truck size={32} color="#2E7D32" />
           <Text style={styles.managementTitle}>Delivery</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.managementCard}
           onPress={() => navigateTo('menu')}
         >
