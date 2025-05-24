@@ -1,36 +1,12 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, Truck } from 'lucide-react-native';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { loginpatient } from '../api/auth';
 
 export default function HandlepatientLogin() {
   const [uhid, setUhid] = useState('');
   const [loading, setLoading] = useState(false);
-  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
-
-  // Auto-login
-  useEffect(() => {
-    const autoLogin = async () => {
-      try {
-        setLoading(true);
-        const result = await loginpatient("UH001");
-        
-        if (result.success) {
-          router.replace('/(patient)');
-        } else {
-          setAutoLoginAttempted(true);
-        }
-      } catch (error) {
-        console.error("Auto-login error:", error);
-        setAutoLoginAttempted(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    autoLogin();
-  }, []);
 
   const handleManualLogin = async () => {
     if (!uhid.trim()) {
@@ -39,29 +15,24 @@ export default function HandlepatientLogin() {
     }
 
     setLoading(true);
-    const result = await loginpatient(uhid);
-    
-    if (result.success) {
-      router.replace('/(patient)');
-    } else {
-      Alert.alert('Login Failed', 'Invalid UHID. Please try again.');
+    try {
+      const result = await loginpatient(uhid);
+      
+      if (result.success) {
+        router.replace('/(patient)');
+      } else {
+        Alert.alert('Login Failed', result.message || 'Invalid UHID. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to connect to the server');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleBack = () => {
     router.replace('/');
   };
-
-  // Show loading indicator while attempting auto-login
-  if (!autoLoginAttempted && loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0F5132" />
-        <Text style={styles.loadingText}>Logging in</Text>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView 
@@ -99,6 +70,7 @@ export default function HandlepatientLogin() {
               onChangeText={setUhid}
               autoCapitalize="none"
               keyboardType="default"
+              autoFocus={true}
             />
           </View>
 
@@ -113,9 +85,11 @@ export default function HandlepatientLogin() {
             onPress={handleManualLogin}
             disabled={loading}
           >
-            <Text style={styles.loginButtonText}>
-              {loading ? 'Logging in...' : 'Login'}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -131,18 +105,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#0F5132',
-    fontFamily: 'Poppins-Regular',
   },
   scrollView: {
     flex: 1,
