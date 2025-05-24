@@ -125,8 +125,13 @@ export const loginKitchen = async (username: string, password: string) => {
     return { success: false, message: 'Failed to connect to the server' };
   }
 };
-export const loginpatient = async (uhid: string = "Public") => {
+
+export const loginpatient = async (uhid: string) => {
   try {
+    if (!uhid || uhid.trim() === "") {
+      return { success: false, message: 'UHID is required' };
+    }
+
     const response = await axios.post(`${API_URL}/authenticate/patient`, {
       uhid,
     }, {
@@ -140,9 +145,12 @@ export const loginpatient = async (uhid: string = "Public") => {
       await AsyncStorage.setItem('jwtToken', data.jwt);
       return { success: true };
     } else {
-      return { success: false, message: 'Invalid UHID' };
+      return { success: false, message: data.message || 'Invalid UHID' };
     }
-  } catch (error) {
-    return { success: false, message: 'Server error' };
+  } catch (error: any) {
+    return { 
+      success: false, 
+      message: error.response?.data?.message || 'Server error' 
+    };
   }
 };
