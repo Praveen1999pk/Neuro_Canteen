@@ -30,57 +30,24 @@ interface FoodItem {
   dietitianPrice: number;
   combination: string | null;
   available: boolean;
+  diet_type : string;
+}
+
+interface DietFilter {
+  allergies: string[] | null;
+  consistencies: {
+    liquid: boolean;
+    semiSolid: boolean;
+    solid: boolean;
+  };
+  dislikes: string[];
 }
 
 export default function FoodScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>()
-  // const route = useRoute();
-  // const { diet} = route.params as {diet:object};
-//   console.log("After Create Diet")
-//   console.log(diet)
-
-    // const [initialFoodData,setinitialFoodData] = useState()
-//   const initialFoodData: FoodItem[] = [
-//     {
-//       id: 403,
-//       name: "Riaz",
-//       category: "South",
-//       picture: "https://images.pexels.com/photos/958545/pexels-photo-958545.jpeg",
-//       description: "Traditional South Indian meal",
-//       staffPrice: 11.0,
-//       patientPrice: 12.0,
-//       dietitianPrice: 12.0,
-//       combination: null,
-//       available: true
-//     },
-//     {
-//       id: 17,
-//       name: "Rice Feed",
-//       category: "Clear liquid",
-//       picture: "https://images.pexels.com/photos/723198/pexels-photo-723198.jpeg",
-//       description: "Rice feed with low sodium for CKD.",
-//       staffPrice: 8.0,
-//       patientPrice: 16.0,
-//       dietitianPrice: 14.0,
-//       combination: null,
-//       available: true
-//     },
-//     {
-//         id: 17,
-//         name: "Rice Feed 2",
-//         category: "Clear",
-//         picture: "https://images.pexels.com/photos/723198/pexels-photo-723198.jpeg",
-//         description: "Rice feed with low sodium for CKD.",
-//         staffPrice: 8.0,
-//         patientPrice: 16.0,
-//         dietitianPrice: 14.0,
-//         combination: null,
-//         available: true
-//       },
-//     // ... other food items
-//   ];
-  
+  const route = useRoute();
+  const {diet} = route.params as {diet:DietFilter};
   const [foodData, setFoodData] = useState<FoodItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -93,7 +60,8 @@ export default function FoodScreen() {
     try {
         const response = await axiosInstance.get(`/menu-items`);
         const data = response.data;
-        setFoodData(data)
+        const filteredItems = filterFoodItems(data, diet);
+        setFoodData(filteredItems)
     } catch (error) {
         console.error('Failed to fetch rooms:', error);
     }
@@ -102,6 +70,33 @@ export default function FoodScreen() {
     fetchRooms();
 }, []);
 
+
+function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
+  const allowedConsistencies: Record<FoodItem["category"], boolean> = {
+    Liquid: filters.consistencies.liquid,
+    "Semi Solid": filters.consistencies.semiSolid,
+    Solid: filters.consistencies.solid
+  };
+
+  const preferredDiets = filters.allergies?.map(d => d.toLowerCase()) || null;
+  const dislikedTerms = filters.dislikes.map(term => term.toLowerCase());
+
+  return data.filter(item => {
+    if (preferredDiets && preferredDiets.length > 0) {
+      const itemDiets = (item.diet_type || "").toLowerCase().split(',').map(d => d.trim());
+      const hasPreferredDiet = preferredDiets.some(d => itemDiets.includes(d));
+      if (!hasPreferredDiet) return false;
+    }
+
+    if (!allowedConsistencies[item.category]) return false;
+
+    const nameLower = item.name.toLowerCase();
+    const hasDislike = dislikedTerms.some(dislike => nameLower.includes(dislike));
+    if (hasDislike) return false;
+
+    return true;
+  });
+}
 
   useEffect(() => {
     const uniqueCategories = Array.from(new Set(foodData.map(item => item.category)));
