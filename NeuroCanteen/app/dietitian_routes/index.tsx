@@ -63,7 +63,6 @@ export default function DietitianHomeScreen() {
               key={floor}
               style={[styles.floorCard, { width: `${100 / numColumns - 3}%` }]}
               onPress={() => {
-                
                 navigateToWards(floor)
                 console.log(floor);
               }
