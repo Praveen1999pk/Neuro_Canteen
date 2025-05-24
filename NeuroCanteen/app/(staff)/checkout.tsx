@@ -55,7 +55,12 @@ export default function Checkout() {
   useEffect(() => {
     getUsernameFromToken();
   }, []);
-
+useEffect(() => {
+  // Clear the cart when the component unmounts (i.e., when navigating away)
+  return () => {
+    AsyncStorage.removeItem('staff_cart');
+  };
+}, []);
   const getUsernameFromToken = async () => {
     try {
       const token = await AsyncStorage.getItem('jwtToken');
@@ -133,7 +138,7 @@ export default function Checkout() {
       console.log("Order submitted successfully", response.data);
       
       await AsyncStorage.removeItem('staff_cart');
-      router.push('/(staff)/order-success');
+      router.replace('/(staff)/order-success');
     } catch (error) {
       console.error("Order submission failed", error);
       Alert.alert("Error", "There was an issue submitting your order. Please try again.");
@@ -197,7 +202,7 @@ export default function Checkout() {
   
           await axiosInstance.post("/orders", orderDetails);
           await AsyncStorage.removeItem('staff_cart');
-          router.push('/(staff)/order-success');
+          router.replace('/(staff)/order-success');
         })
         .catch((error: any) => {
           console.error('Payment failed:', error);

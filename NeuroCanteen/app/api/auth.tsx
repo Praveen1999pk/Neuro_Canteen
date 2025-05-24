@@ -15,7 +15,6 @@ export const loginAdmin = async (username: string, password: string) => {
     });
 
     const data = response.data;
-    console.log(data)
     if (response.status === 200 && data.jwt) {
       await AsyncStorage.setItem('jwtToken', data.jwt);
       return { success: true };
@@ -40,7 +39,6 @@ export const loginDelivery = async (username: string, password: string) => {
     });
 
     const data = response.data;
-    console.log(data)
     if (response.status === 200 && data.jwt) {
       await AsyncStorage.setItem('jwtToken', data.jwt);
       return { success: true };
@@ -67,7 +65,6 @@ export const loginStaff = async (username: string, password: string) => {
     });
 
     const data = response.data;
-    console.log(data)
     if (response.status === 200 && data.jwt) {
       await AsyncStorage.setItem('jwtToken', data.jwt);
       return { success: true };
@@ -92,7 +89,6 @@ export const loginDietitian = async (username: string, password: string) => {
     });
 
     const data = response.data;
-    console.log(data)
     if (response.status === 200 && data.jwt) {
       await AsyncStorage.setItem('jwtToken', data.jwt);
       return { success: true };
@@ -129,8 +125,7 @@ export const loginKitchen = async (username: string, password: string) => {
     return { success: false, message: 'Failed to connect to the server' };
   }
 };
-
-export const loginpatient = async (uhid: string) => {
+export const loginpatient = async (uhid: string = "Public") => {
   try {
     const response = await axios.post(`${API_URL}/authenticate/patient`, {
       uhid,

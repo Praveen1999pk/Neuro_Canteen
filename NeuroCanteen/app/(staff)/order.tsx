@@ -139,6 +139,8 @@ export default function StaffOrder() {
         menuItems: JSON.stringify(menuItems)
       }
     });
+      setCartItems({});
+      AsyncStorage.removeItem('staff_cart');
   };
 
   const calculateTotal = () => {

@@ -8,23 +8,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // const MenuScreen = () => {
-  //     const fetchMenuItems = async () => {
-  //       try {
-  //         const response = await axiosInstance.get('/menu-items');
-  //         console.log('Menu Items:', response.data);
-  //       } catch (error) {
-  //         console.log('Error fetching menu items:', error);
-  //       }
-  //     };
-  //     fetchMenuItems()
-  // }
-
   const handleLogin = async () => {
     setLoading(true);
   
     const result = await loginAdmin(username, password);
-    console.log()
     if (result.success) {
       // MenuScreen()
       router.replace('/(admin)');

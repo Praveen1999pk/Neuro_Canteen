@@ -13,9 +13,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "#FFFFFF",
+        "foregroundImage": "./assets/images/Sample-Home.jpeg",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.neuro_canteen.NeuroCanteen"
     },
     "web": {
       "bundler": "metro",
@@ -27,7 +28,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-icon.jpg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -36,6 +37,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "457de731-1245-416c-b331-8ec97d7ab22f"
+      }
     }
   }
 }

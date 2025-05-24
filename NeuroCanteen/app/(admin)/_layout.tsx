@@ -44,48 +44,34 @@ export default function AdminLayout() {
       />
       <Tabs.Screen
         name="staff"
-        options={{
-          title: 'Staff',
-          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
-        }}
+        options={{ href: null }}
+        
       />
       <Tabs.Screen
         name="patient"
-        options={{
-          title: 'Patients',
-          tabBarIcon: ({ color }) => <User size={24} color={color} />,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="dietitian"
-        options={{
-          title: 'Dietitian',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.icon}>
-              <UtensilsCrossed size={24} color={color} />
-            </View>
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="kitchen"
-        options={{
-          title: 'Kitchen',
-          tabBarIcon: ({ color }) => <ChefHat size={24} color={color} />,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="delivery"
-        options={{
-          title: 'Delivery',
-          tabBarIcon: ({ color }) => <Truck size={24} color={color} />,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="menu"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="profile"
         options={{
-          title: 'Menu',
-          tabBarIcon: ({ color }) => <Truck size={24} color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <User size={24} color={color} />,
         }}
       />
     </Tabs>

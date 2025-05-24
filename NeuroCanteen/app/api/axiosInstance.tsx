@@ -15,7 +15,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('jwtToken');
-    console.log('Token:', token); // Debugging line to check the token value
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

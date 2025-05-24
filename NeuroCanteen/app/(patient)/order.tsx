@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Minus, Plus, ChevronRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
+import { loginpatient } from '../api/auth';
 
 type MenuItem = {
   id: number;
@@ -44,6 +45,14 @@ export default function patientOrder() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Clear liquid');
   const [categories, setCategories] = useState<string[]>([]);
   const router = useRouter();
+  useEffect(() => {
+  const autoLogin = async () => {
+    await loginpatient(); // This will use the default "Public" parameter
+  };
+  autoLogin();
+  loadCart();
+  fetchMenuItems();
+}, []);
 
   useEffect(() => {
     loadCart();
