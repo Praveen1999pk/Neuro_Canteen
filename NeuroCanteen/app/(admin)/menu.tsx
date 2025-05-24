@@ -17,6 +17,13 @@ import { Plus, CreditCard as Edit2, Trash2, Camera } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import * as ImagePicker from 'expo-image-picker';
 
+const timeSlots = ['Morning', 'Afternoon', 'Evening', 'Dinner'];
+const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+type TimeSlotType = {
+  [day: string]: string[];
+};
+
 type MenuItem = {
   id: number;
   name: string;
@@ -27,6 +34,72 @@ type MenuItem = {
   staffPrice: string;
   patientPrice: string;
   dietitianPrice: string;
+  timeSlot: TimeSlotType;
+};
+
+const AvailabilityMatrix = ({ 
+  availability = {}, 
+  onToggle 
+}: {
+  availability: TimeSlotType;
+  onToggle: (day: string, time: string, checked: boolean) => void;
+}) => {
+  // Use abbreviated day names for mobile
+  const dayAbbreviations = {
+    Sunday: 'Sun',
+    Monday: 'Mon',
+    Tuesday: 'Tue',
+    Wednesday: 'Wed',
+    Thursday: 'Thu',
+    Friday: 'Fri',
+    Saturday: 'Sat'
+  };
+
+  return (
+    <View style={styles.matrixOuterContainer}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+        <View style={styles.matrixContainer}>
+          {/* Header Row */}
+          <View style={styles.matrixHeader}>
+            <View style={[styles.matrixHeaderCell, styles.dayHeaderCell]}>
+              <Text style={styles.matrixHeaderText}>Day/Time</Text>
+            </View>
+            {timeSlots.map((slot) => (
+              <View key={slot} style={styles.matrixHeaderCell}>
+                <Text style={styles.matrixHeaderText}>{slot}</Text>
+              </View>
+            ))}
+          </View>
+          
+          {/* Data Rows */}
+          {days.map((day) => (
+            <View key={day} style={styles.matrixRow}>
+              <View style={[styles.matrixDayCell, styles.dayCell]}>
+                <Text style={styles.matrixDayText}>{dayAbbreviations[day as keyof typeof dayAbbreviations]}</Text>
+              </View>
+              {timeSlots.map((time) => (
+                <TouchableOpacity 
+                  key={time}
+                  style={styles.matrixCell}
+                  onPress={() => {
+                    const isChecked = availability[day]?.includes(time) || false;
+                    onToggle(day, time, !isChecked);
+                  }}
+                >
+                  <View style={[
+                    styles.checkbox,
+                    (availability[day]?.includes(time)) && styles.checkboxChecked
+                  ]}>
+                    {(availability[day]?.includes(time)) && <View style={styles.checkboxInner} />}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
 };
 
 export default function MenuManagement() {
@@ -44,6 +117,7 @@ export default function MenuManagement() {
     staffPrice: '',
     patientPrice: '',
     dietitianPrice: '',
+    timeSlot: {} as TimeSlotType
   });
 
   useEffect(() => {
@@ -54,7 +128,11 @@ export default function MenuManagement() {
     setIsLoading(true);
     try {
       const response = await axiosInstance.get('/menu-items');
-      setMenuItems(response.data);
+      const data = response.data.map((item: any) => ({
+        ...item,
+        timeSlot: typeof item.timeSlot === 'string' ? JSON.parse(item.timeSlot) : item.timeSlot
+      }));
+      setMenuItems(data);
     } catch (error) {
       console.error('Error fetching menu items:', error);
       Alert.alert('Error', 'Failed to load menu data');
@@ -70,6 +148,21 @@ export default function MenuManagement() {
     });
   };
 
+  const handleTimeSlotToggle = (day: string, time: string, checked: boolean) => {
+    const current = formData.timeSlot[day] || [];
+    const updated = checked
+      ? [...new Set([...current, time])]
+      : current.filter(t => t !== time);
+    
+    setFormData({
+      ...formData,
+      timeSlot: {
+        ...formData.timeSlot,
+        [day]: updated
+      }
+    });
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -80,6 +173,7 @@ export default function MenuManagement() {
       staffPrice: '',
       patientPrice: '',
       dietitianPrice: '',
+      timeSlot: {}
     });
     setCurrentItem(null);
     setIsEditMode(false);
@@ -102,6 +196,7 @@ export default function MenuManagement() {
       staffPrice: item.staffPrice || '',
       patientPrice: item.patientPrice || '',
       dietitianPrice: item.dietitianPrice || '',
+      timeSlot: item.timeSlot || {}
     });
     setModalVisible(true);
   };
@@ -141,11 +236,16 @@ export default function MenuManagement() {
 
     setIsLoading(true);
     try {
+      const payload = {
+        ...formData,
+        timeSlot: JSON.stringify(formData.timeSlot)
+      };
+
       if (isEditMode && currentItem) {
-        await axiosInstance.put(`/menu-items/${currentItem.id}`, formData);
+        await axiosInstance.put(`/menu-items/${currentItem.id}`, payload);
         Alert.alert('Success', 'Menu item updated successfully');
       } else {
-        await axiosInstance.post('/menu-items', formData);
+        await axiosInstance.post('/menu-items', payload);
         Alert.alert('Success', 'Menu item added successfully');
       }
       fetchMenuItems();
@@ -256,8 +356,8 @@ export default function MenuManagement() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView>
+          <ScrollView contentContainerStyle={styles.modalScrollContainer}>
+            <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>{isEditMode ? 'Edit Menu Item' : 'Add New Menu Item'}</Text>
               
               <TextInput
@@ -332,6 +432,12 @@ export default function MenuManagement() {
                 onChangeText={(text) => handleInputChange('dietitianPrice', text)}
                 keyboardType="numeric"
               />
+
+              <Text style={styles.sectionLabel}>Availability Time Slot</Text>
+              <AvailabilityMatrix
+                availability={formData.timeSlot}
+                onToggle={handleTimeSlotToggle}
+              />
               
               <View style={styles.modalButtons}>
                 <TouchableOpacity 
@@ -348,8 +454,8 @@ export default function MenuManagement() {
                   <Text style={styles.buttonText}>Save</Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -471,12 +577,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  modalScrollContainer: {
+    width: '100%',
+    padding: 20,
+  },
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 20,
-    width: '90%',
-    maxHeight: '80%',
+    width: '100%',
   },
   modalTitle: {
     fontSize: 18,
@@ -569,5 +678,78 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  // Matrix styles
+  matrixOuterContainer: {
+    marginBottom: 20,
+  },
+  matrixContainer: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    overflow: 'hidden',
+    minWidth: '100%', // Ensure it takes full width for scrolling
+  },
+  matrixHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#2E7D32',
+  },
+  matrixHeaderCell: {
+    width: 60, // Fixed width for time slots
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  dayHeaderCell: {
+    width: 70, // Slightly wider for day header
+    backgroundColor: '#1B5E20', // Slightly darker for header
+  },
+  matrixHeaderText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  matrixRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  matrixDayCell: {
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+  },
+  dayCell: {
+    width: 70, // Matches header
+  },
+  matrixDayText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  matrixCell: {
+    width: 60, // Matches header cells
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#2E7D32',
+  },
+  checkboxInner: {
+    width: 12,
+    height: 12,
+    backgroundColor: '#fff',
+    borderRadius: 2,
   },
 });
