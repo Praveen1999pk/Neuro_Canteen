@@ -41,7 +41,7 @@ export default function StaffOrder() {
   const [cartItems, setCartItems] = useState<CartItems>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('Clear liquid');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [categories, setCategories] = useState<string[]>([]);
   const router = useRouter();
 
@@ -56,6 +56,7 @@ export default function StaffOrder() {
       if (Array.isArray(response.data)) {
         setMenuItems(response.data);
         const uniqueCategories = [...new Set(response.data.map((item: MenuItem) => item.category))];
+        console.log('Loaded categories:', uniqueCategories);
         setCategories(uniqueCategories);
       } else {
         console.error('API response is not an array:', response.data);
@@ -153,10 +154,9 @@ export default function StaffOrder() {
 
   const totalItems = Object.values(cartItems).reduce((sum, quantity) => sum + quantity, 0);
 
-  const filteredMenuItems = menuItems.filter(item => 
-    item.category === selectedCategory 
-    // && item.role === 'Staff'
-  );
+  const filteredMenuItems = selectedCategory === 'All' 
+  ? menuItems 
+  : menuItems.filter(item => item.category === selectedCategory);
 
   if (loading) {
     return (
@@ -175,6 +175,21 @@ export default function StaffOrder() {
           showsHorizontalScrollIndicator={false} 
           contentContainerStyle={styles.categoryContainer}
         >
+          <TouchableOpacity
+            key="All"
+            style={[
+              styles.categoryButton,
+              selectedCategory === 'All' && styles.categoryButtonActive
+            ]}
+            onPress={() => setSelectedCategory('All')}
+          >
+            <Text style={[
+              styles.categoryButtonText,
+              selectedCategory === 'All' && styles.categoryButtonTextActive
+            ]}>
+              All
+            </Text>
+          </TouchableOpacity>
           {categories.map((category) => (
             <TouchableOpacity
               key={category}
@@ -280,10 +295,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    height: 50,
   },
   categoryContainer: {
     paddingHorizontal: 12,
     paddingVertical: 8,
+    minWidth: '100%',
   },
   categoryButton: {
     paddingVertical: 6,
@@ -291,6 +308,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
     marginHorizontal: 4,
+    minWidth: 60,
+    alignItems: 'center',
   },
   categoryButtonActive: {
     backgroundColor: '#4A8F47',

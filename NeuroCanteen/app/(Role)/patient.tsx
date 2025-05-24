@@ -14,7 +14,7 @@ export default function HandlepatientLogin() {
     const autoLogin = async () => {
       try {
         setLoading(true);
-        const result = await loginpatient("UHID1");
+        const result = await loginpatient("UH001");
         
         if (result.success) {
           router.replace('/(patient)');
@@ -58,7 +58,7 @@ export default function HandlepatientLogin() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0F5132" />
-        <Text style={styles.loadingText}>Logging in automatically...</Text>
+        <Text style={styles.loadingText}>Logging in</Text>
       </View>
     );
   }
