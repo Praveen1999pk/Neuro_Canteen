@@ -1,36 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { getUsernameFromToken, removeToken } from '../services/tokenService';
 import { logout } from '../services/authService';
-import { User, LogOut, Settings } from 'lucide-react-native';
+import { User, LogOut } from 'lucide-react-native';
 
 export default function ProfileScreen() {
-  const [username, setUsername] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchUsername = async () => {
-      const name = await getUsernameFromToken();
-      setUsername(name);
-    };
-    
-    fetchUsername();
-  }, []);
-
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Logout',
           onPress: async () => {
             await logout();
-            router.replace('(Role)/staff');
+            router.replace('/(Role)/staff'); // change path as needed
           },
         },
       ]
@@ -43,19 +28,17 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           <User size={40} color="#FF6B00" />
         </View>
-        <Text style={styles.username}>{username || 'Staff User'}</Text>
+        <Text style={styles.username}>Welcome, Staff User</Text>
         <Text style={styles.role}>Staff Account</Text>
       </View>
-      
+
       <View style={styles.optionsContainer}>
-  
-        
         <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
           <LogOut size={24} color="#FF3B30" />
           <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.appInfoContainer}>
         <Text style={styles.appVersion}>NeuroCanteen v1.0.0</Text>
       </View>

@@ -10,14 +10,16 @@ import {
   Alert,
   Platform,
   Linking,
+  Modal
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CreditCard, Cast as CashIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import axiosInstance from '@/app/api/axiosInstance';
-import WebView from 'react-native-webview';
+import axiosInstance from '../api/axiosInstance';
+import RazorpayCheckout from 'react-native-razorpay';
+import { loginpatient } from '../api/auth';
 
 type MenuItem = {
   id: number;
@@ -32,18 +34,18 @@ type CartItems = {
 };
 
 export default function Checkout() {
+  const [uhid, setUhid] = useState('');
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD' | null>(null);
   const params = useLocalSearchParams();
   const router = useRouter();
-  
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
   const [tip, setTip] = useState(0);
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
-  const [showRazorpay, setShowRazorpay] = useState(false);
-  const [razorpayUrl, setRazorpayUrl] = useState('');
-  
+
   const cartItems: CartItems = params.cartItems 
     ? JSON.parse(params.cartItems as string) 
     : {};
@@ -62,9 +64,38 @@ export default function Checkout() {
       if (token) {
         const decoded: any = jwtDecode(token);
         setUsername(decoded.sub || '');
-      }
+      } 
     } catch (error) {
       console.error('Error decoding token:', error);
+    }
+  };
+
+  const handlePatientLogin = async () => {
+    if (!uhid.trim()) {
+      Alert.alert('Error', 'Please enter your UHID');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await loginpatient(uhid);
+      if (result.success) {
+        setShowLoginForm(false);
+        // Update username after successful login
+        await getUsernameFromToken();
+        // Proceed with the selected payment method
+        if (paymentMethod === 'UPI') {
+          await handleUPI();
+        } else if (paymentMethod === 'COD') {
+          await handleCOD();
+        }
+      } else {
+        Alert.alert('Login Failed', result.message || 'Invalid UHID');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to login. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,10 +139,24 @@ export default function Checkout() {
       return;
     }
 
+    const token = await AsyncStorage.getItem('jwtToken');
+    if (!token) {
+      Alert.alert('Error', 'User token not found. Please login again.');
+      return;
+    }
+
+    const decoded: any = jwtDecode(token);
+    
+    if (decoded.sub === 'publicjwt') {
+      setPaymentMethod('COD');
+      setShowLoginForm(true);
+      return;
+    }
+
     setLoading(true);
     
     const orderDetails = {
-      orderedRole: "Patient",
+      orderedRole: "patient",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -132,7 +177,7 @@ export default function Checkout() {
       const response = await axiosInstance.post("/orders", orderDetails);
       console.log("Order submitted successfully", response.data);
       
-      await AsyncStorage.removeItem('staff_cart');
+      await AsyncStorage.removeItem('patient_cart');
       router.push('/(patient)/order-success');
     } catch (error) {
       console.error("Order submission failed", error);
@@ -148,237 +193,258 @@ export default function Checkout() {
       return;
     }
 
-    setLoading(true);
+    const token = await AsyncStorage.getItem('jwtToken');
+    if (!token) {
+      Alert.alert('Error', 'User token not found. Please login again.');
+      return;
+    }
+
+    const decoded: any = jwtDecode(token);
     
+    if (decoded.sub === 'publicjwt') {
+      setPaymentMethod('UPI');
+      setShowLoginForm(true);
+      return;
+    }
+
+    setLoading(true);
+  
     try {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
       const { orderId, amount } = payment_metadata.data;
-      
+
       const options = {
-        key: "rzp_test_0oZHIWIDL59TxD",
+        description: 'Payment for Order',
+        image: 'https://your-logo-url.com/logo.png',
+        currency: 'INR',
+        key: 'rzp_test_0oZHIWIDL59TxD',
         amount: amount * 100,
-        currency: "INR",
-        name: "Your Company Name",
-        description: "Payment for Order",
+        name: 'Crimpson Owl Tech',
         order_id: orderId,
         prefill: {
+          email: 'user@example.com',
+          contact: '9876543210',
           name: username,
-          email: "user@example.com",
-          contact: "1234567890",
         },
-        notes: {
-          address: submittedAddress,
-        },
+        theme: { color: '#4A8F47' },
       };
 
-      if (Platform.OS === 'web') {
-        // For web platform
-        const Razorpay = (window as any).Razorpay;
-        if (Razorpay) {
-          const rzp = new Razorpay(options);
-          rzp.open();
-        } else {
-          Alert.alert('Error', 'Razorpay SDK not loaded');
-        }
-      } else {
-        // For mobile platforms
-        const razorpayCheckoutUrl = `https://api.razorpay.com/v1/checkout/embedded/${orderId}`;
-        setRazorpayUrl(razorpayCheckoutUrl);
-        setShowRazorpay(true);
-      }
+      RazorpayCheckout.open(options)
+        .then(async (data: any) => {
+          console.log('Payment successful:', data);
 
-      // Create order with PENDING status
-      const orderDetails = {
-        orderedRole: "Patient",
-        orderedName: username,
-        orderedUserId: username,
-        itemName: Object.keys(cartItems).map(itemId => {
-          const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-          return item ? item.name : '';
-        }).filter(Boolean).join(", "),
-        quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-        category: "South",
-        price: orderTotal,
-        orderStatus: null,
-        paymentType: "UPI",
-        paymentStatus: "PENDING",
-        orderDateTime: new Date().toISOString(),
-        address: submittedAddress,
-      };
+          const orderDetails = {
+            orderedRole: "patient",
+            orderedName: username,
+            orderedUserId: username,
+            itemName: Object.keys(cartItems).map(itemId => {
+              const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+              return item ? item.name : '';
+            }).filter(Boolean).join(", "),
+            quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+            category: "South",
+            price: orderTotal,
+            orderStatus: null,
+            paymentType: "UPI",
+            paymentStatus: "SUCCESS",
+            orderDateTime: new Date().toISOString(),
+            address: submittedAddress,
+          };
 
-      const response = await axiosInstance.post("/orders", orderDetails);
-      console.log("Order submitted successfully", response.data);
-      
-      await AsyncStorage.removeItem('staff_cart');
+          await axiosInstance.post("/orders", orderDetails);
+          await AsyncStorage.removeItem('patient_cart');
+          router.push('/(patient)/order-success');
+        })
+        .catch((error: any) => {
+          console.error('Payment failed:', error);
+          Alert.alert('Payment Failed', 'Please try again or choose a different payment method.');
+        });
     } catch (error) {
-      console.error("Payment processing failed", error);
+      console.error("Payment initiation failed", error);
       Alert.alert("Error", "There was an issue processing your payment. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleRazorpayResponse = async (data: any) => {
-    setShowRazorpay(false);
-    if (data.razorpay_payment_id) {
-      // Payment successful
-      await AsyncStorage.removeItem('staff_cart');
-      router.push('/(patient)/order-success');
-    } else {
-      Alert.alert('Payment Failed', 'Please try again or choose a different payment method.');
-    }
-    setLoading(false);
-  };
-
-  if (showRazorpay) {
-    return (
-      <WebView
-        source={{ uri: razorpayUrl }}
-        style={{ flex: 1 }}
-        onNavigationStateChange={(navState) => {
-          // Handle navigation state changes and payment completion
-          if (navState.url.includes('razorpay_payment_id')) {
-            handleRazorpayResponse({ razorpay_payment_id: true });
-          } else if (navState.url.includes('payment_failed')) {
-            handleRazorpayResponse({});
-          }
-        }}
-      />
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          <View style={styles.divider} />
-          
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, styles.itemColumnText]}>Item</Text>
-            <Text style={[styles.tableHeaderText, styles.qtyColumnText]}>Qty</Text>
-            <Text style={[styles.tableHeaderText, styles.priceColumnText]}>Total Price</Text>
+    <>
+      {showLoginForm && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showLoginForm}
+          onRequestClose={() => setShowLoginForm(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Patient Login</Text>
+              <Text style={styles.modalSubtitle}>Please enter your UHID to continue</Text>
+
+              <TextInput
+                style={styles.input}
+                value={uhid}
+                onChangeText={setUhid}
+                placeholder="Enter UHID"
+                autoCapitalize="none"
+              />
+
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowLoginForm(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.submitButtonLogin}
+                  onPress={handlePatientLogin}
+                  disabled={loading}
+                >
+                  <Text style={styles.submitButtonText}>
+                    {loading ? 'Logging in...' : 'Submit'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Order Summary</Text>
+            <View style={styles.divider} />
+            
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderText, styles.itemColumnText]}>Item</Text>
+              <Text style={[styles.tableHeaderText, styles.qtyColumnText]}>Qty</Text>
+              <Text style={[styles.tableHeaderText, styles.priceColumnText]}>Total Price</Text>
+            </View>
+            
+            {Object.keys(cartItems).map(itemId => {
+              const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+              if (!item) return null;
+              
+              return (
+                <View key={itemId} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, styles.itemColumnText]} numberOfLines={1}>{item.name}</Text>
+                  <Text style={[styles.tableCell, styles.qtyColumnText]}>{cartItems[itemId]}</Text>
+                  <Text style={[styles.tableCell, styles.priceColumnText]}>₹{calculateItemTotal(item, cartItems[itemId])}</Text>
+                </View>
+              );
+            })}
           </View>
           
-          {Object.keys(cartItems).map(itemId => {
-            const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-            if (!item) return null;
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Delivery Details</Text>
+            <View style={styles.divider} />
             
-            return (
-              <View key={itemId} style={styles.tableRow}>
-                <Text style={[styles.tableCell, styles.itemColumnText]} numberOfLines={1}>{item.name}</Text>
-                <Text style={[styles.tableCell, styles.qtyColumnText]}>{cartItems[itemId]}</Text>
-                <Text style={[styles.tableCell, styles.priceColumnText]}>₹{calculateItemTotal(item, cartItems[itemId])}</Text>
+            {submittedAddress && !isEditing ? (
+              <View style={styles.addressContainer}>
+                <Text style={styles.addressText}>{submittedAddress}</Text>
+                <TouchableOpacity style={styles.editButton} onPress={handleAddressEdit}>
+                  <Text style={styles.editButtonText}>Edit Address</Text>
+                </TouchableOpacity>
               </View>
-            );
-          })}
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Delivery Details</Text>
-          <View style={styles.divider} />
+            ) : (
+              <View style={styles.addressInputContainer}>
+                <TextInput
+                  style={styles.addressInput}
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Enter your delivery address"
+                  multiline
+                  numberOfLines={3}
+                />
+                <TouchableOpacity 
+                  style={styles.submitButton} 
+                  onPress={handleAddressSubmit}
+                >
+                  <Text style={styles.submitButtonText}>Submit</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
           
-          {submittedAddress && !isEditing ? (
-            <View style={styles.addressContainer}>
-              <Text style={styles.addressText}>{submittedAddress}</Text>
-              <TouchableOpacity style={styles.editButton} onPress={handleAddressEdit}>
-                <Text style={styles.editButtonText}>Edit Address</Text>
-              </TouchableOpacity>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Order Total:</Text>
+            <View style={styles.divider} />
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Item Total</Text>
+              <Text style={styles.summaryValue}>₹{orderTotal}</Text>
             </View>
-          ) : (
-            <View style={styles.addressInputContainer}>
-              <TextInput
-                style={styles.addressInput}
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Enter your delivery address"
-                multiline
-                numberOfLines={3}
-              />
-              <TouchableOpacity 
-                style={styles.submitButton} 
-                onPress={handleAddressSubmit}
-              >
-                <Text style={styles.submitButtonText}>Submit</Text>
-              </TouchableOpacity>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Delivery Fee (4.0 kms)</Text>
+              <Text style={styles.summaryValue}>₹{deliveryFee}</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Delivery Tip</Text>
+              <View style={styles.tipInputContainer}>
+                <Text style={styles.rupeeSign}>₹</Text>
+                <TextInput
+                  style={styles.tipInput}
+                  value={tip.toString()}
+                  onChangeText={(text) => {
+                    const value = parseInt(text) || 0;
+                    setTip(Math.max(0, value));
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0"
+                />
+              </View>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Platform Fee</Text>
+              <Text style={styles.summaryValue}>₹{platformFee}</Text>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>GST and Restaurant Charges</Text>
+              <Text style={styles.summaryValue}>₹{gstAndCharges}</Text>
+            </View>
+            
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>TO PAY</Text>
+              <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.paymentOptionsContainer}>
+            <TouchableOpacity 
+              style={[styles.paymentButton, styles.codButton]} 
+              onPress={handleCOD}
+              disabled={loading}
+            >
+              <CashIcon size={24} color="white" />
+              <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.paymentButton, styles.upiButton]} 
+              onPress={handleUPI}
+              disabled={loading}
+            >
+              <CreditCard size={24} color="white" />
+              <Text style={styles.paymentButtonText}>UPI</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#4A8F47" />
+              <Text style={styles.loadingText}>Processing your order...</Text>
             </View>
           )}
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Total:</Text>
-          <View style={styles.divider} />
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Item Total</Text>
-            <Text style={styles.summaryValue}>₹{orderTotal}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Fee (4.0 kms)</Text>
-            <Text style={styles.summaryValue}>₹{deliveryFee}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Tip</Text>
-            <View style={styles.tipInputContainer}>
-              <Text style={styles.rupeeSign}>₹</Text>
-              <TextInput
-                style={styles.tipInput}
-                value={tip.toString()}
-                onChangeText={(text) => {
-                  const value = parseInt(text) || 0;
-                  setTip(Math.max(0, value));
-                }}
-                keyboardType="numeric"
-                placeholder="0"
-              />
-            </View>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Platform Fee</Text>
-            <Text style={styles.summaryValue}>₹{platformFee}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>GST and Restaurant Charges</Text>
-            <Text style={styles.summaryValue}>₹{gstAndCharges}</Text>
-          </View>
-          
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>TO PAY</Text>
-            <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.paymentOptionsContainer}>
-          <TouchableOpacity 
-            style={[styles.paymentButton, styles.codButton]} 
-            onPress={handleCOD}
-            disabled={loading}
-          >
-            <CashIcon size={24} color="white" />
-            <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.paymentButton, styles.upiButton]} 
-            onPress={handleUPI}
-            disabled={loading}
-          >
-            <CreditCard size={24} color="white" />
-            <Text style={styles.paymentButtonText}>UPI</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#4A8F47" />
-            <Text style={styles.loadingText}>Processing your order...</Text>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -581,5 +647,57 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#4A8F47',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#666',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  cancelButton: {
+    backgroundColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    color: '#333',
+    textAlign: 'center',
+  },
+  submitButtonLogin: {
+    backgroundColor: '#4A8F47',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
   },
 });

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CircleCheck, ShoppingBag } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function OrderSuccess() {
   const router = useRouter();
@@ -17,7 +18,16 @@ export default function OrderSuccess() {
       })
     ]).start();
   }, []);
+// In your order-success screen
+useEffect(() => {
+  // Clear cart when this screen mounts
+  AsyncStorage.removeItem('staff_cart');
+  
+  // Prevent going back to checkout by replacing the history entry
+  router.replace('/(staff)/order-success');
 
+  // Optionally, you can clear the navigation stack or handle navigation guards here if needed.
+}, []);
   const iconScale = animatedValue.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 1.2, 1],

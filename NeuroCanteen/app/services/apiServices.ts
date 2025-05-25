@@ -1,14 +1,11 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { API_URL } from '../../config'; 
 
-// Use localhost for web development, and the IP address for mobile devices
-const baseURL = Platform.OS === 'web' 
-  ? 'http://localhost:8142'
-  : 'http://192.168.247.145:8142';
+
 
 const apiService = axios.create({
-  baseURL,
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -25,9 +22,7 @@ apiService.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor
@@ -35,25 +30,20 @@ apiService.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Server responded with error status
       console.error('API Error:', error.response.status, error.response.data);
       if (error.response.status === 401) {
-        // Handle unauthorized access
         AsyncStorage.removeItem('jwtToken');
-        // You can add navigation logic here if needed
       }
     } else if (error.request) {
-      // Request made but no response received
       console.error('Network Error:', error.request);
     } else {
-      // Error in request setup
       console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }
 );
 
-// Authentication service
+// Auth Service
 export const authService = {
   loginAdmin: async (username: string, password: string) => {
     try {
@@ -63,7 +53,7 @@ export const authService = {
         return { success: true };
       }
       return { success: false, message: 'Invalid credentials' };
-    } catch (error) {
+    } catch {
       return { success: false, message: 'Failed to connect to the server' };
     }
   },
@@ -76,7 +66,7 @@ export const authService = {
         return { success: true };
       }
       return { success: false, message: 'Invalid credentials' };
-    } catch (error) {
+    } catch {
       return { success: false, message: 'Failed to connect to the server' };
     }
   },
@@ -89,7 +79,7 @@ export const authService = {
         return { success: true };
       }
       return { success: false, message: 'Invalid credentials' };
-    } catch (error) {
+    } catch {
       return { success: false, message: 'Failed to connect to the server' };
     }
   },
@@ -102,7 +92,7 @@ export const authService = {
         return { success: true };
       }
       return { success: false, message: 'Invalid credentials' };
-    } catch (error) {
+    } catch {
       return { success: false, message: 'Failed to connect to the server' };
     }
   },
@@ -113,5 +103,4 @@ export const authService = {
 };
 
 export default apiService;
-
-export { apiService }
+export { apiService };

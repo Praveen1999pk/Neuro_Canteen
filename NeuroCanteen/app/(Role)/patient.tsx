@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, Truck } from 'lucide-react-native';
 import { useState } from 'react';
@@ -8,21 +8,26 @@ export default function HandlepatientLogin() {
   const [uhid, setUhid] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleManualLogin = async () => {
     if (!uhid.trim()) {
       Alert.alert('Error', 'Please enter your UHID');
       return;
     }
 
     setLoading(true);
-    const result = await loginpatient(uhid);
-    
-    if (result.success) {
-      router.replace('/(patient)');
-    } else {
-      Alert.alert('Login Failed', 'Invalid UHID. Please try again.');
+    try {
+      const result = await loginpatient(uhid);
+      
+      if (result.success) {
+        router.replace('/(patient)');
+      } else {
+        Alert.alert('Login Failed', result.message || 'Invalid UHID. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to connect to the server');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleBack = () => {
@@ -53,7 +58,6 @@ export default function HandlepatientLogin() {
 
         <View style={styles.form}>
           <View style={styles.PatientHeader}>
-            
             <Text style={styles.PatientTitle}>Patient Login</Text>
           </View>
 
@@ -66,6 +70,7 @@ export default function HandlepatientLogin() {
               onChangeText={setUhid}
               autoCapitalize="none"
               keyboardType="default"
+              autoFocus={true}
             />
           </View>
 
@@ -77,12 +82,14 @@ export default function HandlepatientLogin() {
 
           <TouchableOpacity 
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
+            onPress={handleManualLogin}
             disabled={loading}
           >
-            <Text style={styles.loginButtonText}>
-              {loading ? 'Logging in...' : 'Login'}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
         </View>
 

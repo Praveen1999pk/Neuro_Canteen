@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Modal,
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  FlatList, 
+  Modal, 
   TextInput,
   ActivityIndicator,
   Alert,
-  ScrollView,
-  Platform,
+  ScrollView
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Plus, CreditCard as Edit2, Trash2 } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
@@ -42,8 +40,6 @@ export default function PatientManagement() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState<null | 'admission' | 'discharge'>(null);
-
   const [formData, setFormData] = useState({
     name: '',
     uhid: '',
@@ -56,7 +52,7 @@ export default function PatientManagement() {
     dischargeDateTime: '',
     patientStatus: '',
     roomNo: '',
-    bedNo: '',
+    bedNo: '', 
     floor: '',
     ward: '',
     patientMobileNo: '',
@@ -71,7 +67,6 @@ export default function PatientManagement() {
     setIsLoading(true);
     try {
       const response = await axiosInstance.get('/patient/all');
-      console.log('Fetched patients:', response.data);  // Debugging line
       setPatients(response.data);
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -86,21 +81,6 @@ export default function PatientManagement() {
       ...formData,
       [field]: value,
     });
-  };
-
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (!selectedDate) {
-      setShowDatePicker(null);
-      return;
-    }
-
-    const formatted = selectedDate.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:MM"
-    if (showDatePicker === 'admission') {
-      handleInputChange('admissionDateTime', formatted);
-    } else if (showDatePicker === 'discharge') {
-      handleInputChange('dischargeDateTime', formatted);
-    }
-    setShowDatePicker(null);
   };
 
   const resetForm = () => {
@@ -188,38 +168,14 @@ export default function PatientManagement() {
     }
   };
 
-  const renderItem = ({ item }: { item: Patient }) => (
-    <View style={styles.patientCard}>
-      <View style={styles.patientInfo}>
-        <Text style={styles.patientName}>{item.name}</Text>
-        <Text style={styles.patientDetail}>UHID: {item.uhid}</Text>
-        <Text style={styles.patientDetail}>Contact: {item.patientMobileNo || 'N/A'}</Text>
-      </View>
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.editButton]}
-          onPress={() => openEditModal(item)}
-        >
-          <Edit2 size={16} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDelete(item.id)}
-        >
-          <Trash2 size={16} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
   const handleDelete = (id: number) => {
     Alert.alert(
       'Confirm Delete',
       'Are you sure you want to delete this patient?',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
+        { 
+          text: 'Delete', 
           style: 'destructive',
           onPress: async () => {
             setIsLoading(true);
@@ -233,28 +189,63 @@ export default function PatientManagement() {
             } finally {
               setIsLoading(false);
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
 
+  const renderItem = ({ item }: { item: Patient }) => (
+    <View style={styles.patientCard}>
+      <View style={styles.patientInfo}>
+        <Text style={styles.patientName}>{item.name}</Text>
+        <Text style={styles.patientDetail}>UHID: {item.uhid}</Text>
+        <Text style={styles.patientDetail}>Contact: {item.patientMobileNo || 'N/A'}</Text>
+      </View>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.editButton]} 
+          onPress={() => openEditModal(item)}
+        >
+          <Edit2 size={16} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.deleteButton]} 
+          onPress={() => handleDelete(item.id)}
+        >
+          <Trash2 size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={patients}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        ListEmptyComponent={
-          !isLoading && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No patients available.</Text>
-            </View>
-          )
-        }
-      />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Patient Management</Text>
+        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+          <Plus size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
-      {/* Modal for Adding/Editing Patient */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2E7D32" />
+        </View>
+      ) : (
+        <FlatList
+          data={patients}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No patient records found</Text>
+            </View>
+          }
+        />
+      )}
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -264,43 +255,145 @@ export default function PatientManagement() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ScrollView>
-              <Text style={styles.modalTitle}>
-                {isEditMode ? 'Edit Patient' : 'Add New Patient'}
-              </Text>
-
-              {/* Other inputs... */}
-
-              {/* Date Pickers */}
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => setShowDatePicker('admission')}
-              >
-                <Text>
-                  {formData.admissionDateTime
-                    ? formData.admissionDateTime.replace('T', ' ')
-                    : 'Select Admission Date & Time'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => setShowDatePicker('discharge')}
-              >
-                <Text>
-                  {formData.dischargeDateTime
-                    ? formData.dischargeDateTime.replace('T', ' ')
-                    : 'Select Discharge Date & Time'}
-                </Text>
-              </TouchableOpacity>
-
+              <Text style={styles.modalTitle}>{isEditMode ? 'Edit Patient' : 'Add New Patient'}</Text>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Basic Information</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Patient Name"
+                  value={formData.name}
+                  onChangeText={(text) => handleInputChange('name', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="UHID"
+                  value={formData.uhid}
+                  onChangeText={(text) => handleInputChange('uhid', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="In-Patient ID"
+                  value={formData.ipId}
+                  onChangeText={(text) => handleInputChange('ipId', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Age"
+                  value={formData.age}
+                  onChangeText={(text) => handleInputChange('age', text)}
+                  keyboardType="numeric"
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Gender"
+                  value={formData.gender}
+                  onChangeText={(text) => handleInputChange('gender', text)}
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Medical Information</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Primary Consultant"
+                  value={formData.primaryConsultant}
+                  onChangeText={(text) => handleInputChange('primaryConsultant', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Diagnosis Description"
+                  value={formData.diagnosisDescription}
+                  onChangeText={(text) => handleInputChange('diagnosisDescription', text)}
+                  multiline
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Patient Status"
+                  value={formData.patientStatus}
+                  onChangeText={(text) => handleInputChange('patientStatus', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Admission Date Time (YYYY-MM-DDTHH:MM)"
+                  value={formData.admissionDateTime}
+                  onChangeText={(text) => handleInputChange('admissionDateTime', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Discharge Date Time (YYYY-MM-DDTHH:MM)"
+                  value={formData.dischargeDateTime}
+                  onChangeText={(text) => handleInputChange('dischargeDateTime', text)}
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Location</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Room No"
+                  value={formData.roomNo}
+                  onChangeText={(text) => handleInputChange('roomNo', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Bed No"
+                  value={formData.bedNo}
+                  onChangeText={(text) => handleInputChange('bedNo', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Floor"
+                  value={formData.floor}
+                  onChangeText={(text) => handleInputChange('floor', text)}
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ward"
+                  value={formData.ward}
+                  onChangeText={(text) => handleInputChange('ward', text)}
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Contact Information</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Patient Mobile Number"
+                  value={formData.patientMobileNo}
+                  onChangeText={(text) => handleInputChange('patientMobileNo', text)}
+                  keyboardType="phone-pad"
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Attendant Contact"
+                  value={formData.attendantContact}
+                  onChangeText={(text) => handleInputChange('attendantContact', text)}
+                  keyboardType="phone-pad"
+                />
+              </View>
+              
               <View style={styles.modalButtons}>
-                <TouchableOpacity
+                <TouchableOpacity 
                   style={[styles.modalButton, styles.cancelButton]}
                   onPress={() => setModalVisible(false)}
                 >
                   <Text style={styles.buttonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
+                
+                <TouchableOpacity 
                   style={[styles.modalButton, styles.saveButton]}
                   onPress={handleSubmit}
                 >
@@ -311,22 +404,9 @@ export default function PatientManagement() {
           </View>
         </View>
       </Modal>
-
-      {/* DateTime Picker Modal */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={new Date()}
-          mode="datetime"
-          is24Hour={true}
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={handleDateChange}
-        />
-      )}
     </View>
   );
 }
-
-// Styles...
 
 const styles = StyleSheet.create({
   container: {

@@ -20,7 +20,7 @@ export const getUsernameFromToken = async (): Promise<string | null> => {
     const token = await getToken();
     if (!token) return null;
 
-    const decoded: any = jwtDecode(token); // ✅ THIS LINE
+    const decoded: any = jwtDecode(token);
     return decoded.username || decoded.name || decoded.sub || null;
   } catch (error) {
     console.error('Failed to decode token:', error);
