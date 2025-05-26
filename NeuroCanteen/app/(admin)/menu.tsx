@@ -17,8 +17,11 @@ import { Plus, CreditCard as Edit2, Trash2, Camera } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import * as ImagePicker from 'expo-image-picker';
 
-const timeSlots = ['Morning', 'Afternoon', 'Evening', 'Dinner'];
+const timeSlots = ['Morning', 'Afternoon', 'Evening', 'Dinner', 'Breakfast', 'Meals'];
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const normalizeTimeSlot = (slot: string) => {
+  return slot.charAt(0).toUpperCase() + slot.slice(1).toLowerCase();
+};
 
 type TimeSlotType = {
   [day: string]: string[];
@@ -77,23 +80,23 @@ const AvailabilityMatrix = ({
               <View style={[styles.matrixDayCell, styles.dayCell]}>
                 <Text style={styles.matrixDayText}>{dayAbbreviations[day as keyof typeof dayAbbreviations]}</Text>
               </View>
-              {timeSlots.map((time) => (
-                <TouchableOpacity 
-                  key={time}
-                  style={styles.matrixCell}
-                  onPress={() => {
-                    const isChecked = availability[day]?.includes(time) || false;
-                    onToggle(day, time, !isChecked);
-                  }}
-                >
-                  <View style={[
-                    styles.checkbox,
-                    (availability[day]?.includes(time)) && styles.checkboxChecked
-                  ]}>
-                    {(availability[day]?.includes(time)) && <View style={styles.checkboxInner} />}
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {timeSlots.map((time) => {
+                const isChecked = availability[day]?.includes(time) || false;
+                return (
+                  <TouchableOpacity 
+                    key={time}
+                    style={styles.matrixCell}
+                    onPress={() => onToggle(day, time, !isChecked)}
+                  >
+                    <View style={[
+                      styles.checkbox,
+                      isChecked && styles.checkboxChecked
+                    ]}>
+                      {isChecked && <View style={styles.checkboxInner} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -201,33 +204,6 @@ export default function MenuManagement() {
     setModalVisible(true);
   };
 
-  const pickImage = async () => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        Alert.alert('Permission Required', 'You need to grant camera roll permissions to upload images');
-        return;
-      }
-      
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        base64: true,
-      });
-      
-      if (!result.canceled) {
-        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-        handleInputChange('picture', base64Image);
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image from gallery');
-    }
-  };
-
   const handleSubmit = async () => {
     if (!formData.name || !formData.category) {
       Alert.alert('Error', 'Name and Category are required');
@@ -322,6 +298,28 @@ export default function MenuManagement() {
     </View>
   );
 
+  // Image picker handler
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Permission to access media library is required!');
+      return;
+    }
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setFormData({
+        ...formData,
+        picture: result.assets[0].uri,
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -349,120 +347,134 @@ export default function MenuManagement() {
         />
       )}
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={modalVisible}
+  onRequestClose={() => setModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalInnerContainer}>
+      <ScrollView
+        style={styles.modalScrollView}
+        contentContainerStyle={styles.modalContentContainer}
       >
-        <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalScrollContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{isEditMode ? 'Edit Menu Item' : 'Add New Menu Item'}</Text>
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Item Name"
-                value={formData.name}
-                onChangeText={(text) => handleInputChange('name', text)}
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Category"
-                value={formData.category}
-                onChangeText={(text) => handleInputChange('category', text)}
-              />
-              
-              <TextInput
-                style={[styles.input, styles.multilineInput]}
-                placeholder="Description"
-                multiline
-                numberOfLines={3}
-                value={formData.description}
-                onChangeText={(text) => handleInputChange('description', text)}
-              />
-              
-              <View style={styles.imagePickerContainer}>
-                <Text style={styles.imagePickerLabel}>Item Image</Text>
-                <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
-                  <Camera size={24} color="#2E7D32" />
-                  <Text style={styles.imagePickerText}>Choose Image</Text>
-                </TouchableOpacity>
-                
-                {formData.picture ? (
-                  <View style={styles.previewImageContainer}>
-                    <Image source={{ uri: formData.picture }} style={styles.previewImage} />
-                  </View>
-                ) : null}
-              </View>
-              
-              <View style={styles.switchContainer}>
-                <Text style={styles.switchLabel}>Available</Text>
-                <Switch
-                  value={formData.available}
-                  onValueChange={(value) => handleInputChange('available', value)}
-                  trackColor={{ false: '#CCCCCC', true: '#4CAF50' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-              
-              <Text style={styles.sectionLabel}>Pricing</Text>
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Staff Price"
-                value={formData.staffPrice}
-                onChangeText={(text) => handleInputChange('staffPrice', text)}
-                keyboardType="numeric"
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Patient Price"
-                value={formData.patientPrice}
-                onChangeText={(text) => handleInputChange('patientPrice', text)}
-                keyboardType="numeric"
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Dietitian Price"
-                value={formData.dietitianPrice}
-                onChangeText={(text) => handleInputChange('dietitianPrice', text)}
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.sectionLabel}>Availability Time Slot</Text>
-              <AvailabilityMatrix
-                availability={formData.timeSlot}
-                onToggle={handleTimeSlotToggle}
-              />
-              
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.saveButton]}
-                  onPress={handleSubmit}
-                >
-                  <Text style={styles.buttonText}>Save</Text>
-                </TouchableOpacity>
-              </View>
+        <Text style={styles.modalTitle}>
+          {isEditMode ? 'Edit Menu Item' : 'Add New Menu Item'}
+        </Text>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Item Name"
+          value={formData.name}
+          onChangeText={(text) => handleInputChange('name', text)}
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Category"
+          value={formData.category}
+          onChangeText={(text) => handleInputChange('category', text)}
+        />
+        
+        <TextInput
+          style={[styles.input, styles.multilineInput]}
+          placeholder="Description"
+          multiline
+          numberOfLines={3}
+          value={formData.description}
+          onChangeText={(text) => handleInputChange('description', text)}
+        />
+        
+        <View style={styles.imagePickerContainer}>
+          <Text style={styles.imagePickerLabel}>Item Image</Text>
+          <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+            <Camera size={24} color="#2E7D32" />
+            <Text style={styles.imagePickerText}>Choose Image</Text>
+          </TouchableOpacity>
+          
+          {formData.picture ? (
+            <View style={styles.previewImageContainer}>
+              <Image source={{ uri: formData.picture }} style={styles.previewImage} />
             </View>
-          </ScrollView>
+          ) : null}
         </View>
-      </Modal>
+        
+        <View style={styles.switchContainer}>
+          <Text style={styles.switchLabel}>Available</Text>
+          <Switch
+            value={formData.available}
+            onValueChange={(value) => handleInputChange('available', value)}
+            trackColor={{ false: '#CCCCCC', true: '#4CAF50' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        
+        <Text style={styles.sectionLabel}>Pricing</Text>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Staff Price"
+          value={formData.staffPrice}
+          onChangeText={(text) => handleInputChange('staffPrice', text)}
+          keyboardType="numeric"
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Patient Price"
+          value={formData.patientPrice}
+          onChangeText={(text) => handleInputChange('patientPrice', text)}
+          keyboardType="numeric"
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Dietitian Price"
+          value={formData.dietitianPrice}
+          onChangeText={(text) => handleInputChange('dietitianPrice', text)}
+          keyboardType="numeric"
+        />
+
+        <Text style={styles.sectionLabel}>Availability Time Slot</Text>
+        <AvailabilityMatrix
+          availability={formData.timeSlot}
+          onToggle={handleTimeSlotToggle}
+        />
+      </ScrollView>
+
+      {/* Fixed buttons at bottom */}
+      <View style={styles.modalButtonContainer}>
+        <TouchableOpacity 
+          style={[styles.modalButton, styles.cancelButton]}
+          onPress={() => setModalVisible(false)}
+        >
+          <Text style={styles.buttonText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.modalButton, styles.saveButton]}
+          onPress={handleSubmit}
+        >
+          <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
@@ -571,28 +583,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  modalOverlay: {
+   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalScrollContainer: {
     width: '100%',
-    padding: 20,
   },
-  modalContent: {
+  modalInnerContainer: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 20,
+    overflow: 'hidden',
+    width: '90%',
+    maxHeight: '90%',
+    maxWidth: 400, // Optional: set a maximum width for larger screens
+  },
+  modalScrollView: {
     width: '100%',
   },
-  modalTitle: {
-    fontSize: 18,
+  modalContentContainer: {
+    padding: 20,
+    paddingBottom: 10, // Reduced bottom padding since buttons are fixed
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#fff',
+    width: '100%',
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 4,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#9E9E9E',
+  },
+  saveButton: {
+    backgroundColor: '#2E7D32',
+  },
+  buttonText: {
+    color: '#fff',
     fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#2E7D32',
+    fontSize: 16,
   },
   input: {
     backgroundColor: '#F5F5F5',
@@ -660,28 +698,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 20,
   },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 4,
-    flex: 1,
-    marginHorizontal: 4,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#9E9E9E',
-  },
-  saveButton: {
-    backgroundColor: '#2E7D32',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  // Matrix styles
+ // Matrix styles
   matrixOuterContainer: {
     marginBottom: 20,
+    maxHeight: 300,
   },
   matrixContainer: {
     borderWidth: 1,
