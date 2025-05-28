@@ -64,13 +64,8 @@ export default function OrderHistoryScreen() {
   useEffect(() => {
     const fetchRooms = async () => {
     try {
-    const response = await axiosInstance.get('/orders/filter', {
-      params: {
-        orderedRole: 'Patient',
-        orderedUserId: '127363'
-      }
-    });
-        const data = response.data;
+    const response = await axiosInstance.get<Order[]>('/orders');
+        const data = response.data.filter(order => order.orderedRole === 'Patient');
         setorders(data)
     } catch (error) {
         console.error('Failed to fetch rooms:', error);
