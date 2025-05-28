@@ -71,35 +71,10 @@ export default function HomeScreen() {
               <LayoutGrid color="white" size={22} />
               <Text style={styles.navigationButtonText}>Floor Overview</Text>
             </TouchableOpacity>
-          </Animated.View>
+          </Animated.View> 
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Patient Access</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Patient ID"
-            placeholderTextColor="#757575"
-            value={patientId}
-            onChangeText={setPatientId}
-          />
-          <Animated.View 
-            style={[styles.animatedButton, {transform: [{scale: buttonAnimation}]}]}
-          >
-            <TouchableOpacity 
-              style={styles.loginButton}
-              onPress={handleLogin}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-            >
-              <LogIn color="white" size={20} />
-              <Text style={styles.buttonText}>Access Patient Records</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </View>
-      
-      <View style={styles.footer}>
+
         <Text style={styles.footerText}>© 2025 NeuroCanteen</Text>
       </View>
     </View>

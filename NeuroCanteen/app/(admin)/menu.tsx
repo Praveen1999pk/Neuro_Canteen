@@ -16,10 +16,10 @@ import {
 import { Plus, CreditCard as Edit2, Trash2, Camera } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
-const timeSlots = ['Morning', 'Afternoon', 'Evening', 'Dinner'];
-const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
+const timeSlots = ['morning', 'afternoon', 'evening', 'dinner'];
+const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 type TimeSlotType = {
   [day: string]: string[];
 };
@@ -35,6 +35,8 @@ type MenuItem = {
   patientPrice: string;
   dietitianPrice: string;
   timeSlot: TimeSlotType;
+  combination: string;
+  diet_type: string;
 };
 
 const AvailabilityMatrix = ({ 
@@ -44,20 +46,33 @@ const AvailabilityMatrix = ({
   availability: TimeSlotType;
   onToggle: (day: string, time: string, checked: boolean) => void;
 }) => {
-  // Use abbreviated day names for mobile
   const dayAbbreviations = {
-    Sunday: 'Sun',
-    Monday: 'Mon',
-    Tuesday: 'Tue',
-    Wednesday: 'Wed',
-    Thursday: 'Thu',
-    Friday: 'Fri',
-    Saturday: 'Sat'
+    sunday: 'Sun',
+    monday: 'Mon',
+    tuesday: 'Tue',
+    wednesday: 'Wed',
+    thursday: 'Thu',
+    friday: 'Fri',
+    saturday: 'Sat'
+  };
+
+  const formatTimeSlot = (slot: string) => {
+    const slotMap: Record<string, string> = {
+      morning: 'Morning',
+      afternoon: 'Afternoon',
+      evening: 'Evening',
+      dinner: 'Dinner'
+    };
+    return slotMap[slot] || slot;
   };
 
   return (
     <View style={styles.matrixOuterContainer}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={true}
+        contentContainerStyle={styles.matrixScrollContent}
+      >
         <View style={styles.matrixContainer}>
           {/* Header Row */}
           <View style={styles.matrixHeader}>
@@ -66,7 +81,7 @@ const AvailabilityMatrix = ({
             </View>
             {timeSlots.map((slot) => (
               <View key={slot} style={styles.matrixHeaderCell}>
-                <Text style={styles.matrixHeaderText}>{slot}</Text>
+                <Text style={styles.matrixHeaderText}>{formatTimeSlot(slot)}</Text>
               </View>
             ))}
           </View>
@@ -77,23 +92,18 @@ const AvailabilityMatrix = ({
               <View style={[styles.matrixDayCell, styles.dayCell]}>
                 <Text style={styles.matrixDayText}>{dayAbbreviations[day as keyof typeof dayAbbreviations]}</Text>
               </View>
-              {timeSlots.map((time) => (
-                <TouchableOpacity 
-                  key={time}
-                  style={styles.matrixCell}
-                  onPress={() => {
-                    const isChecked = availability[day]?.includes(time) || false;
-                    onToggle(day, time, !isChecked);
-                  }}
-                >
-                  <View style={[
-                    styles.checkbox,
-                    (availability[day]?.includes(time)) && styles.checkboxChecked
-                  ]}>
-                    {(availability[day]?.includes(time)) && <View style={styles.checkboxInner} />}
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {timeSlots.map((time) => {
+                const isChecked = availability[day]?.includes(time) || false;
+                return (
+                  <TouchableOpacity 
+                    key={time}
+                    style={styles.matrixCell}
+                    onPress={() => onToggle(day, time, !isChecked)}
+                  >
+                    <Text>{isChecked ? '✅' : '⬜'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -117,29 +127,54 @@ export default function MenuManagement() {
     staffPrice: '',
     patientPrice: '',
     dietitianPrice: '',
-    timeSlot: {} as TimeSlotType
+    timeSlot: {} as TimeSlotType,
+    combination: '',
+    diet_type: ''
   });
 
   useEffect(() => {
     fetchMenuItems();
   }, []);
 
-  const fetchMenuItems = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axiosInstance.get('/menu-items');
-      const data = response.data.map((item: any) => ({
+const fetchMenuItems = async () => {
+  setIsLoading(true);
+  try {
+    const response = await axiosInstance.get('/menu-items');
+    
+    const data = response.data.map((item: any) => {
+
+      let timeSlot: { [key: string]: string[] } = {};
+      if (typeof item.timeSlot === 'string') {
+        try {
+          timeSlot = JSON.parse(item.timeSlot);
+        } catch (e) {
+          console.warn('Failed to parse timeSlot string', e);
+        }
+      } else if (item.timeSlot) {
+        timeSlot = item.timeSlot;
+      }
+
+      const normalizedTimeSlot: TimeSlotType = {};
+      Object.keys(timeSlot).forEach(day => {
+        const lowercaseDay = day.toLowerCase();
+        normalizedTimeSlot[lowercaseDay] = timeSlot[day].map((slot: string) => 
+          slot.toLowerCase()
+        );
+      });
+
+      return {
         ...item,
-        timeSlot: typeof item.timeSlot === 'string' ? JSON.parse(item.timeSlot) : item.timeSlot
-      }));
-      setMenuItems(data);
-    } catch (error) {
-      console.error('Error fetching menu items:', error);
-      Alert.alert('Error', 'Failed to load menu data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        timeSlot: normalizedTimeSlot
+      };
+    });
+    setMenuItems(data);
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    Alert.alert('Error', 'Failed to load menu data');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData({
@@ -173,7 +208,9 @@ export default function MenuManagement() {
       staffPrice: '',
       patientPrice: '',
       dietitianPrice: '',
-      timeSlot: {}
+      timeSlot: {},
+      combination: '',
+      diet_type: ''
     });
     setCurrentItem(null);
     setIsEditMode(false);
@@ -184,81 +221,80 @@ export default function MenuManagement() {
     setModalVisible(true);
   };
 
-  const openEditModal = (item: MenuItem) => {
-    setIsEditMode(true);
-    setCurrentItem(item);
-    setFormData({
-      name: item.name,
-      category: item.category || '',
-      picture: item.picture || '',
-      description: item.description || '',
-      available: item.available,
-      staffPrice: item.staffPrice || '',
-      patientPrice: item.patientPrice || '',
-      dietitianPrice: item.dietitianPrice || '',
-      timeSlot: item.timeSlot || {}
+const openEditModal = (item: MenuItem) => {
+  setIsEditMode(true);
+  setCurrentItem(item);
+  
+  const initialTimeSlot = item.timeSlot || {};
+  const normalizedTimeSlot: TimeSlotType = {};
+  
+  
+  Object.keys(initialTimeSlot).forEach(day => {
+    const lowercaseDay = day.toLowerCase();
+    normalizedTimeSlot[lowercaseDay] = initialTimeSlot[day].map((slot: string) => 
+      slot.toLowerCase()
+    );
+  });
+
+  setFormData({
+    name: item.name,
+    category: item.category || '',
+    picture: item.picture || '',
+    description: item.description || '',
+    available: item.available,
+    staffPrice: item.staffPrice || '',
+    patientPrice: item.patientPrice || '',
+    dietitianPrice: item.dietitianPrice || '',
+    timeSlot: normalizedTimeSlot,
+    combination: item.combination || '',
+    diet_type: item.diet_type || ''
+  });
+  setModalVisible(true);
+};
+
+const handleSubmit = async () => {
+  if (!formData.name || !formData.category) {
+    Alert.alert('Error', 'Name and Category are required');
+    return;
+  }
+
+
+
+  setIsLoading(true);
+  try {
+    // Ensure timeSlot data is properly formatted
+    const normalizedTimeSlot: TimeSlotType = {};
+    Object.keys(formData.timeSlot).forEach(day => {
+      const lowercaseDay = day.toLowerCase();
+      normalizedTimeSlot[lowercaseDay] = formData.timeSlot[day].map((slot: string) => 
+        slot.toLowerCase()
+      );
     });
-    setModalVisible(true);
-  };
 
-  const pickImage = async () => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        Alert.alert('Permission Required', 'You need to grant camera roll permissions to upload images');
-        return;
-      }
-      
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        base64: true,
-      });
-      
-      if (!result.canceled) {
-        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-        handleInputChange('picture', base64Image);
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image from gallery');
+    const payload = {
+      ...formData,
+      timeSlot: normalizedTimeSlot
+    };
+
+    
+
+    if (isEditMode && currentItem) {
+      const response = await axiosInstance.put(`/menu-items/${currentItem.id}`, payload);
+      Alert.alert('Success', 'Menu item updated successfully');
+    } else {
+      const response = await axiosInstance.post('/menu-items', payload);
+      Alert.alert('Success', 'Menu item added successfully');
     }
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.name || !formData.category) {
-      Alert.alert('Error', 'Name and Category are required');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const payload = {
-        ...formData,
-        timeSlot: JSON.stringify(formData.timeSlot)
-      };
-
-      if (isEditMode && currentItem) {
-        await axiosInstance.put(`/menu-items/${currentItem.id}`, payload);
-        Alert.alert('Success', 'Menu item updated successfully');
-      } else {
-        await axiosInstance.post('/menu-items', payload);
-        Alert.alert('Success', 'Menu item added successfully');
-      }
-      fetchMenuItems();
-      setModalVisible(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error saving menu item:', error);
-      Alert.alert('Error', 'Failed to save menu item information');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+    fetchMenuItems();
+    setModalVisible(false);
+    resetForm();
+  } catch (error) {
+    console.error('Error saving menu item:', error);
+    Alert.alert('Error', `Failed to save menu item: ${(error as any).message || 'Unknown error'}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleDelete = (id: number) => {
     Alert.alert(
       'Confirm Delete',
@@ -300,6 +336,8 @@ export default function MenuManagement() {
       <View style={styles.itemInfo}>
         <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemDetail}>Category: {item.category}</Text>
+        <Text style={styles.itemDetail}>Combination: {item.combination || 'N/A'}</Text>
+        <Text style={styles.itemDetail}>Diet Type: {item.diet_type || 'N/A'}</Text>
         <View style={styles.availabilityContainer}>
           <Text style={styles.itemDetail}>Available:</Text>
           <View style={[styles.availabilityIndicator, { backgroundColor: item.available ? '#4CAF50' : '#F44336' }]} />
@@ -321,6 +359,33 @@ export default function MenuManagement() {
       </View>
     </View>
   );
+
+  const pickImage = async () => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission Denied', 'Permission to access media library is required!');
+    return;
+  }
+
+  let result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 1,
+  });
+
+  if (!result.canceled && result.assets && result.assets.length > 0) {
+    // If your backend expects base64 encoded image
+    const base64Image = await FileSystem.readAsStringAsync(result.assets[0].uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    
+    setFormData({
+      ...formData,
+      picture: `data:image/jpeg;base64,${base64Image}`,
+    });
+  }
+};
 
   return (
     <View style={styles.container}>
@@ -356,9 +421,14 @@ export default function MenuManagement() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalScrollContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{isEditMode ? 'Edit Menu Item' : 'Add New Menu Item'}</Text>
+          <View style={styles.modalInnerContainer}>
+            <ScrollView
+              style={styles.modalScrollView}
+              contentContainerStyle={styles.modalContentContainer}
+            >
+              <Text style={styles.modalTitle}>
+                {isEditMode ? 'Edit Menu Item' : 'Add New Menu Item'}
+              </Text>
               
               <TextInput
                 style={styles.input}
@@ -372,6 +442,20 @@ export default function MenuManagement() {
                 placeholder="Category"
                 value={formData.category}
                 onChangeText={(text) => handleInputChange('category', text)}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Combination"
+                value={formData.combination}
+                onChangeText={(text) => handleInputChange('combination', text)}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Diet Type"
+                value={formData.diet_type}
+                onChangeText={(text) => handleInputChange('diet_type', text)}
               />
               
               <TextInput
@@ -438,31 +522,38 @@ export default function MenuManagement() {
                 availability={formData.timeSlot}
                 onToggle={handleTimeSlotToggle}
               />
-              
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.saveButton]}
-                  onPress={handleSubmit}
-                >
-                  <Text style={styles.buttonText}>Save</Text>
-                </TouchableOpacity>
-              </View>
+            </ScrollView>
+
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSubmit}
+              >
+                <Text style={styles.buttonText}>Save</Text>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
   );
 }
 
+// ... (keep your existing styles the same)
 const styles = StyleSheet.create({
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
@@ -571,28 +662,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  modalOverlay: {
+   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalScrollContainer: {
     width: '100%',
-    padding: 20,
   },
-  modalContent: {
+  modalInnerContainer: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 20,
+    overflow: 'hidden',
+    width: '90%',
+    maxHeight: '90%',
+    maxWidth: 400, // Optional: set a maximum width for larger screens
+  },
+  modalScrollView: {
     width: '100%',
   },
-  modalTitle: {
-    fontSize: 18,
+  modalContentContainer: {
+    padding: 20,
+    paddingBottom: 10, // Reduced bottom padding since buttons are fixed
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#fff',
+    width: '100%',
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 4,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#9E9E9E',
+  },
+  saveButton: {
+    backgroundColor: '#2E7D32',
+  },
+  buttonText: {
+    color: '#fff',
     fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#2E7D32',
+    fontSize: 16,
   },
   input: {
     backgroundColor: '#F5F5F5',
@@ -660,80 +777,67 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 20,
   },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 4,
-    flex: 1,
-    marginHorizontal: 4,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#9E9E9E',
-  },
-  saveButton: {
-    backgroundColor: '#2E7D32',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  // Matrix styles
-  matrixOuterContainer: {
-    marginBottom: 20,
-  },
-  matrixContainer: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    overflow: 'hidden',
-    minWidth: '100%', // Ensure it takes full width for scrolling
-  },
-  matrixHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#2E7D32',
-  },
-  matrixHeaderCell: {
-    width: 60, // Fixed width for time slots
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  dayHeaderCell: {
-    width: 70, // Slightly wider for day header
-    backgroundColor: '#1B5E20', // Slightly darker for header
-  },
-  matrixHeaderText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  matrixRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  matrixDayCell: {
-    padding: 8,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-  },
-  dayCell: {
-    width: 70, // Matches header
-  },
-  matrixDayText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  matrixCell: {
-    width: 60, // Matches header cells
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
+ // Matrix styles
+matrixOuterContainer: {
+  marginBottom: 20,
+  height: 350, // Increased height to accommodate all rows
+  width: '100%',
+},
+matrixScrollContent: {
+  paddingRight: 20,
+},
+matrixContainer: {
+  borderWidth: 1,
+  borderColor: '#E0E0E0',
+  borderRadius: 8,
+  overflow: 'hidden',
+  minWidth: 550, // Increased minimum width to fit all columns
+},
+matrixHeader: {
+  flexDirection: 'row',
+  backgroundColor: '#2E7D32',
+},
+matrixHeaderCell: {
+  width: 90, // Wider cells
+  padding: 10,
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 45,
+},
+dayHeaderCell: {
+  width: 100, // Wider day header
+  backgroundColor: '#1B5E20',
+},
+matrixHeaderText: {
+  color: '#fff',
+  fontWeight: 'bold',
+  fontSize: 14,
+},
+matrixRow: {
+  flexDirection: 'row',
+  borderBottomWidth: 1,
+  borderBottomColor: '#E0E0E0',
+  minHeight: 45,
+},
+matrixDayCell: {
+  padding: 10,
+  backgroundColor: '#F5F5F5',
+  justifyContent: 'center',
+},
+dayCell: {
+  width: 100, // Matches header width
+},
+matrixDayText: {
+  fontSize: 14,
+  fontWeight: 'bold',
+},
+matrixCell: {
+  width: 90,
+  padding: 10,
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 45,
+},
   checkbox: {
     width: 20,
     height: 20,

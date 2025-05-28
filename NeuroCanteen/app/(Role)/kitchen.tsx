@@ -81,12 +81,6 @@ export default function Handlekitchenlogin() {
             />
           </View>
 
-          <View style={styles.rememberContainer}>
-            <TouchableOpacity>
-              <Text style={styles.forgotPassword}>Forgot password?</Text>
-            </TouchableOpacity>
-          </View>
-
           <TouchableOpacity 
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
@@ -163,11 +157,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginBottom: 24,
-  },
-  forgotPassword: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 14,
-    color: '#0F5132',
   },
   loginButton: {
     backgroundColor: '#0F5132',

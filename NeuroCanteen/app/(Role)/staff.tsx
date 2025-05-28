@@ -172,11 +172,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginBottom: 24,
   },
-  forgotPassword: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 14,
-    color: '#0F5132',
-  },
   loginButton: {
     backgroundColor: '#0F5132',
     borderRadius: 12,
