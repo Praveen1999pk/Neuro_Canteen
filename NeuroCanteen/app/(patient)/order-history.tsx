@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 
 type Order = {
-  orderId: number;
+  orderId: number; 
   orderedName: string;
   itemName: string;
   quantity: number;
@@ -25,6 +25,12 @@ type Order = {
   paymentStatus: string | null;
   orderDateTime: string;
   address: string;
+  category?: string;
+  deliveryStatus?: string | null;
+  orderedRole?: string;
+  orderedUserId?: string;
+  paymentRecived?: boolean;
+  phoneNo?: string | null;
 };
 
 export default function OrderHistory() {
@@ -37,42 +43,50 @@ export default function OrderHistory() {
     getUsernameFromToken();
   }, []);
 
-  const getUsernameFromToken = async () => {
-    try {
-      const token = await AsyncStorage.getItem('jwtToken');
-      if (token) {
-        const decoded: any = jwtDecode(token);
-        const user = decoded.sub || '';
-        setUsername(user);
-        fetchOrders(token, user);  // ✅ fetch orders after setting username
-      }
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      setLoading(false);
+const getUsernameFromToken = async () => {
+  try {
+    const token = await AsyncStorage.getItem('jwtToken');
+    if (token) {
+      console.log('Token:', token);
+      const decoded: any = jwtDecode(token);
+      const user = decoded.sub || '';
+      setUsername(user);
+      await fetchOrders(token, user); // Add await here
     }
-  };
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    setLoading(false); 
+  }
+};
 
-  const fetchOrders = async (token: string, user: string) => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.get(`/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+const fetchOrders = async (token: string, user: string) => {
+  setLoading(true);
+  try {
+    const response = await axiosInstance.get(`/orders`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-      // ✅ Filter orders matching the logged-in user
-      const userOrders = response.data.filter((order: Order) => order.orderedName === user);
+    // Improved filtering with null checks
+    const userOrders = response.data.filter((order: Order) => {
+      if (!order.orderedName) return false;
+      return order.orderedName.trim().toLowerCase() === user.trim().toLowerCase();
+    });
 
-      setOrders(userOrders);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    setOrders(userOrders);
+    
+    if (userOrders.length === 0) {
+      console.log('No orders found for user:', user);
     }
-  };
-
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    // Add error state handling if needed
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
   const onRefresh = async () => {
     setRefreshing(true);
     const token = await AsyncStorage.getItem('jwtToken');
@@ -119,13 +133,12 @@ export default function OrderHistory() {
     }
   };
 
-  const renderOrderItem = ({ item }: { item: Order }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>Order #{item.orderId}</Text>
-        <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
-      </View>
-      
+const renderOrderItem = ({ item }: { item: Order }) => (
+  <View style={styles.orderCard}>
+    <View style={styles.orderHeader}>
+      <Text style={styles.orderId}>Order #{item.orderId}</Text>
+      <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
+    </View>
       <View style={styles.orderDetails}>
         <Text style={styles.itemName} numberOfLines={2}>{item.itemName}</Text>
         <Text style={styles.itemQuantity}>Quantity: {item.quantity}</Text>
@@ -199,15 +212,18 @@ export default function OrderHistory() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No orders found</Text>
-            <TouchableOpacity 
-              style={styles.retryButton}
-              onPress={onRefresh}
-            >
-              <Text style={styles.retryButtonText}>Refresh</Text>
-            </TouchableOpacity>
-          </View>
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No orders found</Text>
+              <Text style={styles.emptyText}>You haven't placed any orders yet</Text>
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={onRefresh}
+              >
+                <Text style={styles.retryButtonText}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
       />
     </SafeAreaView>

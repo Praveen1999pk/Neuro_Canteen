@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 
 type Order = {
-  id: number;
+  orderId: number; 
   orderedName: string;
   itemName: string;
   quantity: number;
@@ -25,6 +25,12 @@ type Order = {
   paymentStatus: string | null;
   orderDateTime: string;
   address: string;
+  category?: string;
+  deliveryStatus?: string | null;
+  orderedRole?: string;
+  orderedUserId?: string;
+  paymentRecived?: boolean;
+  phoneNo?: string | null;
 };
 
 export default function OrderHistory() {
@@ -55,7 +61,6 @@ const getUsernameFromToken = async () => {
 
 const fetchOrders = async (token: string, user: string) => {
   setLoading(true);
-  console.log('Fetching orders for user:', user); // Debug log
   try {
     const response = await axiosInstance.get(`/orders`, {
       headers: {
@@ -63,15 +68,12 @@ const fetchOrders = async (token: string, user: string) => {
       },
     });
 
-    console.log('Full API response:', response.data); // Debug log
-
     // Improved filtering with null checks
     const userOrders = response.data.filter((order: Order) => {
       if (!order.orderedName) return false;
       return order.orderedName.trim().toLowerCase() === user.trim().toLowerCase();
     });
 
-    console.log('Filtered orders:', userOrders); // Debug log
     setOrders(userOrders);
     
     if (userOrders.length === 0) {
@@ -131,13 +133,12 @@ const fetchOrders = async (token: string, user: string) => {
     }
   };
 
-  const renderOrderItem = ({ item }: { item: Order }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>Order #{item.id}</Text>
-        <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
-      </View>
-      
+const renderOrderItem = ({ item }: { item: Order }) => (
+  <View style={styles.orderCard}>
+    <View style={styles.orderHeader}>
+      <Text style={styles.orderId}>Order #{item.orderId}</Text>
+      <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
+    </View>
       <View style={styles.orderDetails}>
         <Text style={styles.itemName} numberOfLines={2}>{item.itemName}</Text>
         <Text style={styles.itemQuantity}>Quantity: {item.quantity}</Text>
@@ -203,7 +204,7 @@ const fetchOrders = async (token: string, user: string) => {
       <FlatList
         data={orders}
         renderItem={renderOrderItem}
-        keyExtractor={(item, index) => item?.id ? String(item.id) : `order-${index}`}
+        keyExtractor={(item, index) => item?.orderId ? String(item.orderId) : `order-${index}`}
 
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}

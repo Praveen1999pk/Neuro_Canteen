@@ -60,18 +60,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <View style={styles.optionsContainer}>
-            <ProfileOption 
-              icon={<HelpCircle color="#10B981" size={22} />}
-              title="Help & Support"
-              subtitle="Get help with using the app"
-              onPress={() => console.log('Help pressed')}
-            />
-          </View>
-        </View>
-
         <TouchableOpacity 
           style={styles.logoutButton} 
           onPress={handleLogout}
