@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 
 type Order = {
-  id: number;
+  orderId: number;
   orderedName: string;
   itemName: string;
   quantity: number;
@@ -65,7 +65,6 @@ export default function OrderHistory() {
       const userOrders = response.data.filter((order: Order) => order.orderedName === user);
 
       setOrders(userOrders);
-      console.log('User Orders fetched:', userOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -192,7 +191,7 @@ export default function OrderHistory() {
       <FlatList
         data={orders}
         renderItem={renderOrderItem}
-        keyExtractor={(item, index) => item?.id ? String(item.id) : `order-${index}`}
+        keyExtractor={(item, index) => item?.orderId ? String(item.orderId) : `order-${index}`}
 
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}

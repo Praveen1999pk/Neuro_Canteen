@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,111 +6,39 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
-  Platform,
-  Linking,
   Modal
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, CreditCard, Cast as CashIcon } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
-import { loginpatient } from '../api/auth';
 
 type MenuItem = {
   id: number;
   name: string;
-  description: string;
   patientPrice: number;
-  category: string;
 };
 
 type CartItems = {
-  [key: string]: number;
+  [key: number]: number;
 };
 
-export default function Checkout() {
-  const [uhid, setUhid] = useState('');
-  const [showLoginForm, setShowLoginForm] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD' | null>(null);
+export default function PatientOrderCheckout() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const [tip, setTip] = useState(0);
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
-  const [tip, setTip] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [uhid, setUhid] = useState('');
+  const [showLoginForm, setShowLoginForm] = useState(false);
   const [username, setUsername] = useState('');
 
-  const cartItems: CartItems = params.cartItems 
-    ? JSON.parse(params.cartItems as string) 
-    : {};
-    
-  const menuItems: MenuItem[] = params.menuItems 
-    ? JSON.parse(params.menuItems as string) 
-    : [];
-
-  useEffect(() => {
-    getUsernameFromToken();
-  }, []);
-
-  const getUsernameFromToken = async () => {
-    try {
-      const token = await AsyncStorage.getItem('jwtToken');
-      if (token) {
-        const decoded: any = jwtDecode(token);
-        setUsername(decoded.sub || '');
-      } 
-    } catch (error) {
-      console.error('Error decoding token:', error);
-    }
-  };
-
-  const handlePatientLogin = async () => {
-    if (!uhid.trim()) {
-      Alert.alert('Error', 'Please enter your UHID');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await loginpatient(uhid);
-      if (result.success) {
-        setShowLoginForm(false);
-        // Update username after successful login
-        await getUsernameFromToken();
-        // Proceed with the selected payment method
-        if (paymentMethod === 'UPI') {
-          await handleUPI();
-        } else if (paymentMethod === 'COD') {
-          await handleCOD();
-        }
-      } else {
-        Alert.alert('Login Failed', result.message || 'Invalid UHID');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to login. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddressSubmit = () => {
-    if (!address.trim()) {
-      Alert.alert('Address Required', 'Please enter a delivery address');
-      return;
-    }
-    setSubmittedAddress(address);
-    setIsEditing(false);
-  };
-
-  const handleAddressEdit = () => {
-    setIsEditing(true);
-  };
+  const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
+  const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
 
   const calculateItemTotal = (item: MenuItem, quantity: number) => {
     return item.patientPrice * quantity;
@@ -133,571 +61,456 @@ export default function Checkout() {
   const gstAndCharges = 0;
   const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
 
-  const handleCOD = async () => {
-    if (!submittedAddress) {
-      Alert.alert('Address Required', 'Please submit a delivery address');
-      return;
-    }
-
-    const token = await AsyncStorage.getItem('jwtToken');
-    if (!token) {
-      Alert.alert('Error', 'User token not found. Please login again.');
-      return;
-    }
-
-    const decoded: any = jwtDecode(token);
-    
-    if (decoded.sub === 'publicjwt') {
-      setPaymentMethod('COD');
-      setShowLoginForm(true);
-      return;
-    }
-
-    setLoading(true);
-    
-    const orderDetails = {
-      orderedRole: "patient",
-      orderedName: username,
-      orderedUserId: username,
-      itemName: Object.keys(cartItems).map(itemId => {
-        const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? item.name : '';
-      }).filter(Boolean).join(", "),
-      quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-      category: "South",
-      price: orderTotal,
-      orderStatus: null,
-      paymentType: "COD",
-      paymentStatus: "PENDING",
-      orderDateTime: new Date().toISOString(),
-      address: submittedAddress,
-    };
-
+  const handlePatientLogin = async () => {
     try {
-      const response = await axiosInstance.post("/orders", orderDetails);
-      console.log("Order submitted successfully", response.data);
-      
-      await AsyncStorage.removeItem('patient_cart');
-      router.push('/(patient)/order-success');
+      const response = await axiosInstance.post("/authenticate/patient", { uhid });
+      if (response.data.jwt) {
+        await AsyncStorage.setItem("jwtToken", response.data.jwt);
+        setShowLoginForm(false);
+        const token = response.data.jwt;
+        const decodedToken = jwtDecode(token);
+        console.log("Decoded Token:", decodedToken);
+        setUsername(decodedToken.sub ?? '');
+        handleUPI();
+      }
     } catch (error) {
-      console.error("Order submission failed", error);
-      Alert.alert("Error", "There was an issue submitting your order. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Login error:", error);
+      Alert.alert("Error", "Failed to login. Please check your UHID.");
     }
   };
 
+  const handleAddressSubmit = () => {
+    if (!address.trim()) {
+      Alert.alert("Error", "Please enter a delivery address");
+      return;
+    }
+    setSubmittedAddress(address);
+    setIsEditing(false);
+  };
+
+  const handleAddressEdit = () => {
+    setIsEditing(true);
+  };
+
   const handleUPI = async () => {
-    if (!submittedAddress) {
-      Alert.alert('Address Required', 'Please submit a delivery address');
-      return;
-    }
-
-    const token = await AsyncStorage.getItem('jwtToken');
+    const token = await AsyncStorage.getItem("jwtToken");
     if (!token) {
-      Alert.alert('Error', 'User token not found. Please login again.');
-      return;
-    }
-
-    const decoded: any = jwtDecode(token);
-    
-    if (decoded.sub === 'publicjwt') {
-      setPaymentMethod('UPI');
       setShowLoginForm(true);
       return;
     }
 
-    setLoading(true);
-  
     try {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
       const { orderId, amount } = payment_metadata.data;
 
       const options = {
-        description: 'Payment for Order',
-        image: 'https://your-logo-url.com/logo.png',
-        currency: 'INR',
-        key: 'rzp_test_0oZHIWIDL59TxD',
+        key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
-        name: 'Crimpson Owl Tech',
+        currency: "INR",
+        name: "Your Company Name",
+        description: "Payment for Order",
         order_id: orderId,
         prefill: {
-          email: 'user@example.com',
-          contact: '9876543210',
           name: username,
+          email: "user@example.com",
+          contact: "1234567890",
         },
-        theme: { color: '#4A8F47' },
+        notes: {
+          address: submittedAddress,
+        },
       };
 
       RazorpayCheckout.open(options)
-        .then(async (data: any) => {
-          console.log('Payment successful:', data);
-
-          const orderDetails = {
-            orderedRole: "patient",
-            orderedName: username,
-            orderedUserId: username,
-            itemName: Object.keys(cartItems).map(itemId => {
-              const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-              return item ? item.name : '';
-            }).filter(Boolean).join(", "),
-            quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-            category: "South",
-            price: orderTotal,
-            orderStatus: null,
-            paymentType: "UPI",
-            paymentStatus: "SUCCESS",
-            orderDateTime: new Date().toISOString(),
-            address: submittedAddress,
-          };
-
-          await axiosInstance.post("/orders", orderDetails);
-          await AsyncStorage.removeItem('patient_cart');
-          router.push('/(patient)/order-success');
+        .then(async (response) => {
+          await verifyPayment(response);
         })
-        .catch((error: any) => {
-          console.error('Payment failed:', error);
-          Alert.alert('Payment Failed', 'Please try again or choose a different payment method.');
+        .catch((error) => {
+          if (error.code !== 'USER_CLOSED') {
+            Alert.alert("Payment Failed", "Please try again or choose a different payment method.");
+          }
         });
     } catch (error) {
-      console.error("Payment initiation failed", error);
-      Alert.alert("Error", "There was an issue processing your payment. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Payment error:", error);
+      Alert.alert("Error", "There was an issue processing your payment.");
+    }
+  };
+
+  const verifyPayment = async (response: any) => {
+    const paymentData = {
+      orderId: response.razorpay_order_id,
+      paymentId: response.razorpay_payment_id,
+      paymentStatus: response.razorpay_payment_status || "captured",
+      paymentMethod: response.method || "upi",
+      amount: orderTotal,
+      createdAt: new Date().toISOString(),
+    };
+
+    const orderDetails = {
+      orderedRole: "Patient",
+      orderedName: username,
+      orderedUserId: username,
+      itemName: Object.keys(cartItems).map(itemId => {
+        const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+        return item ? item.name : '';
+      }).join(", "),
+      quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+      category: "South",
+      price: orderTotal,
+      orderStatus: null,
+      paymentType: "UPI",
+      paymentStatus: null,
+      orderDateTime: new Date().toISOString(),
+      address: submittedAddress,
+    };
+
+    try {
+      const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
+      if (result.status === 200) {
+        await axiosInstance.post("/orders", orderDetails);
+        await AsyncStorage.removeItem('patient_cart');
+        router.push('/(patient)/order-success');
+      } else {
+        Alert.alert("Error", "Payment verification failed!");
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      Alert.alert("Error", "There was an issue verifying your payment.");
+    }
+  };
+
+  const handleCOD = async () => {
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (!token) {
+      Alert.alert("Error", "Please login first");
+      return;
+    }
+
+    const orderDetails = {
+      orderedRole: "Patient",
+      orderedName: username,
+      orderedUserId: username,
+      itemName: Object.keys(cartItems).map(itemId => {
+        const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+        return item ? item.name : '';
+      }).join(", "),
+      quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+      category: "South",
+      price: orderTotal,
+      orderStatus: null,
+      paymentType: "COD",
+      paymentStatus: null,
+      orderDateTime: new Date().toISOString(),
+      address: submittedAddress,
+    };
+
+    try {
+      await axiosInstance.post("/orders", orderDetails);
+      await AsyncStorage.removeItem('patient_cart');
+      router.push('/(patient)/order-success');
+    } catch (error) {
+      console.error("Order error:", error);
+      Alert.alert("Error", "There was an issue submitting your order.");
     }
   };
 
   return (
-    <>
-      {showLoginForm && (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showLoginForm}
-          onRequestClose={() => setShowLoginForm(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Patient Login</Text>
-              <Text style={styles.modalSubtitle}>Please enter your UHID to continue</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {/* Order Summary */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Summary</Text>
+          <View style={styles.divider} />
+          
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderText}>Item</Text>
+            <Text style={styles.tableHeaderText}>Qty</Text>
+            <Text style={styles.tableHeaderText}>Price</Text>
+          </View>
+          
+          {Object.keys(cartItems).map(itemId => {
+            const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+            if (!item) return null;
+            
+            return (
+              <View key={itemId} style={styles.tableRow}>
+                <Text style={styles.tableCell}>{item.name}</Text>
+                <Text style={styles.tableCell}>{cartItems[parseInt(itemId)]}</Text>
+                <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
+              </View>
+            );
+          })}
+        </View>
 
+        {/* Delivery Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Delivery Details</Text>
+          <View style={styles.divider} />
+          
+          {submittedAddress && !isEditing ? (
+            <View style={styles.addressContainer}>
+              <Text style={styles.addressText}>{submittedAddress}</Text>
+              <TouchableOpacity onPress={handleAddressEdit}>
+                <Text style={styles.editButton}>Edit Address</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.addressInputContainer}>
               <TextInput
-                style={styles.input}
-                value={uhid}
-                onChangeText={setUhid}
-                placeholder="Enter UHID"
-                autoCapitalize="none"
+                style={styles.addressInput}
+                value={address}
+                onChangeText={setAddress}
+                placeholder="Enter delivery address"
+                multiline
+                numberOfLines={4}
               />
-
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowLoginForm(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.submitButtonLogin}
-                  onPress={handlePatientLogin}
-                  disabled={loading}
-                >
-                  <Text style={styles.submitButtonText}>
-                    {loading ? 'Logging in...' : 'Submit'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ScrollView style={styles.scrollView}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Order Summary</Text>
-            <View style={styles.divider} />
-            
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.itemColumnText]}>Item</Text>
-              <Text style={[styles.tableHeaderText, styles.qtyColumnText]}>Qty</Text>
-              <Text style={[styles.tableHeaderText, styles.priceColumnText]}>Total Price</Text>
-            </View>
-            
-            {Object.keys(cartItems).map(itemId => {
-              const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-              if (!item) return null;
-              
-              return (
-                <View key={itemId} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, styles.itemColumnText]} numberOfLines={1}>{item.name}</Text>
-                  <Text style={[styles.tableCell, styles.qtyColumnText]}>{cartItems[itemId]}</Text>
-                  <Text style={[styles.tableCell, styles.priceColumnText]}>₹{calculateItemTotal(item, cartItems[itemId])}</Text>
-                </View>
-              );
-            })}
-          </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Delivery Details</Text>
-            <View style={styles.divider} />
-            
-            {submittedAddress && !isEditing ? (
-              <View style={styles.addressContainer}>
-                <Text style={styles.addressText}>{submittedAddress}</Text>
-                <TouchableOpacity style={styles.editButton} onPress={handleAddressEdit}>
-                  <Text style={styles.editButtonText}>Edit Address</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.addressInputContainer}>
-                <TextInput
-                  style={styles.addressInput}
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="Enter your delivery address"
-                  multiline
-                  numberOfLines={3}
-                />
-                <TouchableOpacity 
-                  style={styles.submitButton} 
-                  onPress={handleAddressSubmit}
-                >
-                  <Text style={styles.submitButtonText}>Submit</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Order Total:</Text>
-            <View style={styles.divider} />
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Item Total</Text>
-              <Text style={styles.summaryValue}>₹{orderTotal}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delivery Fee (4.0 kms)</Text>
-              <Text style={styles.summaryValue}>₹{deliveryFee}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delivery Tip</Text>
-              <View style={styles.tipInputContainer}>
-                <Text style={styles.rupeeSign}>₹</Text>
-                <TextInput
-                  style={styles.tipInput}
-                  value={tip.toString()}
-                  onChangeText={(text) => {
-                    const value = parseInt(text) || 0;
-                    setTip(Math.max(0, value));
-                  }}
-                  keyboardType="numeric"
-                  placeholder="0"
-                />
-              </View>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Platform Fee</Text>
-              <Text style={styles.summaryValue}>₹{platformFee}</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>GST and Restaurant Charges</Text>
-              <Text style={styles.summaryValue}>₹{gstAndCharges}</Text>
-            </View>
-            
-            <View style={[styles.summaryRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>TO PAY</Text>
-              <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.paymentOptionsContainer}>
-            <TouchableOpacity 
-              style={[styles.paymentButton, styles.codButton]} 
-              onPress={handleCOD}
-              disabled={loading}
-            >
-              <CashIcon size={24} color="white" />
-              <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.paymentButton, styles.upiButton]} 
-              onPress={handleUPI}
-              disabled={loading}
-            >
-              <CreditCard size={24} color="white" />
-              <Text style={styles.paymentButtonText}>UPI</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {loading && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#4A8F47" />
-              <Text style={styles.loadingText}>Processing your order...</Text>
+              <TouchableOpacity style={styles.submitButton} onPress={handleAddressSubmit}>
+                <Text style={styles.submitButtonText}>Submit</Text>
+              </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
-      </SafeAreaView>
-    </>
+        </View>
+
+        {/* Order Total */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Order Total:</Text>
+          <View style={styles.divider} />
+          
+          <View style={styles.summaryRow}>
+            <Text>Item Total</Text>
+            <Text>₹{orderTotal}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>Delivery Fee</Text>
+            <Text>₹{deliveryFee}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>Delivery Tip</Text>
+            <TextInput
+              style={styles.tipInput}
+              value={tip.toString()}
+              onChangeText={(text) => setTip(Math.max(0, parseFloat(text) || 0))}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>Platform Fee</Text>
+            <Text>₹{platformFee}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>GST and Charges</Text>
+            <Text>₹{gstAndCharges}</Text>
+          </View>
+          
+          <View style={[styles.summaryRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>TO PAY</Text>
+            <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
+          </View>
+        </View>
+
+        {/* Payment Options */}
+        <View style={styles.paymentOptions}>
+          <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
+            <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.upiButton} onPress={() => setShowLoginForm(true)}>
+            <Text style={styles.paymentButtonText}>UPI</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Patient Login Modal */}
+      <Modal visible={showLoginForm} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>PATIENT LOGIN</Text>
+            <Text style={styles.modalSubtitle}>Login</Text>
+            
+            <Text style={styles.inputLabel}>UHID</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={uhid}
+              onChangeText={setUhid}
+              placeholder="Enter UHID"
+            />
+            
+            <TouchableOpacity style={styles.modalButton} onPress={handlePatientLogin}>
+              <Text style={styles.modalButtonText}>Submit</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff',
   },
   scrollView: {
-    flex: 1,
+    padding: 16,
   },
   section: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    margin: 15,
-    padding: 16,
-    ...Platform.select({
-      web: {
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-      },
-    }),
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
   divider: {
     height: 1,
-    backgroundColor: '#e0e0e0',
-    marginBottom: 16,
+    backgroundColor: '#ddd',
+    marginBottom: 12,
   },
   tableHeader: {
     flexDirection: 'row',
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   tableHeaderText: {
-    fontWeight: '600',
-    color: '#666',
-    fontSize: 14,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   tableCell: {
-    fontSize: 15,
-  },
-  itemColumnText: {
-    flex: 2,
-    paddingRight: 10,
-  },
-  qtyColumnText: {
-    flex: 0.5,
+    flex: 1,
     textAlign: 'center',
   },
-  priceColumnText: {
-    flex: 1,
-    textAlign: 'right',
-  },
   addressContainer: {
-    marginVertical: 10,
+    marginBottom: 16,
   },
   addressText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
+    marginBottom: 8,
   },
   editButton: {
-    marginTop: 10,
-    alignSelf: 'flex-start',
-  },
-  editButtonText: {
-    color: '#4A8F47',
-    fontWeight: '500',
-    fontSize: 14,
+    color: 'blue',
+    textAlign: 'right',
   },
   addressInputContainer: {
-    marginVertical: 10,
+    marginBottom: 16,
   },
   addressInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    padding: 12,
-    fontSize: 15,
-    height: 100,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    minHeight: 100,
+    marginBottom: 8,
     textAlignVertical: 'top',
   },
   submitButton: {
     backgroundColor: '#4A8F47',
     padding: 12,
-    borderRadius: 6,
-    marginTop: 10,
+    borderRadius: 4,
     alignItems: 'center',
   },
   submitButtonText: {
     color: 'white',
-    fontWeight: '600',
-    fontSize: 15,
+    fontWeight: 'bold',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  summaryLabel: {
-    fontSize: 15,
-    color: '#333',
-  },
-  summaryValue: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  tipInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-  },
-  rupeeSign: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  tipInput: {
-    padding: 8,
-    marginLeft: 4,
-    fontSize: 16,
-    minWidth: 60,
+    marginBottom: 8,
   },
   totalRow: {
-    borderBottomWidth: 0,
-    marginTop: 4,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    paddingTop: 8,
   },
   totalLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: 'bold',
   },
   totalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4A8F47',
+    fontWeight: 'bold',
   },
-  paymentOptionsContainer: {
+  tipInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 4,
+    width: 60,
+    textAlign: 'center',
+  },
+  paymentOptions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 15,
-    ...Platform.select({
-      web: {
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-      },
-    }),
-  },
-  paymentButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 15,
-    borderRadius: 8,
-    marginHorizontal: 5,
+    marginTop: 20,
   },
   codButton: {
-    backgroundColor: '#8E44AD',
+    backgroundColor: '#4A8F47',
+    padding: 15,
+    borderRadius: 4,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
   },
   upiButton: {
     backgroundColor: '#4A8F47',
+    padding: 15,
+    borderRadius: 4,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
   },
   paymentButtonText: {
     color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#4A8F47',
+    fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
-    width: '80%',
     backgroundColor: 'white',
-    borderRadius: 10,
     padding: 20,
+    borderRadius: 8,
+    width: '80%',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
     textAlign: 'center',
+    marginBottom: 8,
   },
   modalSubtitle: {
-    fontSize: 16,
-    marginBottom: 20,
     textAlign: 'center',
-    color: '#666',
+    marginBottom: 16,
   },
-  input: {
+  inputLabel: {
+    marginBottom: 4,
+  },
+  modalInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 20,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 16,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cancelButton: {
-    backgroundColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    color: '#333',
-    textAlign: 'center',
-  },
-  submitButtonLogin: {
+  modalButton: {
     backgroundColor: '#4A8F47',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
+    padding: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
 });
