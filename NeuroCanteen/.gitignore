@@ -22,7 +22,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
-
+NeuroCanteen\.expo\types\router.d.ts
 # Native
 *.orig.*
 *.jks
