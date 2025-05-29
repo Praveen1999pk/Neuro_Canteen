@@ -193,7 +193,7 @@ export default function DeliveryOrders() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee', marginTop: 44 },
+  header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee', marginTop: 0 },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333' },
   headerSubtitle: { fontSize: 16, color: '#666', marginTop: 4 },
   searchContainer: { flexDirection: 'row', padding: 16, gap: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
