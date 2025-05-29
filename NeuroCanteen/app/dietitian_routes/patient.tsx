@@ -56,8 +56,10 @@ export default function PatientScreen() {
             const data = response.data;
             setpatient(data[0]);
             const uhid = data[0]?.uhid;
+            const patientphone = data[0]?.patientMobileNo;
             if (uhid) {
               await AsyncStorage.setItem('patientUHID', uhid);
+              await AsyncStorage.setItem('patientPHONE', patientphone);        
               setuhid(uhid)
               console.log('UHID saved:', uhid);
             }else{

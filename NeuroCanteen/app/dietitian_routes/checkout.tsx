@@ -219,10 +219,12 @@ function CheckoutButton() {
       try {
         setIsLoading(true);
         const id = await AsyncStorage.getItem('patientUHID');
+        const PatientPhone = await AsyncStorage.getItem('patientPHONE');
+        
         if (!id) return;
 
         const order = {
-          orderedRole: 'Patient',
+          orderedRole: 'Dietitian',
           orderedUserId: id,
           itemName: order_detailes.items.map((i: OrderItem) => i.item.name).join(', '),
           quantity: order_detailes.items.reduce((sum:any, i:any) => sum + i.quantity, 0),
@@ -233,6 +235,7 @@ function CheckoutButton() {
           paymentStatus: null,
           orderDateTime: order_detailes.timestamp,
           address: address.fullAddress,
+          phoneNo: PatientPhone
         };
 
         const response = await axiosInstance.post('/orders', order);

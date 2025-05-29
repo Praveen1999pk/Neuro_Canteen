@@ -147,10 +147,10 @@ export default function OrderHistoryScreen() {
             <View style={styles.orderHeader}>
               <View style={styles.orderIdContainer}>
                 <Text style={styles.orderIdLabel}>Order #{order.orderId}</Text>
-                <Text style={styles.orderCategory}>{order.orderedUserId}</Text>
+                <Text style={styles.orderCategory}>{order.phoneNo}</Text>
               </View>
               <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>{order.orderedName}</Text>
+                <Text style={styles.statusText}>{order.orderedUserId}</Text>
               </View>
             </View>
 

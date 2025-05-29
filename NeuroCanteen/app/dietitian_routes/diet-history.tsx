@@ -77,6 +77,7 @@ export default function OrderHistoryScreen() {
       }
     });
         const data = response.data;
+        console.log(data)
         setorders(data)
     } catch (error) {
         console.error('Failed to fetch rooms:', error);
@@ -158,10 +159,10 @@ export default function OrderHistoryScreen() {
             <View style={styles.orderHeader}>
               <View style={styles.orderIdContainer}>
                 <Text style={styles.orderIdLabel}>Order #{order.orderId}</Text>
-                <Text style={styles.orderCategory}>{order.category} Cuisine</Text>
+                <Text style={styles.orderCategory}>{order.orderedUserId}</Text>
               </View>
               <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>Processing</Text>
+                <Text style={styles.statusText}>{order.orderedName}</Text>
               </View>
             </View>
 
@@ -179,7 +180,7 @@ export default function OrderHistoryScreen() {
                   ₹{order.price.toFixed(2)}
                 </Text>
                 <View style={styles.paymentBadge}>
-                  <Text style={styles.paymentText}>{order.paymentType}</Text>
+                  <Text style={styles.paymentText}>{order.orderStatus}</Text>
                 </View>
               </View>
 
@@ -207,10 +208,10 @@ export default function OrderHistoryScreen() {
               )}
             </View>
             
-            <TouchableOpacity style={styles.detailsButton}>
+            {/* <TouchableOpacity style={styles.detailsButton}>
               <Text style={styles.detailsButtonText}>View Details</Text>
               <ChevronRight size={16} color="#2E7D32" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </Animated.View>
         ))}
       </ScrollView>
@@ -224,8 +225,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: '#2E7D32',
-    paddingTop: Platform.OS === 'web' ? 40 : 60,
+    backgroundColor: '#1B5E20',
+    paddingTop: Platform.OS === 'web' ? 40 : 20,
     paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   },
   orderCategory: {
     fontSize: 14,
-    color: '#66BB6A',
+    color: '#2E7D32',
   },
   statusBadge: {
     backgroundColor: '#E8F5E9',
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#F1F8E9',
+    backgroundColor: '#E8F5E9',
     borderRadius: 12,
     padding: 12,
     marginTop: 8,
