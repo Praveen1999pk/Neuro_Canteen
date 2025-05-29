@@ -45,7 +45,7 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
-          <User size={40} color="#FF6B00" />
+          <User size={40} color="white" />
         </View>
         <Text style={styles.username}>Welcome, {username}</Text>
         <Text style={styles.role}>kitchen Account</Text>
@@ -53,7 +53,7 @@ export default function ProfileScreen() {
 
       <View style={styles.optionsContainer}>
         <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
-          <LogOut size={24} color="#FF3B30" />
+          <LogOut size={24} color="#1B5E20" />
           <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFF0E6',
+    backgroundColor: '#1B5E20',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   logoutText: {
-    color: '#FF3B30',
+    color: '#1B5E20',
   },
   appInfoContainer: {
     position: 'absolute',
