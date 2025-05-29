@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
-import { useState,useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, UserCog } from 'lucide-react-native';
+import { useState } from 'react';
 import { loginAdmin } from '../api/auth';
+
 export default function LoginScreen() {
+  const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,14 +15,12 @@ export default function LoginScreen() {
   
     const result = await loginAdmin(username, password);
     if (result.success) {
-      // MenuScreen()
       router.replace('/(admin)');
     } else {
       Alert.alert('Login Failed', result.message);
     }
     setLoading(false);
   };
-  
 
   const handleBack = () => {
     router.replace('/');
@@ -49,6 +49,11 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
+          <View style={styles.adminHeader}>
+            <UserCog color="#0F5132" size={32} />
+            <Text style={styles.adminTitle}>Admin Login</Text>
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Username</Text>
             <TextInput
@@ -107,7 +112,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 24,
@@ -119,6 +124,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
     color: '#374151',
+  },
+  adminHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  adminTitle: {
+    fontSize: 22,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#0F5132',
+    marginLeft: 8,
   },
   form: {
     padding: 24,
@@ -140,11 +158,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Regular',
     fontSize: 16,
   },
-  rememberContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: 24,
-  },
   loginButton: {
     backgroundColor: '#0F5132',
     borderRadius: 12,
@@ -160,4 +173,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-

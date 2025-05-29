@@ -60,7 +60,7 @@ export default function HandlepatientLogin() {
           <View style={styles.PatientHeader}>
             <Text style={styles.PatientTitle}>Patient Login</Text>
           </View>
-
+  
           <View style={styles.inputGroup}>
             <Text style={styles.label}>UHID</Text>
             <TextInput
@@ -73,14 +73,7 @@ export default function HandlepatientLogin() {
               autoFocus={true}
             />
           </View>
-
-          <View style={styles.helpContainer}>
-            <TouchableOpacity>
-              <Text style={styles.helpText}>Need help finding your UHID?</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity 
+         <TouchableOpacity 
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleManualLogin}
             disabled={loading}
