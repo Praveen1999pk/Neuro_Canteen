@@ -9,7 +9,7 @@ import axiosInstance from '../api/axiosInstance';
 export default function DietitianHomeScreen() {
   const navigation = useNavigation<any>(); 
   const router = useRouter();
-  const [floors, setFloors] = useState<number[]>([1]);
+  const [floors, setFloors] = useState<number[]>([]);
   const [numColumns, setNumColumns] = useState(2);
 
 

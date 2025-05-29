@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-
+import { StyleSheet } from 'react-native';
 export default function DietitianLayout() {
   useFrameworkReady();
 
@@ -89,3 +89,19 @@ export default function DietitianLayout() {
   );
 }
 
+const styles = StyleSheet.create({
+  tabBar: {
+    borderTopWidth: 1,
+    borderTopColor: '#EAEAEA',
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  header: {
+    backgroundColor: '#1B5E20',
+  },
+  headerTitle: {
+    color: 'white',
+    fontWeight: '600',
+  },
+});

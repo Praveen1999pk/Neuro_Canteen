@@ -8,7 +8,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
-screenOptions={{
+        screenOptions={{
         headerShown: true,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: '#4A8F47',
@@ -20,7 +20,7 @@ screenOptions={{
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Floors',
+          title: 'Home',
           tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
         }}
       />
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   header: {
-    backgroundColor: '#4A8F47',
+    backgroundColor: '#1B5E20',
   },
   headerTitle: {
     color: 'white',

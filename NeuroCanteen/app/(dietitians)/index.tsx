@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     backgroundColor: '#1B5E20',
-    paddingTop: Platform.OS === 'web' ? 40 : 60,
+    paddingTop: Platform.OS === 'web' ? 40 : 40,
     paddingBottom: 20,
     alignItems: 'center',
     borderBottomLeftRadius: 24,

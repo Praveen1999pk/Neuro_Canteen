@@ -193,7 +193,7 @@ export default function CreateDietScreen() {
           </View>
         </View>
         
-        {/* Dietary Preferences Section */}
+        {/* Dietary Preferences Section
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Dietary Preferences</Text>
           <Text style={styles.sectionDescription}>
@@ -240,7 +240,7 @@ export default function CreateDietScreen() {
               />
             </View>
           </View>
-        </View>
+        </View> */}
         
         {/* Allergies Section */}
         <View style={styles.section}>

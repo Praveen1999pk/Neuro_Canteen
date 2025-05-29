@@ -256,7 +256,7 @@ export default function PatientScreen() {
         <View style={styles.spacer} />
       </ScrollView>
       
-      <View style={styles.actionContainer}>
+    <View style={styles.actionContainer}>
   {/* Create Diet Button */}
   <TouchableOpacity 
     style={styles.actionButton}
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   spacer: {
-    height: 100,
+    height: 170,
   },
   actionContainer: {
     position: 'absolute',
