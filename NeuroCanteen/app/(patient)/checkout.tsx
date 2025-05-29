@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
+import { useEffect } from 'react';
 
 type MenuItem = {
   id: number;
@@ -26,16 +27,33 @@ type CartItems = {
   [key: number]: number;
 };
 
-export default function PatientOrderCheckout() {
+export default function patientOrderCheckout() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const [tip, setTip] = useState(0);
+  const MAX_TIP = 500;
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
   const [uhid, setUhid] = useState('');
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [username, setUsername] = useState('');
+  useEffect(() => {
+  const fetchUsername = async () => {
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (token) {
+      try {
+        const { sub } = JSON.parse(atob(token.split('.')[1]));
+        console.log("Decoded user:", sub);
+        setUsername(sub);
+      } catch (error) {
+        console.error("Error decoding JWT token:", error);
+      }
+    }
+  };
+  fetchUsername();
+}, []);
+
 
   const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
   const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
@@ -54,30 +72,12 @@ export default function PatientOrderCheckout() {
     }
     return total;
   };
-
+  
   const orderTotal = calculateOrderTotal();
   const deliveryFee = 0;
   const platformFee = 0;
   const gstAndCharges = 0;
   const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
-
-  const handlePatientLogin = async () => {
-    try {
-      const response = await axiosInstance.post("/authenticate/patient", { uhid });
-      if (response.data.jwt) {
-        await AsyncStorage.setItem("jwtToken", response.data.jwt);
-        setShowLoginForm(false);
-        const token = response.data.jwt;
-        const decodedToken = jwtDecode(token);
-        console.log("Decoded Token:", decodedToken);
-        setUsername(decodedToken.sub ?? '');
-        handleUPI();
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      Alert.alert("Error", "Failed to login. Please check your UHID.");
-    }
-  };
 
   const handleAddressSubmit = () => {
     if (!address.trim()) {
@@ -93,11 +93,18 @@ export default function PatientOrderCheckout() {
   };
 
   const handleUPI = async () => {
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (!token) {
-      setShowLoginForm(true);
-      return;
-    }
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        try {
+          const userpayload = JSON.parse(atob(token.split('.')[1]));
+          setUsername(userpayload.sub);
+          console.log("user", username);
+          setUsername(username);
+        } catch (error) {
+          console.error('Error decoding token:', error);
+        }
+      }
+
 
     try {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
@@ -144,9 +151,21 @@ export default function PatientOrderCheckout() {
       amount: orderTotal,
       createdAt: new Date().toISOString(),
     };
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (token) {
+      try {
+        const usernamepayload = JSON.parse(atob(token.split('.')[1]));
+        setUsername(usernamepayload.sub);
+
+        console.log("user", username);
+        setUsername(username);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
 
     const orderDetails = {
-      orderedRole: "Patient",
+      orderedRole: "patient",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -180,13 +199,20 @@ export default function PatientOrderCheckout() {
 
   const handleCOD = async () => {
     const token = await AsyncStorage.getItem("jwtToken");
-    if (!token) {
-      Alert.alert("Error", "Please login first");
-      return;
+    if (token) {
+      try {
+        const userpayload = JSON.parse(atob(token.split('.')[1]));
+        setUsername(userpayload.sub);
+        console.log("user", username);
+        setUsername(username);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
     }
 
+
     const orderDetails = {
-      orderedRole: "Patient",
+      orderedRole: "patient",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -287,13 +313,19 @@ export default function PatientOrderCheckout() {
           
           <View style={styles.summaryRow}>
             <Text>Delivery Tip</Text>
-            <TextInput
-              style={styles.tipInput}
-              value={tip.toString()}
-              onChangeText={(text) => setTip(Math.max(0, parseFloat(text) || 0))}
-              keyboardType="numeric"
-              placeholder="0"
-            />
+            <View style={styles.tipContainer}>
+              <TextInput
+                style={styles.tipInput}
+                value={tip.toString()}
+                onChangeText={(text) => {
+                  const newTip = Math.max(0, Math.min(MAX_TIP, parseFloat(text) || 0));
+                  setTip(newTip);
+                }}
+                keyboardType="numeric"
+                placeholder="0"
+              />
+              <Text style={styles.tipNote}>Max: ₹{MAX_TIP}</Text>
+            </View>
           </View>
           
           <View style={styles.summaryRow}>
@@ -318,33 +350,11 @@ export default function PatientOrderCheckout() {
             <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.upiButton} onPress={() => setShowLoginForm(true)}>
+          <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
             <Text style={styles.paymentButtonText}>UPI</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Patient Login Modal */}
-      <Modal visible={showLoginForm} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>PATIENT LOGIN</Text>
-            <Text style={styles.modalSubtitle}>Login</Text>
-            
-            <Text style={styles.inputLabel}>UHID</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={uhid}
-              onChangeText={setUhid}
-              placeholder="Enter UHID"
-            />
-            
-            <TouchableOpacity style={styles.modalButton} onPress={handlePatientLogin}>
-              <Text style={styles.modalButtonText}>Submit</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -513,4 +523,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  tipContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+tipNote: {
+  fontSize: 12,
+  color: '#666',
+  marginLeft: 8,
+},
 });

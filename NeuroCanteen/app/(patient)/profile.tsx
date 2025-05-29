@@ -1,157 +1,129 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LogOut, CircleHelp as HelpCircle, User, Star } from 'lucide-react-native';
-import { ProfileOption } from '@/components/ProfileOption';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { logout } from '../services/authService';
+import { User, LogOut } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState({
-    name: 'Patient',
-    email: 'patient@crimson.com',
-    role: 'Patient',
-  });
+  const [username, setUsername] = useState('patient User');
 
-  const router = useRouter();
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        try {
+          const { sub } = JSON.parse(atob(token.split('.')[1]));
+          console.log("Decoded user:", sub);
+          setUsername(sub);
+        } catch (error) {
+          console.error("Error decoding JWT token:", error);
+        }
+      }
+    };
+    fetchUsername();
+  }, []);
 
-  const handleLogout = () => {
-    console.log('User logged out');
-    router.replace('/(Role)/patient');
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          onPress: async () => {
+            await logout();
+            router.replace('/(Role)/patient'); 
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.profileHeader}>
-            <Text style={styles.greetingText}>Welcome Back 👋</Text>
-          </View>
-          <View style={styles.userInfoContainer}>
-            <View style={styles.userIconContainer}>
-              <User size={48} color="#10B981" strokeWidth={1.5} />
-            </View>
-            <Text style={styles.userName}>{user.name}</Text>
-
-            <View style={styles.roleContainer}>
-              <Star size={16} color="#047857" />
-              <Text style={styles.roleText}>{user.role}</Text>
-            </View>
-          </View>
+    <View style={styles.container}>
+      <View style={styles.profileHeader}>
+        <View style={styles.avatarContainer}>
+          <User size={40} color="#FF6B00" />
         </View>
+        <Text style={styles.username}>Welcome, {username}</Text>
+        <Text style={styles.role}>patient Account</Text>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <View style={styles.optionsContainer}>
-            <ProfileOption
-              icon={<HelpCircle color="#10B981" size={22} />}
-              title="Help & Support"
-              subtitle="Get help with using the app"
-              onPress={() => console.log('Help pressed')}
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <LogOut color="#DC2626" size={20} />
-          <Text style={styles.logoutText}>Logout</Text>
+      <View style={styles.optionsContainer}>
+        <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
+          <LogOut size={24} color="#FF3B30" />
+          <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+
+      <View style={styles.appInfoContainer}>
+        <Text style={styles.appVersion}>NeuroCanteen v1.0.0</Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#F5F5F5',
   },
   profileHeader: {
+    backgroundColor: 'white',
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
   },
-  greetingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  userInfoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#F0FDF4',
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF0E6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  userName: {
+  username: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  roleText: {
-    color: '#047857',
-    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 6,
+    marginBottom: 4,
   },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 10,
+  role: {
+    fontSize: 16,
+    color: '#666',
   },
   optionsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    backgroundColor: 'white',
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginHorizontal: 16,
   },
-  logoutButton: {
+  optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
-    marginHorizontal: 20,
-    marginTop: 30,
-    marginBottom: 40,
     padding: 16,
-    borderRadius: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  optionText: {
+    fontSize: 16,
+    marginLeft: 16,
   },
   logoutText: {
-    color: '#DC2626',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    color: '#FF3B30',
+  },
+  appInfoContainer: {
+    position: 'absolute',
+    bottom: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  appVersion: {
+    fontSize: 14,
+    color: '#999',
   },
 });

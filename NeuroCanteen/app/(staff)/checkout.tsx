@@ -31,6 +31,7 @@ export default function StaffOrderCheckout() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const [tip, setTip] = useState(0);
+  const MAX_TIP = 500;
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
@@ -312,13 +313,19 @@ export default function StaffOrderCheckout() {
           
           <View style={styles.summaryRow}>
             <Text>Delivery Tip</Text>
-            <TextInput
-              style={styles.tipInput}
-              value={tip.toString()}
-              onChangeText={(text) => setTip(Math.max(0, parseFloat(text) || 0))}
-              keyboardType="numeric"
-              placeholder="0"
-            />
+            <View style={styles.tipContainer}>
+              <TextInput
+                style={styles.tipInput}
+                value={tip.toString()}
+                onChangeText={(text) => {
+                  const newTip = Math.max(0, Math.min(MAX_TIP, parseFloat(text) || 0));
+                  setTip(newTip);
+                }}
+                keyboardType="numeric"
+                placeholder="0"
+              />
+              <Text style={styles.tipNote}>Max: ₹{MAX_TIP}</Text>
+            </View>
           </View>
           
           <View style={styles.summaryRow}>
@@ -516,4 +523,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  tipContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+tipNote: {
+  fontSize: 12,
+  color: '#666',
+  marginLeft: 8,
+},
 });

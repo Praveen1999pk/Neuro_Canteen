@@ -1,9 +1,17 @@
 import { Tabs } from 'expo-router';
 import { Package, UserCog } from 'lucide-react-native';
+import { StyleSheet } from 'react-native';
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs       screenOptions={{
+        headerShown: true,
+        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: '#4A8F47',
+        tabBarInactiveTintColor: '#666',
+        headerStyle: styles.header,
+        headerTitleStyle: styles.headerTitle,
+      }}>
       <Tabs.Screen
         name="index" // This refers to the delivery orders screen
         options={{
@@ -29,3 +37,19 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+const styles = StyleSheet.create({
+  tabBar: {
+    borderTopWidth: 1,
+    borderTopColor: '#EAEAEA',
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  header: {
+    backgroundColor: '#4A8F47',
+  },
+  headerTitle: {
+    color: 'white',
+    fontWeight: '600',
+  },
+});

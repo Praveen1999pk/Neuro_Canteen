@@ -23,7 +23,7 @@ export const loginAdmin = async (username: string, password: string) => {
     }
 
   } catch (error: any) {
-    return { success: false, message: 'Failed to connect to the server' };
+    return { success: false, message: 'Try again!' };
   }
 };
 
@@ -47,7 +47,7 @@ export const loginDelivery = async (username: string, password: string) => {
     }
 
   } catch (error: any) {
-    return { success: false, message: 'Failed to connect to the server' };
+    return { success: false, message: 'Try again!' };
   }
 };
 
@@ -73,7 +73,7 @@ export const loginStaff = async (username: string, password: string) => {
     }
 
   } catch (error: any) {
-    return { success: false, message: 'Failed to connect to the server' };
+    return { success: false, message: 'Try again!' };
   }
 };
 export const loginDietitian = async (username: string, password: string) => {
@@ -97,7 +97,7 @@ export const loginDietitian = async (username: string, password: string) => {
     }
 
   } catch (error: any) {
-    return { success: false, message: 'Failed to connect to the server' };
+    return { success: false, message: 'Try again!' };
   }
 };
 
@@ -122,7 +122,7 @@ export const loginKitchen = async (username: string, password: string) => {
     }
 
   } catch (error: any) {
-    return { success: false, message: 'Failed to connect to the server' };
+    return { success: false, message: 'Try again!' };
   }
 };
 
