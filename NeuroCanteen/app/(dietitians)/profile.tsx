@@ -44,7 +44,7 @@ export default function ProfileScreen() {
           text: 'Logout',
           onPress: async () => {
             // await logout();
-            router.replace('/(Role)/dietitian');
+            router.replace('/(Role)/dietitians');
           },
         },
       ]
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           <User size={40} color="white" />
         </View>
-        <Text style={styles.username}>{username || 'Staff User'}</Text>
+        <Text style={styles.username}>{username || 'dietitian User'}</Text>
         <Text style={styles.role}>Dietitian Account</Text>
       </View>
       

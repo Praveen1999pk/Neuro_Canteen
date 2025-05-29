@@ -1,10 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { logout } from '../services/authService';
 import { User, LogOut } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
+  const [username, setUsername] = useState('admin User');
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        try {
+          const { sub } = JSON.parse(atob(token.split('.')[1]));
+          console.log("Decoded user:", sub);
+          setUsername(sub);
+        } catch (error) {
+          console.error("Error decoding JWT token:", error);
+        }
+      }
+    };
+    fetchUsername();
+  }, []);
+
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
@@ -28,8 +47,8 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           <User size={40} color="#FF6B00" />
         </View>
-        <Text style={styles.username}>Welcome, Admin User</Text>
-        <Text style={styles.role}>Admin Account</Text>
+        <Text style={styles.username}>Welcome, {username}</Text>
+        <Text style={styles.role}>admin Account</Text>
       </View>
 
       <View style={styles.optionsContainer}>
