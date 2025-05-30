@@ -228,7 +228,6 @@ const openEditModal = (item: MenuItem) => {
   const initialTimeSlot = item.timeSlot || {};
   const normalizedTimeSlot: TimeSlotType = {};
   
-  
   Object.keys(initialTimeSlot).forEach(day => {
     const lowercaseDay = day.toLowerCase();
     normalizedTimeSlot[lowercaseDay] = initialTimeSlot[day].map((slot: string) => 
@@ -242,9 +241,9 @@ const openEditModal = (item: MenuItem) => {
     picture: item.picture || '',
     description: item.description || '',
     available: item.available,
-    staffPrice: item.staffPrice || '',
-    patientPrice: item.patientPrice || '',
-    dietitianPrice: item.dietitianPrice || '',
+    staffPrice: item.staffPrice ? item.staffPrice.toString() : '', 
+    patientPrice: item.patientPrice ? item.patientPrice.toString() : '', 
+    dietitianPrice: item.dietitianPrice ? item.dietitianPrice.toString() : '', 
     timeSlot: normalizedTimeSlot,
     combination: item.combination || '',
     diet_type: item.diet_type || ''
