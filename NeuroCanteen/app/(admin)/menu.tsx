@@ -780,7 +780,6 @@ const styles = StyleSheet.create({
  // Matrix styles
 matrixOuterContainer: {
   marginBottom: 20,
-  height: 350, // Increased height to accommodate all rows
   width: '100%',
 },
 matrixScrollContent: {
@@ -791,21 +790,21 @@ matrixContainer: {
   borderColor: '#E0E0E0',
   borderRadius: 8,
   overflow: 'hidden',
-  minWidth: 550, // Increased minimum width to fit all columns
+
 },
 matrixHeader: {
   flexDirection: 'row',
   backgroundColor: '#2E7D32',
 },
 matrixHeaderCell: {
-  width: 90, // Wider cells
-  padding: 10,
+  width: 70, // Wider cells
+  padding: 0,
   alignItems: 'center',
   justifyContent: 'center',
   minHeight: 45,
 },
 dayHeaderCell: {
-  width: 100, // Wider day header
+  width: 70, // Wider day header
   backgroundColor: '#1B5E20',
 },
 matrixHeaderText: {
@@ -825,14 +824,14 @@ matrixDayCell: {
   justifyContent: 'center',
 },
 dayCell: {
-  width: 100, // Matches header width
+  width: 70, // Matches header width
 },
 matrixDayText: {
   fontSize: 14,
   fontWeight: 'bold',
 },
 matrixCell: {
-  width: 90,
+  width: 70,
   padding: 10,
   alignItems: 'center',
   justifyContent: 'center',
