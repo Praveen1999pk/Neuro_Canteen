@@ -58,13 +58,11 @@ export default function Handledietitianlogin() {
           <Stethoscope color="#0F5132" size={32} />
           <Text style={styles.deliveryTitle}>Dietitian Login</Text>
         </View>
-
-
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>User Id</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username"
+              placeholder="Enter your dietiatian user Id"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"

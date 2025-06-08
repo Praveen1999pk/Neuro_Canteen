@@ -55,10 +55,10 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>User Id</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username"
+              placeholder="Enter your admin user Id"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"

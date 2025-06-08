@@ -6,8 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
-  Modal
+  Alert
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,25 +34,33 @@ export default function StaffOrderCheckout() {
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
-  const [uhid, setUhid] = useState('');
-  const [showLoginForm, setShowLoginForm] = useState(false);
   const [username, setUsername] = useState('');
+  const [creditBalance, setCreditBalance] = useState(0);
   useEffect(() => {
-  const fetchUsername = async () => {
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (token) {
-      try {
-        const { sub } = JSON.parse(atob(token.split('.')[1]));
-        console.log("Decoded user:", sub);
-        setUsername(sub);
-      } catch (error) {
-        console.error("Error decoding JWT token:", error);
+    const fetchUsername = async () => {
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        try {
+          const { sub } = JSON.parse(atob(token.split('.')[1]));
+          console.log("Decoded user:", sub);
+          setUsername(sub);
+        } catch (error) {
+          console.error("Error decoding JWT token:", error);
+        }
       }
-    }
-  };
-  fetchUsername();
-}, []);
+    };
+    fetchUsername();
 
+  const fetchCreditBalance = async () => {
+  try {
+    const response = await axiosInstance.get(`/users/credit-balance?userId=${username}`);
+    setCreditBalance(response.data.balance);
+  } catch (error) {
+    console.error("Error fetching credit balance:", error);
+  }
+};
+  }, []);
+  
 
   const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
   const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
@@ -93,18 +100,15 @@ export default function StaffOrderCheckout() {
   };
 
   const handleUPI = async () => {
-      const token = await AsyncStorage.getItem("jwtToken");
-      if (token) {
-        try {
-          const userpayload = JSON.parse(atob(token.split('.')[1]));
-          setUsername(userpayload.sub);
-          console.log("user", username);
-          setUsername(username);
-        } catch (error) {
-          console.error('Error decoding token:', error);
-        }
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (token) {
+      try {
+        const userpayload = JSON.parse(atob(token.split('.')[1]));
+        setUsername(userpayload.sub);
+      } catch (error) {
+        console.error('Error decoding token:', error);
       }
-
+    }
 
     try {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
@@ -151,21 +155,9 @@ export default function StaffOrderCheckout() {
       amount: orderTotal,
       createdAt: new Date().toISOString(),
     };
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (token) {
-      try {
-        const usernamepayload = JSON.parse(atob(token.split('.')[1]));
-        setUsername(usernamepayload.sub);
-
-        console.log("user", username);
-        setUsername(username);
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
-    }
 
     const orderDetails = {
-      orderedRole: "staff",
+      orderedRole: "Staff",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -178,6 +170,23 @@ export default function StaffOrderCheckout() {
       orderStatus: null,
       paymentType: "UPI",
       paymentStatus: null,
+      razorpayOrderId: response.razorpay_order_id,
+      razorpayPaymentId: response.razorpay_payment_id,
+      razorpayPaymentStatus: response.razorpay_payment_status || "captured",
+      razorpayMethod: response.method || "upi",
+      razorpayCreatedAt: new Date().toISOString(),
+      razorpayAmount: orderTotal,
+      razorpayNotes: {
+        address: submittedAddress,
+      },
+      razorpayMetadata: {
+        userId: username,
+      },
+      razorpayPaymentData: paymentData,
+      razorpayPaymentVerification: true,
+      razorpayPaymentVerificationStatus: "VERIFIED",
+      razorpayPaymentVerificationMessage: "Payment verified successfully",
+      razorpayPaymentVerificationDate: new Date().toISOString(),
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
     };
@@ -203,16 +212,13 @@ export default function StaffOrderCheckout() {
       try {
         const userpayload = JSON.parse(atob(token.split('.')[1]));
         setUsername(userpayload.sub);
-        console.log("user", username);
-        setUsername(username);
       } catch (error) {
         console.error('Error decoding token:', error);
       }
     }
 
-
     const orderDetails = {
-      orderedRole: "staff",
+      orderedRole: "Staff",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -224,7 +230,7 @@ export default function StaffOrderCheckout() {
       price: orderTotal,
       orderStatus: null,
       paymentType: "COD",
-      paymentStatus: null,
+      paymentStatus: "PENDING",
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
     };
@@ -237,6 +243,64 @@ export default function StaffOrderCheckout() {
       console.error("Order error:", error);
       Alert.alert("Error", "There was an issue submitting your order.");
     }
+  };
+
+  const handleCredit = async () => {
+    Alert.alert(
+      "Confirm Credit Purchase",
+      `This will add ₹${grandTotal.toFixed(2)} to your credit balance. Continue?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Confirm", 
+          onPress: async () => {
+            const token = await AsyncStorage.getItem("jwtToken");
+            if (token) {
+              try {
+                const userpayload = JSON.parse(atob(token.split('.')[1]));
+                setUsername(userpayload.sub);
+              } catch (error) {
+                console.error('Error decoding token:', error);
+              }
+            }
+            
+            const orderDetails = {
+              orderedRole: "Staff",
+              orderedName: username,
+              orderedUserId: username,
+              itemName: Object.keys(cartItems).map(itemId => {
+                const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+                return item ? item.name : '';
+              }).join(", "),
+              quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+              category: "South",
+              price: orderTotal,
+              orderStatus: null,
+              paymentType: "CREDIT",
+              paymentStatus: null,
+              orderDateTime: new Date().toISOString(),
+              address: submittedAddress,
+            };
+
+            try {
+              const response = await axiosInstance.post("/orders", orderDetails);
+        
+              console.log("Order placed successfully:", response.data);
+              await AsyncStorage.removeItem('staff_cart');
+              router.push('/(staff)/order-success');
+            } catch (error) {
+              console.error("Order error:", error);
+              let message = "There was an issue recording your credit purchase.";
+              if (typeof error === "object" && error !== null && "response" in error) {
+                const err = error as { response?: { data?: { message?: string } } };
+                message = err.response?.data?.message || message;
+              }
+              Alert.alert("Error", message);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -342,17 +406,30 @@ export default function StaffOrderCheckout() {
             <Text style={styles.totalLabel}>TO PAY</Text>
             <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
           </View>
-        </View>
+        
+          {/* Payment Options */}
+          <View style={styles.paymentOptions}>
+            <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
+              <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
+              <Text style={styles.paymentButtonText}>UPI</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Payment Options */}
-        <View style={styles.paymentOptions}>
-          <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
-            <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
-            <Text style={styles.paymentButtonText}>UPI</Text>
-          </TouchableOpacity>
+          {/* Credit Payment Option */}
+          <View style={styles.paymentOptions}>
+            <TouchableOpacity 
+              style={styles.creditButton}
+              onPress={handleCredit}
+            >
+              <Text style={styles.paymentButtonText}>Pay Later with Credit</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.creditNotice}>
+            Choosing "Pay Later with Credit" will add ₹{grandTotal.toFixed(2)} to your credit balance
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -448,6 +525,15 @@ const styles = StyleSheet.create({
   totalValue: {
     fontWeight: 'bold',
   },
+  tipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tipNote: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
   tipInput: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -477,59 +563,23 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     alignItems: 'center',
   },
+  creditButton: {
+    backgroundColor: '#4A8F47',
+    padding: 15,
+    borderRadius: 4,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
   paymentButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 8,
-    width: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  creditNotice: {
+    color: '#666',
+    fontSize: 12,
     textAlign: 'center',
-    marginBottom: 8,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
-  modalSubtitle: {
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  inputLabel: {
-    marginBottom: 4,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 16,
-  },
-  modalButton: {
-    backgroundColor: '#4A8F47',
-    padding: 12,
-    borderRadius: 4,
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  tipContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-tipNote: {
-  fontSize: 12,
-  color: '#666',
-  marginLeft: 8,
-},
 });

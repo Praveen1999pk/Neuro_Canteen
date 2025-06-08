@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NeuroCanteen",
-    "slug": "NeuroCanteen",
+    "name": "Neuro Canteen",
+    "slug": "neuro-canteen",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -43,9 +43,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "457de731-1245-416c-b331-8ec97d7ab22f"
+        "projectId": "a932ee59-f5c8-4854-98d4-f9a5114d75f1"
       }
     },
-    "owner": "neuro_canteen"
+    "owner": "neuro_canteen-2-2"
   }
 }

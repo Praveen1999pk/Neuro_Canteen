@@ -7,9 +7,10 @@ import {
   Truck,
   ChefHat,
   UtensilsCrossed,
+  CreditCard,
+  
 } from 'lucide-react-native';
 import { View, StyleSheet } from 'react-native';
-import { useHrefAttrs } from 'expo-router/build/link/useLinkHooks';
 
 export default function AdminLayout() {
   return (
@@ -43,9 +44,15 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="payment_in"
+        options={{
+          title: 'Credit Payments',
+          tabBarIcon: ({ color }) => <CreditCard size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="staff"
         options={{ href: null }}
-        
       />
       <Tabs.Screen
         name="patient"
@@ -75,7 +82,6 @@ export default function AdminLayout() {
         }}
       />
     </Tabs>
-   
   );
 }
 

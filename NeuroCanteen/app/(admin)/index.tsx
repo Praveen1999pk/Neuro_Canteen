@@ -15,6 +15,7 @@ import {
   Truck,
   ChefHat,
   Menu,
+  BanknoteArrowDown,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -68,6 +69,16 @@ export default function AdminDashboard() {
     router.push(`/(admin)/${route}`);
   };
 
+  const managementItems = [
+    { title: 'Staff', icon: <Users size={32} color="#2E7D32" />, route: 'staff' },
+    { title: 'Patients', icon: <User size={32} color="#2E7D32" />, route: 'patient' },
+    { title: 'Dietitian', icon: <UtensilsCrossed size={32} color="#2E7D32" />, route: 'dietitian' },
+    { title: 'Kitchen', icon: <ChefHat size={32} color="#2E7D32" />, route: 'kitchen' },
+    { title: 'Delivery', icon: <Truck size={32} color="#2E7D32" />, route: 'delivery' },
+    { title: 'Menu', icon: <Menu size={32} color="#2E7D32" />, route: 'menu' },
+    { title: 'Credit Payment', icon: <BanknoteArrowDown size={32} color="#2E7D32" />, route: 'payment_in' },
+  ];
+
   return (
     <ScrollView
       style={styles.container}
@@ -104,54 +115,33 @@ export default function AdminDashboard() {
       </View>
 
       <Text style={styles.sectionTitle}>Management</Text>
+
       <View style={styles.managementGrid}>
-        <TouchableOpacity
-          style={styles.managementCard}
-          onPress={() => navigateTo('staff')}
-        >
-          <Users size={32} color="#2E7D32" />
-          <Text style={styles.managementTitle}>Staff</Text>
-        </TouchableOpacity>
+        {managementItems.map((item, index, arr) => {
+          const isLastOdd = arr.length % 2 !== 0 && index === arr.length - 1;
 
-        <TouchableOpacity
-          style={styles.managementCard}
-          onPress={() => navigateTo('patient')}
-        >
-          <User size={32} color="#2E7D32" />
-          <Text style={styles.managementTitle}>Patients</Text>
-        </TouchableOpacity>
+          const card = (
+            <TouchableOpacity
+              key={item.route}
+              style={styles.managementCard}
+              onPress={() => navigateTo(item.route)}
+            >
+              {item.icon}
+              <Text style={styles.managementTitle}>{item.title}</Text>
+            </TouchableOpacity>
+          );
 
-        <TouchableOpacity
-          style={styles.managementCard}
-          onPress={() => navigateTo('dietitian')}
-        >
-          <UtensilsCrossed size={32} color="#2E7D32" />
-          <Text style={styles.managementTitle}>Dietitian</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.managementCard}
-          onPress={() => navigateTo('kitchen')}
-        >
-          <ChefHat size={32} color="#2E7D32" />
-          <Text style={styles.managementTitle}>Kitchen</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.managementCard}
-          onPress={() => navigateTo('delivery')}
-        >
-          <Truck size={32} color="#2E7D32" />
-          <Text style={styles.managementTitle}>Delivery</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.managementCard}
-          onPress={() => navigateTo('menu')}
-        >
-          <Menu size={32} color="#2E7D32" />
-          <Text style={styles.managementTitle}>Menu</Text>
-        </TouchableOpacity>
+          return isLastOdd ? (
+            <View
+              key={item.route}
+              style={{ width: '100%', alignItems: 'center' }}
+            >
+              {card}
+            </View>
+          ) : (
+            card
+          );
+        })}
       </View>
     </ScrollView>
   );
