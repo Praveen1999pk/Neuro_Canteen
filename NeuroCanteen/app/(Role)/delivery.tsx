@@ -61,10 +61,10 @@ export default function Handledeliverylogin() {
 
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>User Id</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username"
+              placeholder="Enter your delivery user Id"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"

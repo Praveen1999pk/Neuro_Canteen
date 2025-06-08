@@ -6,7 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,23 +35,25 @@ export default function patientOrderCheckout() {
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
+  const [uhid, setUhid] = useState('');
+  const [showLoginForm, setShowLoginForm] = useState(false);
   const [username, setUsername] = useState('');
-
   useEffect(() => {
-    const fetchUsername = async () => {
-      const token = await AsyncStorage.getItem("jwtToken");
-      if (token) {
-        try {
-          const { sub } = JSON.parse(atob(token.split('.')[1]));
-          console.log("Decoded user:", sub);
-          setUsername(sub);
-        } catch (error) {
-          console.error("Error decoding JWT token:", error);
-        }
+  const fetchUsername = async () => {
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (token) {
+      try {
+        const { sub } = JSON.parse(atob(token.split('.')[1]));
+        console.log("Decoded user:", sub);
+        setUsername(sub);
+      } catch (error) {
+        console.error("Error decoding JWT token:", error);
       }
-    };
-    fetchUsername();
-  }, []);
+    }
+  };
+  fetchUsername();
+}, []);
+
 
   const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
   const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
@@ -90,15 +93,18 @@ export default function patientOrderCheckout() {
   };
 
   const handleUPI = async () => {
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (token) {
-      try {
-        const userpayload = JSON.parse(atob(token.split('.')[1]));
-        setUsername(userpayload.sub);
-      } catch (error) {
-        console.error('Error decoding token:', error);
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        try {
+          const userpayload = JSON.parse(atob(token.split('.')[1]));
+          setUsername(userpayload.sub);
+          console.log("user", username);
+          setUsername(username);
+        } catch (error) {
+          console.error('Error decoding token:', error);
+        }
       }
-    }
+
 
     try {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
@@ -145,6 +151,18 @@ export default function patientOrderCheckout() {
       amount: orderTotal,
       createdAt: new Date().toISOString(),
     };
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (token) {
+      try {
+        const usernamepayload = JSON.parse(atob(token.split('.')[1]));
+        setUsername(usernamepayload.sub);
+
+        console.log("user", username);
+        setUsername(username);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
 
     const orderDetails = {
       orderedRole: "patient",
@@ -185,10 +203,13 @@ export default function patientOrderCheckout() {
       try {
         const userpayload = JSON.parse(atob(token.split('.')[1]));
         setUsername(userpayload.sub);
+        console.log("user", username);
+        setUsername(username);
       } catch (error) {
         console.error('Error decoding token:', error);
       }
     }
+
 
     const orderDetails = {
       orderedRole: "patient",
@@ -216,62 +237,6 @@ export default function patientOrderCheckout() {
       console.error("Order error:", error);
       Alert.alert("Error", "There was an issue submitting your order.");
     }
-  };
-
-  const handleCredit = async () => {
-    Alert.alert(
-      "Confirm Credit Purchase",
-      `This will add ₹${grandTotal.toFixed(2)} to your credit balance. Continue?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Confirm", 
-          onPress: async () => {
-            const token = await AsyncStorage.getItem("jwtToken");
-            if (token) {
-              try {
-                const userpayload = JSON.parse(atob(token.split('.')[1]));
-                setUsername(userpayload.sub);
-              } catch (error) {
-                console.error('Error decoding token:', error);
-              }
-            }
-            
-            const orderDetails = {
-              orderedRole: "patient",
-              orderedName: username,
-              orderedUserId: username,
-              itemName: Object.keys(cartItems).map(itemId => {
-                const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-                return item ? item.name : '';
-              }).join(", "),
-              quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-              category: "South",
-              price: orderTotal,
-              orderStatus: null,
-              paymentType: "CREDIT",
-              paymentStatus: "PENDING",
-              orderDateTime: new Date().toISOString(),
-              address: submittedAddress,
-            };
-
-            try {
-              const response = await axiosInstance.post("/orders", orderDetails);
-              await AsyncStorage.removeItem('patient_cart');
-              router.push('/(patient)/order-success');
-            } catch (error) {
-              console.error("Order error:", error);
-              let message = "There was an issue recording your credit purchase.";
-              if (typeof error === "object" && error !== null && "response" in error) {
-                const err = error as { response?: { data?: { message?: string } } };
-                message = err.response?.data?.message || message;
-              }
-              Alert.alert("Error", message);
-            }
-          }
-        }
-      ]
-    );
   };
 
   return (
@@ -377,30 +342,17 @@ export default function patientOrderCheckout() {
             <Text style={styles.totalLabel}>TO PAY</Text>
             <Text style={styles.totalValue}>₹{grandTotal.toFixed(2)}</Text>
           </View>
-        
-          {/* Payment Options */}
-          <View style={styles.paymentOptions}>
-            <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
-              <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
-              <Text style={styles.paymentButtonText}>UPI</Text>
-            </TouchableOpacity>
-          </View>
+        </View>
 
-          {/* Credit Payment Option */}
-          <View style={styles.paymentOptions}>
-            <TouchableOpacity 
-              style={styles.creditButton}
-              onPress={handleCredit}
-            >
-              <Text style={styles.paymentButtonText}>Pay Later with Credit</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.creditNotice}>
-            Choosing "Pay Later with Credit" will add ₹{grandTotal.toFixed(2)} to your credit balance
-          </Text>
+        {/* Payment Options */}
+        <View style={styles.paymentOptions}>
+          <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
+            <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
+            <Text style={styles.paymentButtonText}>UPI</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -496,15 +448,6 @@ const styles = StyleSheet.create({
   totalValue: {
     fontWeight: 'bold',
   },
-  tipContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tipNote: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 8,
-  },
   tipInput: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -534,23 +477,59 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     alignItems: 'center',
   },
-  creditButton: {
-    backgroundColor: '#4A8F47',
-    padding: 15,
-    borderRadius: 4,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 10,
-  },
   paymentButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  creditNotice: {
-    color: '#666',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 8,
-    fontStyle: 'italic',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 8,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  inputLabel: {
+    marginBottom: 4,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 16,
+  },
+  modalButton: {
+    backgroundColor: '#4A8F47',
+    padding: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  tipContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+tipNote: {
+  fontSize: 12,
+  color: '#666',
+  marginLeft: 8,
+},
 });

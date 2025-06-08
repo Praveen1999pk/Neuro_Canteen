@@ -35,11 +35,17 @@ export default function PaymentIn() {
     const fetchOrders = async () => {
         try {
             const response = await axiosInstance.get<Order[]>("/orders/filter/Credit", {
-                params: {
-                    orderedRole: "Staff",
-                    paymentType: "CREDIT",
-                    paymentStatus: null
-                }
+            params: {
+                orderedRole: "Staff",
+                paymentType: "CREDIT",
+                paymentStatus: null
+            }
+            });
+
+            console.log("Full API Response:", {
+            status: response.status,
+            headers: response.headers,
+            data: response.data
             });
 
             const originalData = response.data;
@@ -52,11 +58,16 @@ export default function PaymentIn() {
             setOrders(originalData);
             summarizeOrders(originalData);
         } catch (error) {
-            if (error instanceof Error) {
-                console.error("Error fetching filtered orders:", error.message);
-            } else {
-                console.error("Error fetching filtered orders:", error);
-            }
+            if (axios.isAxiosError(error)) {
+            console.error("Axios Error Details:", {
+                message: error.message,
+                code: error.code,
+                response: error.response,
+                config: error.config
+            });
+    } else {
+      console.error("Non-Axios Error:", error);
+    }
         } finally {
             setLoading(false);
         }

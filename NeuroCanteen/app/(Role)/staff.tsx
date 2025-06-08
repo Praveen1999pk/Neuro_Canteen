@@ -57,10 +57,10 @@ export default function HandleStaffLogin() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>User Id</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username"
+              placeholder="Enter your staff user Id"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"

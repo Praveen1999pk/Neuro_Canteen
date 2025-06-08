@@ -277,13 +277,15 @@ export default function StaffOrderCheckout() {
               price: orderTotal,
               orderStatus: null,
               paymentType: "CREDIT",
-              paymentStatus: "PENDING",
+              paymentStatus: null,
               orderDateTime: new Date().toISOString(),
               address: submittedAddress,
             };
 
             try {
               const response = await axiosInstance.post("/orders", orderDetails);
+        
+              console.log("Order placed successfully:", response.data);
               await AsyncStorage.removeItem('staff_cart');
               router.push('/(staff)/order-success');
             } catch (error) {
