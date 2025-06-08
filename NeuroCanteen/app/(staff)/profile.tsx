@@ -6,7 +6,7 @@ import { User, LogOut } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
-  const [username, setUsername] = useState('kitchen User');
+  const [username, setUsername] = useState('staff User');
 
   useEffect(() => {
     const fetchUsername = async () => {
@@ -34,7 +34,7 @@ export default function ProfileScreen() {
           text: 'Logout',
           onPress: async () => {
             await logout();
-            router.replace('/(Role)/kitchen'); // change path as needed
+            router.replace('/(Role)/staff'); // change path as needed
           },
         },
       ]
@@ -48,7 +48,7 @@ export default function ProfileScreen() {
           <User size={40} color="#FF6B00" />
         </View>
         <Text style={styles.username}>Welcome, {username}</Text>
-        <Text style={styles.role}>kitchen Account</Text>
+        <Text style={styles.role}>staff Account</Text>
       </View>
 
       <View style={styles.optionsContainer}>
