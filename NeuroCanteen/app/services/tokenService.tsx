@@ -12,7 +12,17 @@ export const getToken = async () => {
 };
 
 export const removeToken = async () => {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  try {
+    await AsyncStorage.multiRemove([
+      'jwtToken',
+      'patientUHID',
+      'patientPHONE',
+      'userRole'
+    ]);
+  } catch (error) {
+    console.error('Error removing tokens:', error);
+    throw error;
+  }
 };
 
 export const getUsernameFromToken = async (): Promise<string | null> => {

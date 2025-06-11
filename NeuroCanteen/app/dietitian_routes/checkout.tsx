@@ -19,6 +19,7 @@ type OrderItem = {
     available: boolean;
   };
   quantity: number;
+  scheduledTime?: Date;
 };
 
 type Address = {
@@ -107,9 +108,14 @@ function OrderSummary() {
             <Text style={styles.itemName}>{orderItem.item.name}</Text>
             <Text style={styles.itemCategory}>{orderItem.item.category}</Text>
             <Text style={styles.itemDescription}>{orderItem.item.description}</Text>
+            {orderItem.scheduledTime && (
+              <Text style={styles.scheduledTime}>
+                Scheduled for: {orderItem.scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            )}
           </View>
           <View style={styles.priceContainer}>
-            <Text style={styles.itemPrice}>${orderItem.item.dietitianPrice}</Text>
+            <Text style={styles.itemPrice}>₹{orderItem.item.dietitianPrice}</Text>
             <Text style={styles.itemQuantity}>x{orderItem.quantity}</Text>
           </View>
         </View>
@@ -173,7 +179,7 @@ function OrderTotal() {
   const renderRow = (label: string, amount: number, isTotal = false) => (
     <View style={[styles.row, isTotal && styles.totalRow]}>
       <Text style={[styles.label, isTotal && styles.totalLabel]}>{label}</Text>
-      <Text style={[styles.amount, isTotal && styles.totalAmount]}>${amount.toFixed(2)}</Text>
+      <Text style={[styles.amount, isTotal && styles.totalAmount]}>₹{amount.toFixed(2)}</Text>
     </View>
   );
 
@@ -202,7 +208,7 @@ function OrderTotal() {
 }
 
 function CheckoutButton() {
-  const { address,toPay } = useOrder();
+  const { address, toPay } = useOrder();
   const [isLoading, setIsLoading] = useState(false);
   const route = useRoute();
   const { order_detailes } = route.params as { order_detailes: any };
@@ -215,7 +221,7 @@ function CheckoutButton() {
       Animated.timing(scaleAnim, { toValue: 1, duration: 100, easing: Easing.ease, useNativeDriver: true }),
     ]).start(async () => {
       if (!address.fullAddress) return;
-        console.log(toPay)
+      console.log(toPay)
       try {
         setIsLoading(true);
         const id = await AsyncStorage.getItem('patientUHID');
@@ -231,11 +237,17 @@ function CheckoutButton() {
           category: order_detailes.items[0]?.item.category || 'General',
           price: toPay,
           orderStatus: null,
-          paymentType: 'COD',
+          paymentType: 'CREDIT',
           paymentStatus: null,
           orderDateTime: order_detailes.timestamp,
           address: address.fullAddress,
-          phoneNo: PatientPhone
+          phoneNo: PatientPhone,
+          scheduledTimes: order_detailes.items
+            .filter((i: OrderItem) => i.scheduledTime)
+            .map((i: OrderItem) => ({
+              itemName: i.item.name,
+              scheduledTime: i.scheduledTime?.toISOString(),
+            })),
         };
 
         const response = await axiosInstance.post('/orders', order);
@@ -372,4 +384,10 @@ const styles = StyleSheet.create({
   },
   disabledButton: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   confirmButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  scheduledTime: {
+    fontSize: 12,
+    color: '#166534',
+    marginTop: 4,
+    fontWeight: '500',
+  },
 });

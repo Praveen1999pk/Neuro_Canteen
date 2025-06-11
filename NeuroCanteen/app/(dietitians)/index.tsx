@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   headerContainer: {
-    backgroundColor: '#1B5E20',
+    backgroundColor: '#2E7D32',
     paddingTop: Platform.OS === 'web' ? 40 : 40,
     paddingBottom: 20,
     alignItems: 'center',
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#1B5E20',
+    color: '#2E7D32',
     marginBottom: 24,
     textAlign: 'center',
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   loginButton: {
-    backgroundColor: '#1B5E20',
+    backgroundColor: '#2E7D32',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

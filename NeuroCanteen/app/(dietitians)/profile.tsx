@@ -34,7 +34,7 @@ export default function ProfileScreen() {
           text: 'Logout',
           onPress: async () => {
             await logout();
-            router.replace('/(Role)/dietitian'); // change path as needed
+            router.replace('/(Role)/dietitian');
           },
         },
       ]

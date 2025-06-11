@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Phone, Calendar, Package, IndianRupee } from 'lucide-react-native';
+import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function UpdateOrderScreen() {
@@ -27,8 +27,8 @@ export default function UpdateOrderScreen() {
   const { kitchenid } = useLocalSearchParams<{ kitchenid: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-//   const [paymentStatus, setPaymentStatus] = useState('PENDING');
-  const [orderStatus, setorderStatus] = useState('OUT_FOR_DELIVERY');
+  const [paymentStatus, setPaymentStatus] = useState('PENDING');
+  const [deliveryStatus, setDeliveryStatus] = useState('OUT_FOR_DELIVERY');
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -36,8 +36,8 @@ export default function UpdateOrderScreen() {
         const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
         const orderData: Order = response.data;
         setOrder(orderData);
-        // setPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
-        setorderStatus(orderData.orderStatus ?? 'NO STATUS UPDATED');
+        setPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
+        setDeliveryStatus(orderData.deliveryStatus ?? 'OutForDelivery');
       } catch (error) {
         console.error('Error fetching order:', error);
       } finally {
@@ -50,12 +50,15 @@ export default function UpdateOrderScreen() {
 
   const handleUpdateOrder = async () => {
     try {
-    //   await axiosInstance.patch(`orders/${kitchenid}/payment-received`, null, {
-    //     params: { paymentReceived: paymentStatus === "COMPLETED" },
-    //   });
+      // Only update payment status if payment type is not CREDIT
+      if (order?.paymentType !== 'CREDIT') {
+        await axiosInstance.patch(`orders/${kitchenid}/payment-received`, null, {
+          params: { paymentReceived: paymentStatus === "COMPLETED" },
+        });
+      }
 
-      await axiosInstance.patch(`orders/${kitchenid}/status`, null, {
-        params: { orderStatus },
+      await axiosInstance.patch(`orders/${kitchenid}/delivery-status`, null, {
+        params: { deliveryStatus },
       });
 
       router.back();
@@ -82,7 +85,8 @@ export default function UpdateOrderScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Order #{order.orderId}</Text>
       </View>
@@ -100,7 +104,7 @@ export default function UpdateOrderScreen() {
               <IndianRupee size={25} color="#28B463" />
               <Text style={styles.statusLabel}>Payment</Text>
               <Text style={styles.statusValue}>
-                {order.paymentRecived ? 'Received' : 'Pending'}
+                {order.paymentRecived ? 'Received' : 'Pending'} ({order.paymentType})
               </Text>
             </View>
           </View>
@@ -139,31 +143,50 @@ export default function UpdateOrderScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Update Status</Text>
 
-          {/* <Text style={styles.label}>Payment Status</Text>
-          <View style={styles.buttonGroup}>
-            {['PENDING', 'COMPLETED'].map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={[styles.button, paymentStatus === status && styles.activeButton]}
-                onPress={() => setPaymentStatus(status)}
-              >
-                <Text style={[styles.buttonText, paymentStatus === status && styles.activeButtonText]}>
-                  {status}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View> */}
+          <View style={styles.section}>
+  <Text style={styles.sectionTitle}>Update Status</Text>
 
-          <Text style={styles.label}>Kitchen Status</Text>
+  <Text style={styles.label}>Payment Status</Text>
+  <View style={styles.buttonGroup}>
+    {['PENDING', 'COMPLETED'].map((status) => (
+      <TouchableOpacity
+        key={status}
+        style={[
+          styles.button, 
+          paymentStatus === status && styles.activeButton,
+          order.paymentType === 'CREDIT' && styles.disabledButton
+        ]}
+        onPress={() => order.paymentType !== 'CREDIT' && setPaymentStatus(status)}
+        disabled={order.paymentType === 'CREDIT'}
+      >
+        <Text style={[
+          styles.buttonText, 
+          paymentStatus === status && styles.activeButtonText,
+          order.paymentType === 'CREDIT' && styles.disabledButtonText
+        ]}>
+          {status}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+  {order.paymentType === 'CREDIT' && (
+    <Text style={styles.disabledText}>Payment status cannot be changed for CREDIT orders</Text>
+  )}
+</View>
+              {order.paymentType === 'CREDIT' && (
+                <Text style={styles.disabledText}>Payment status cannot be changed for CREDIT orders</Text>
+              )}
+
+          <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
-            {['OUT_FOR_DELIVERY', 'PREPARED', 'RECEIVED','NO STATUS UPDATED'].map((status) => (
+            {['OutForDelivery', 'Delivered', 'OrderReceived', 'Cancelled'].map((status) => (
               <TouchableOpacity
                 key={status}
-                style={[styles.button, orderStatus === status && styles.activeButton]}
-                onPress={() => setorderStatus(status)}
+                style={[styles.button, deliveryStatus === status && styles.activeButton]}
+                onPress={() => setDeliveryStatus(status)}
               >
-                <Text style={[styles.buttonText, orderStatus === status && styles.activeButtonText]}>
-                  {status.replace(/\b\w/g, c => c.toUpperCase())}
+                <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
+                  {status.replace(/([A-Z])/g, ' $1').trim()}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -192,10 +215,14 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   backButtonText: {
-    fontSize: 16,
-    color: '#2E86AB',
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '500',
   },
   title: {
     fontSize: 24,
@@ -273,23 +300,22 @@ const styles = StyleSheet.create({
   buttonGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
-    flexGrow: 1,
     minWidth: '48%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   buttonText: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
   },
   activeButton: {
@@ -298,6 +324,20 @@ const styles = StyleSheet.create({
   },
   activeButtonText: {
     color: '#fff',
+  },
+disabledButton: {
+  backgroundColor: '#f5f5f5',
+  borderColor: '#e0e0e0',
+},
+disabledButtonText: {
+  color: '#aaa',
+},
+  disabledText: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: -8,
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   updateButton: {
     backgroundColor: '#28B463',

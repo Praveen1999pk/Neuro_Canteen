@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Phone, Calendar, Package, IndianRupee } from 'lucide-react-native';
+import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function UpdateOrderScreen() {
@@ -82,7 +82,8 @@ export default function UpdateOrderScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Order #{order.orderId}</Text>
       </View>
@@ -144,15 +145,27 @@ export default function UpdateOrderScreen() {
             {['PENDING', 'COMPLETED'].map((status) => (
               <TouchableOpacity
                 key={status}
-                style={[styles.button, paymentStatus === status && styles.activeButton]}
-                onPress={() => setPaymentStatus(status)}
+                style={[
+                  styles.button, 
+                  paymentStatus === status && styles.activeButton,
+                  order.paymentType === 'CREDIT' && styles.disabledButton
+                ]}
+                onPress={() => order.paymentType !== 'CREDIT' && setPaymentStatus(status)}
+                disabled={order.paymentType === 'CREDIT'}
               >
-                <Text style={[styles.buttonText, paymentStatus === status && styles.activeButtonText]}>
+                <Text style={[
+                  styles.buttonText, 
+                  paymentStatus === status && styles.activeButtonText,
+                  order.paymentType === 'CREDIT' && styles.disabledButtonText
+                ]}>
                   {status}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+          {order.paymentType === 'CREDIT' && (
+            <Text style={styles.disabledText}>Payment status cannot be changed for CREDIT orders</Text>
+          )}
 
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
@@ -163,7 +176,7 @@ export default function UpdateOrderScreen() {
                 onPress={() => setDeliveryStatus(status)}
               >
                 <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
-                  {status.replace(/\b\w/g, c => c.toUpperCase())}
+                  {status.replace(/([A-Z])/g, ' $1').trim()}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -185,7 +198,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#2E7D32',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     marginTop: 44,
@@ -195,12 +208,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#2E86AB',
+    color: '#fff',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007074',
+    color: '#fff',
   },
   content: {
     padding: 16,
@@ -219,7 +232,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#34495E',
+    color: '#2E7D32',
     marginBottom: 16,
   },
   statusContainer: {
@@ -237,7 +250,7 @@ const styles = StyleSheet.create({
   statusValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
+    color: '#2E7D32',
     marginTop: 4,
   },
   itemText: {
@@ -248,68 +261,74 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#2E86AB',
-    marginTop: 8,
+    color: '#2E7D32',
   },
   detailItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
   detailText: {
-    flex: 1,
     fontSize: 16,
     color: '#444',
-    lineHeight: 24,
+    marginLeft: 12,
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
-    marginBottom: 12,
-    marginTop: 16,
+    color: '#333',
+    marginBottom: 8,
   },
   buttonGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
-    flexGrow: 1,
     minWidth: '48%',
-  },
-  buttonText: {
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   activeButton: {
-    backgroundColor: '#28B463',
-    borderColor: '#2E86AB',
+    backgroundColor: '#2E7D32',
+  },
+  buttonText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
   activeButtonText: {
     color: '#fff',
   },
   updateButton: {
-    backgroundColor: '#28B463',
+    backgroundColor: '#2E7D32',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
+    marginTop: 8,
   },
   updateButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#E0E0E0',
+    opacity: 0.7,
+  },
+  disabledButtonText: {
+    color: '#9E9E9E',
+  },
+  disabledText: {
+    color: '#9E9E9E',
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
