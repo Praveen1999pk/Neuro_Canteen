@@ -41,15 +41,6 @@ export default function PatientLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ size, color }) => (
-            <User size={size} color={color} />
-          ),
-        }}
-      />
 
       {/* 🚫 Hide unwanted screens */}
       <Tabs.Screen name="index" options={{ href: null }} />

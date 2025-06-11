@@ -157,7 +157,7 @@ export default function StaffOrderCheckout() {
     };
 
     const orderDetails = {
-      orderedRole: "Staff",
+      orderedRole: "staff",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {

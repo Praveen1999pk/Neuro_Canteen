@@ -126,6 +126,7 @@ export const loginKitchen = async (username: string, password: string) => {
   }
 };
 
+// NeuroCanteen/app/api/auth.tsx
 export const loginpatient = async (uhid: string) => {
   try {
     if (!uhid || uhid.trim() === "") {
