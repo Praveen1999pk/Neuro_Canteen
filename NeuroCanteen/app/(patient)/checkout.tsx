@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Modal
+  Modal,
+  ActivityIndicator,
+  SafeAreaView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { jwtDecode } from 'jwt-decode';
 import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
-import { useEffect } from 'react';
 
 type MenuItem = {
   id: number;
@@ -35,25 +34,27 @@ export default function patientOrderCheckout() {
   const [address, setAddress] = useState('');
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
-  const [uhid, setUhid] = useState('');
-  const [showLoginForm, setShowLoginForm] = useState(false);
   const [username, setUsername] = useState('');
-  useEffect(() => {
-  const fetchUsername = async () => {
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (token) {
-      try {
-        const { sub } = JSON.parse(atob(token.split('.')[1]));
-        console.log("Decoded user:", sub);
-        setUsername(sub);
-      } catch (error) {
-        console.error("Error decoding JWT token:", error);
-      }
-    }
-  };
-  fetchUsername();
-}, []);
+  const [showUHIDModal, setShowUHIDModal] = useState(false);
+  const [uhidInput, setUhidInput] = useState('');
+  const [uhidVerified, setUhidVerified] = useState(false);
+  const [verifyingUHID, setVerifyingUHID] = useState(false);
 
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        try {
+          const { sub } = JSON.parse(atob(token.split('.')[1]));
+          console.log("Decoded user:", sub);
+          setUsername(sub);
+        } catch (error) {
+          console.error("Error decoding JWT token:", error);
+        }
+      }
+    };
+    fetchUsername();
+  }, []);
 
   const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
   const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
@@ -92,21 +93,65 @@ export default function patientOrderCheckout() {
     setIsEditing(true);
   };
 
+  const verifyUHID = async () => {
+    if (!uhidInput.trim()) {
+      Alert.alert("Error", "Please enter your UHID");
+      return false;
+    }
+
+    setVerifyingUHID(true);
+    try {
+      const response = await axiosInstance.post("/authenticate/patient", { uhid: uhidInput });
+      if (response.data.jwt) {
+        await AsyncStorage.setItem("jwtToken", response.data.jwt);
+        setUhidVerified(true);
+        setShowUHIDModal(false);
+        setUsername(uhidInput);
+        return true;
+      }
+    } catch (error) {
+      console.error("UHID verification error:", error);
+      Alert.alert("Error", "Invalid UHID. Please try again.");
+      return false;
+    } finally {
+      setVerifyingUHID(false);
+    }
+    return false;
+  };
+
   const handleUPI = async () => {
+    const token = await AsyncStorage.getItem("jwtToken");
+    if (token) {
+      try {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        if (decoded.sub === "Public") {
+          setShowUHIDModal(true);
+          return;
+        }
+        await proceedWithUPIPayment();
+      } catch (error) {
+        console.error('Error decoding token:', error);
+        setShowUHIDModal(true);
+      }
+    } else {
+      setShowUHIDModal(true);
+    }
+  };
+
+  const proceedWithUPIPayment = async () => {
+    try {
       const token = await AsyncStorage.getItem("jwtToken");
+      let usernameToUse = username;
+      
       if (token) {
         try {
           const userpayload = JSON.parse(atob(token.split('.')[1]));
-          setUsername(userpayload.sub);
-          console.log("user", username);
-          setUsername(username);
+          usernameToUse = userpayload.sub;
         } catch (error) {
           console.error('Error decoding token:', error);
         }
       }
 
-
-    try {
       const payment_metadata = await axiosInstance.post("/payment/createOrder", { price: grandTotal });
       const { orderId, amount } = payment_metadata.data;
 
@@ -118,7 +163,7 @@ export default function patientOrderCheckout() {
         description: "Payment for Order",
         order_id: orderId,
         prefill: {
-          name: username,
+          name: usernameToUse,
           email: "user@example.com",
           contact: "1234567890",
         },
@@ -146,19 +191,19 @@ export default function patientOrderCheckout() {
     const paymentData = {
       orderId: response.razorpay_order_id,
       paymentId: response.razorpay_payment_id,
+      paymentSignature: response.razorpay_signature, // Add this line
       paymentStatus: response.razorpay_payment_status || "captured",
       paymentMethod: response.method || "upi",
       amount: orderTotal,
       createdAt: new Date().toISOString(),
     };
+
     const token = await AsyncStorage.getItem("jwtToken");
+    let usernameToUse = username;
     if (token) {
       try {
         const usernamepayload = JSON.parse(atob(token.split('.')[1]));
-        setUsername(usernamepayload.sub);
-
-        console.log("user", username);
-        setUsername(username);
+        usernameToUse = usernamepayload.sub;
       } catch (error) {
         console.error('Error decoding token:', error);
       }
@@ -166,8 +211,8 @@ export default function patientOrderCheckout() {
 
     const orderDetails = {
       orderedRole: "patient",
-      orderedName: username,
-      orderedUserId: username,
+      orderedName: usernameToUse,
+      orderedUserId: usernameToUse,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
         return item ? item.name : '';
@@ -175,46 +220,54 @@ export default function patientOrderCheckout() {
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
       price: orderTotal,
-      orderStatus: null,
+      orderStatus: null as string | null,
       paymentType: "UPI",
-      paymentStatus: null,
+      paymentStatus: null as string | null,
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
     };
 
-    try {
-      const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
-      if (result.status === 200) {
-        await axiosInstance.post("/orders", orderDetails);
-        await AsyncStorage.removeItem('patient_cart');
-        router.push('/(patient)/order-success');
-      } else {
-        Alert.alert("Error", "Payment verification failed!");
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
-      Alert.alert("Error", "There was an issue verifying your payment.");
-    }
+try {
+  const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
+  if (result.data) { 
+    orderDetails.paymentStatus = "COMPLETED";
+    await axiosInstance.post("/orders", orderDetails);
+    await AsyncStorage.removeItem('patient_cart');
+    router.push('/(patient)/order-success');
+  } else {
+    Alert.alert("Error", "Payment verification failed!");
+  }
+} catch (error) {
+  console.error("Verification error:", error);
+  if (typeof error === "object" && error !== null && "response" in error) {
+    // TypeScript now knows error has a 'response' property
+    // @ts-expect-error: We have checked for 'response' property
+    console.error("Server response:", error.response.data);
+  }
+  Alert.alert("Error", "There was an issue verifying your payment.");
+}
   };
 
   const handleCOD = async () => {
+    let usernameToUse = username;
     const token = await AsyncStorage.getItem("jwtToken");
+    
     if (token) {
       try {
         const userpayload = JSON.parse(atob(token.split('.')[1]));
-        setUsername(userpayload.sub);
-        console.log("user", username);
-        setUsername(username);
+        usernameToUse = userpayload.sub;
       } catch (error) {
         console.error('Error decoding token:', error);
+        usernameToUse = "Public";
       }
+    } else {
+      usernameToUse = "Public";
     }
-
 
     const orderDetails = {
       orderedRole: "patient",
-      orderedName: username,
-      orderedUserId: username,
+      orderedName: usernameToUse,
+      orderedUserId: usernameToUse,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
         return item ? item.name : '';
@@ -355,6 +408,56 @@ export default function patientOrderCheckout() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* UHID Verification Modal */}
+      <Modal
+        visible={showUHIDModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowUHIDModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Enter Your UHID</Text>
+            <Text style={styles.modalSubtitle}>Please enter your UHID to proceed with UPI payment</Text>
+            
+            <Text style={styles.inputLabel}>UHID</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={uhidInput}
+              onChangeText={setUhidInput}
+              placeholder="Enter your UHID"
+              autoCapitalize="none"
+            />
+            
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setShowUHIDModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, verifyingUHID && styles.modalButtonDisabled]}
+                onPress={async () => {
+                  const verified = await verifyUHID();
+                  if (verified) {
+                    await proceedWithUPIPayment();
+                  }
+                }}
+                disabled={verifyingUHID}
+              >
+                {verifyingUHID ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Verify & Pay</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -456,6 +559,15 @@ const styles = StyleSheet.create({
     width: 60,
     textAlign: 'center',
   },
+  tipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tipNote: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
   paymentOptions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -486,50 +598,57 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   modalContainer: {
     backgroundColor: 'white',
+    borderRadius: 10,
     padding: 20,
-    borderRadius: 8,
-    width: '80%',
+    width: '100%',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    marginBottom: 10,
     textAlign: 'center',
-    marginBottom: 8,
   },
   modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: 16,
   },
   inputLabel: {
-    marginBottom: 4,
+    marginBottom: 8,
+    fontWeight: 'bold',
   },
   modalInput: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 16,
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 20,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   modalButton: {
-    backgroundColor: '#4A8F47',
+    flex: 1,
     padding: 12,
-    borderRadius: 4,
+    borderRadius: 5,
+    backgroundColor: '#4A8F47',
     alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  modalCancelButton: {
+    backgroundColor: '#f44336',
+  },
+  modalButtonDisabled: {
+    opacity: 0.6,
   },
   modalButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  tipContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-tipNote: {
-  fontSize: 12,
-  color: '#666',
-  marginLeft: 8,
-},
 });
