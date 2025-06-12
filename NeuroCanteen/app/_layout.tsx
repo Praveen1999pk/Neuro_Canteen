@@ -7,34 +7,30 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Index page */}
-        <Stack.Screen name="index" options={{ headerShown: false }} /> {/* Fixed typo here */}
-        
-        <Stack.Screen
-          name="(delivery)" 
-          options={{
-            gestureEnabled: false,
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="(dietitians)"
-          options={{
-            gestureEnabled: false,
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="(kitchen)"
-          options={{
-            gestureEnabled: false,
-            headerShown: false,
-          }}
-        />
-      </Stack>
+    <Stack screenOptions={{ headerShown: false }}>
       <StatusBar style="auto" />
-    </>
+      
+      {/* Index page */}
+      <Stack.Screen name="index" />
+      
+      <Stack.Screen
+        name="(delivery)" 
+        options={{
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="(dietitians)"
+        options={{
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="(kitchen)"
+        options={{
+          gestureEnabled: false,
+        }}
+      />
+    </Stack>
   );
 }

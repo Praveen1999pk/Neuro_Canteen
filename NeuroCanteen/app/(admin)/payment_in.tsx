@@ -141,7 +141,7 @@ const PaymentIn = () => {
             totalPrice: payment.amount,
             paymentType: payment.paymentType,
             allPaid: payment.paid,
-            orderIds: payment.orders.split(',').map((id: string) => parseInt(id))
+            orderIds: payment.orders.split(',').map((id: string) => id.trim()) // Keep as string
           }));
           setSummaries((prev) => [...prev, ...transformed]);
         }
@@ -169,35 +169,38 @@ const PaymentIn = () => {
     }
   };
 
-  const fetchCompletedPayments = async () => {
-    try {
-      const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.status === 200) {
-          const transformed = response.data
-            .filter(payment => {
-              if (roleFilter === 'Patient') {
-                return payment.role.toUpperCase() === 'PATIENT' || payment.role.toUpperCase() === 'Patient';
-              }
-              return payment.role.toUpperCase() === roleFilter.toUpperCase();
-            })
-            .map((payment) => ({
-              orderedUserId: String(payment.userId),
-              orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
-              totalPrice: payment.amount,
-              paymentType: payment.paymentType,
-              allPaid: payment.paid,
-              orderIds: payment.orders.split(',').map((id) => id.trim()), // <-- keep as string
-              createdAt: payment.createdAt
-            }));
-        setCompletedPayments(transformed);
+const fetchCompletedPayments = async () => {
+  try {
+    const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
       }
-    } catch (error) {
+    });
+    
+    if (response.status === 200) {
+        const transformed = response.data
+          .filter(payment => {
+            if (roleFilter === 'Patient') {
+              return payment.role.toUpperCase() === 'PATIENT' || payment.role.toUpperCase() === 'Patient';
+            }
+            return payment.role.toUpperCase() === roleFilter.toUpperCase();
+          })
+          .map((payment) => ({
+            orderedUserId: String(payment.userId),
+            orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
+            totalPrice: payment.amount,
+            paymentType: payment.paymentType,
+            allPaid: payment.paid,
+            orderIds: payment.orders.split(',').map((id) => id.trim()),
+            createdAt: payment.createdAt
+          }))
+        
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+      setCompletedPayments(transformed);
+    }
+  } catch (error) {
       console.error('Error fetching completed payments:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         Alert.alert(
@@ -293,10 +296,10 @@ const PaymentIn = () => {
     
       if (markPaidResponse.status === 200) {
         await axiosInstance.post('/api/credit-payments', {
-          userId: parseInt(userId.replace(/[^0-9]/g, '')),
+          userId: userId, 
           role: summary.orderedRole,
           amount: totalAmount,
-          orders: unpaidOrderIds.join(","),
+          orders: unpaidOrderIds.join(","), 
           paymentType: "CREDIT",
           paid: true 
         }, {
@@ -383,7 +386,7 @@ const PaymentIn = () => {
                 ₹{(payment.totalPrice || 0).toFixed(2)}
               </DataTable.Cell>
               <DataTable.Cell numeric>
-                {payment.orderIds ? payment.orderIds.length : 0}
+                {payment.orderIds ? payment.orderIds.join(", ") : ""}
               </DataTable.Cell>
               <DataTable.Cell>
                 <Text style={styles.paidText}>✅ Paid</Text>
