@@ -162,7 +162,7 @@ export default function StaffOrderCheckout() {
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? item.name : '';
+        return item ? `${item.name}x${cartItems[itemId as unknown as number]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -223,7 +223,7 @@ export default function StaffOrderCheckout() {
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? item.name : '';
+        return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -270,7 +270,7 @@ export default function StaffOrderCheckout() {
               orderedUserId: username,
               itemName: Object.keys(cartItems).map(itemId => {
                 const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-                return item ? item.name : '';
+                return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
               }).join(", "),
               quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
               category: "South",

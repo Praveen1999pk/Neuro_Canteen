@@ -232,7 +232,7 @@ function CheckoutButton() {
         const order = {
           orderedRole: 'patient',
           orderedUserId: id,
-          itemName: order_detailes.items.map((i: OrderItem) => i.item.name).join(', '),
+          itemName: order_detailes.items.map((i: OrderItem) => i.item.name + " x" + i.quantity).join(', '),
           quantity: order_detailes.items.reduce((sum:any, i:any) => sum + i.quantity, 0),
           category: order_detailes.items[0]?.item.category || 'General',
           price: toPay,
@@ -248,8 +248,9 @@ function CheckoutButton() {
               itemName: i.item.name,
               scheduledTime: i.scheduledTime?.toISOString(),
             })),
+            
         };
-
+        console.log("order_detailes.items",order_detailes.items);
         const response = await axiosInstance.post('/orders', order);
 
         if (response.status === 200 || response.status === 201) {
