@@ -13,6 +13,8 @@ import {
 import { DataTable } from 'react-native-paper';
 import axios from 'axios';
 import axiosInstance from '../api/axiosInstance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 
 type Order = {
   orderId: string;
@@ -22,6 +24,7 @@ type Order = {
   paymentType: string;
   paymentRecived: boolean;
   createdAt: string;
+  orderedName?: string;
 };
 
 type Summary = {
@@ -32,9 +35,10 @@ type Summary = {
   allPaid: boolean;
   orderIds: string[];
   lastUpdated: string;
+  orderedName?: string;
 };
 
-type CreditPayment = {
+interface CreditPayment {
   _id: string;
   userId: string;
   role: string;
@@ -43,18 +47,29 @@ type CreditPayment = {
   paymentType: string;
   paid: boolean;
   createdAt: string;
-};
+}
+
+interface TransformedPayment {
+  orderedUserId: string;
+  orderedRole: string;
+  totalPrice: number;
+  paymentType: string;
+  allPaid: boolean;
+  orderIds: number[];
+  createdAt: string;
+}
 
 const PaymentIn = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [summaries, setSummaries] = useState<Summary[]>([]);
-  const [completedPayments, setCompletedPayments] = useState<CreditPayment[]>([]);
+  const [completedPayments, setCompletedPayments] = useState<TransformedPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processingPayment, setProcessingPayment] = useState<{ [userId: string]: boolean }>({});
   const [roleFilter, setRoleFilter] = useState<'Staff' | 'Patient'>('Staff');
   const [searchTerm, setSearchTerm] = useState('');
   const [tab, setTab] = useState<'Pending' | 'Completed'>('Pending');
+  const router = useRouter();
 
   useEffect(() => {
     fetchData();
@@ -77,18 +92,57 @@ const PaymentIn = () => {
     try {
       const response = await axiosInstance.get<Order[]>('/orders/filter/Credit', {
         params: {
-          orderedRole: roleFilter,
+          orderedRole: roleFilter === 'Patient' ? 'patient' : roleFilter.toLowerCase(),
           paymentType: 'CREDIT',
-          paymentStatus: 'PENDING'
+          paymentStatus: null
+        },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
         }
       });
 
-      if (Array.isArray(response.data)) {
-        setOrders(response.data);
-        summarizeOrders(response.data);
+      if (response.status === 200) {
+        const originalData = response.data;
+        if (!Array.isArray(originalData)) {
+          console.error("Unexpected response format:", originalData);
+          return;
+        }
+
+        const filteredData = roleFilter === 'Patient' 
+          ? originalData.filter(order => 
+              (order.orderedRole.toLowerCase() === 'patient' || order.orderedRole.toLowerCase() === 'dietitian') && 
+              order.paymentType === 'CREDIT' &&
+              order.orderedUserId
+            )
+          : originalData.filter(order => 
+              order.orderedRole.toLowerCase() === roleFilter.toLowerCase() &&
+              order.paymentType === 'CREDIT' &&
+              order.orderedUserId
+            );
+
+        setOrders(filteredData);
+        summarizeOrders(filteredData);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        Alert.alert(
+          'Authentication Error',
+          'Your session has expired. Please log in again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                AsyncStorage.removeItem('token');
+                router.replace('/login');
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to fetch orders. Please try again.');
+      }
       throw error;
     }
   };
@@ -96,29 +150,51 @@ const PaymentIn = () => {
   const fetchCompletedPayments = async () => {
     try {
       const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
-        params: {
-          role: roleFilter.toUpperCase(),
-          paid: true
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
         }
       });
-
-      if (Array.isArray(response.data)) {
-        // Validate and clean the data before setting state
-        const validPayments = response.data.filter(payment => 
-          payment && 
-          typeof payment === 'object' && 
-          payment.userId && 
-          typeof payment.userId === 'string'
-        );
-        setCompletedPayments(validPayments);
-      } else {
-        console.warn('Invalid response format from credit-payments API');
-        setCompletedPayments([]);
+      
+      if (response.status === 200) {
+        const transformed = response.data
+          .filter(payment => {
+            if (roleFilter === 'Patient') {
+              return payment.role.toUpperCase() === 'PATIENT' || payment.role.toUpperCase() === 'Patient';
+            }
+            return payment.role.toUpperCase() === roleFilter.toUpperCase();
+          })
+          .map((payment) => ({
+            orderedUserId: String(payment.userId),
+            orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
+            totalPrice: payment.amount,
+            paymentType: payment.paymentType,
+            allPaid: payment.paid,
+            orderIds: payment.orders.split(',').map((id) => parseInt(id)),
+            createdAt: payment.createdAt
+          }));
+        setCompletedPayments(transformed);
       }
     } catch (error) {
       console.error('Error fetching completed payments:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        Alert.alert(
+          'Authentication Error',
+          'Your session has expired. Please log in again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                AsyncStorage.removeItem('token');
+                router.replace('/login');
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to fetch completed payments. Please try again.');
+      }
       setCompletedPayments([]);
-      throw error;
     }
   };
 
@@ -128,15 +204,17 @@ const PaymentIn = () => {
   };
 
   const summarizeOrders = (orders: Order[]) => {
-    const grouped: { [userId: string]: Summary } = {};
+    const grouped: { [key: string]: Summary } = {};
 
     orders.forEach((order) => {
       const userId = order.orderedUserId;
+      if (!userId) return;
 
       if (!grouped[userId]) {
         grouped[userId] = {
           orderedUserId: userId,
-          orderedRole: order.orderedRole,
+          orderedRole: order.orderedRole.toLowerCase(),
+          orderedName: order.orderedName || userId,
           totalPrice: 0,
           paymentType: order.paymentType,
           allPaid: true,
@@ -177,24 +255,36 @@ const PaymentIn = () => {
       }
     
       const summary = summaries.find((s) => s.orderedUserId === userId);
+      if (!summary) {
+        Alert.alert('Error', 'Could not find order summary');
+        return;
+      }
+
       const totalAmount = unpaidOrders.reduce((sum, order) => sum + order.price, 0);
     
-      // Mark orders as paid
-      const markPaidResponse = await axiosInstance.put('/orders/markPaid', unpaidOrderIds);
+      const markPaidResponse = await axiosInstance.put('/orders/markPaid', unpaidOrderIds, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+        }
+      });
     
       if (markPaidResponse.status === 200) {
-        // Create credit payment record
         await axiosInstance.post('/api/credit-payments', {
-          userId: userId,
-          role: summary?.orderedRole.toUpperCase() || roleFilter.toUpperCase(),
+          userId: parseInt(userId.replace(/[^0-9]/g, '')),
+          role: summary.orderedRole.toLowerCase(),
           amount: totalAmount,
           orders: unpaidOrderIds.join(","),
           paymentType: "CREDIT",
           paid: true 
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+          }
         });
-    
-        // Refresh data
-        await fetchData();
+  
+        await Promise.all([fetchOrders(), fetchCompletedPayments()]);
         Alert.alert('Success', 'Payment marked as paid successfully');
       } else {
         Alert.alert('Error', 'Failed to mark orders as paid');
@@ -202,6 +292,22 @@ const PaymentIn = () => {
     } catch (error) {
       let errorMessage = 'Failed to process payment';
       if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          Alert.alert(
+            'Authentication Error',
+            'Your session has expired. Please log in again.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  AsyncStorage.removeItem('token');
+                  router.replace('/login');
+                }
+              }
+            ]
+          );
+          return;
+        }
         errorMessage = error.response?.data?.message || error.message;
       }
       Alert.alert('Error', errorMessage);
@@ -210,20 +316,20 @@ const PaymentIn = () => {
     }
   };
 
-  const filteredSummaries = summaries.filter((summary) =>
-    summary.orderedUserId.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSummaries = summaries.filter(
+    (summary) =>
+      summary.orderedUserId.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      summary.orderedRole.toLowerCase() === roleFilter.toLowerCase()
   );
 
   const filteredCompletedPayments = completedPayments.filter((payment) => {
-    if (!payment || !payment.userId || typeof payment.userId !== 'string') {
-      return false;
-    }
-    return payment.userId.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!payment || !payment.orderedUserId) return false;
+    return payment.orderedUserId.toLowerCase().includes(searchTerm.toLowerCase()) &&
+           payment.orderedRole.toLowerCase() === roleFilter.toLowerCase();
   });
 
   const pendingSummaries = filteredSummaries.filter((summary) => !summary.allPaid);
 
-  // Add error boundary for rendering
   const renderCompletedPayments = () => {
     if (!Array.isArray(completedPayments)) {
       return <Text style={styles.noOrdersText}>Error loading completed payments</Text>;
@@ -241,27 +347,61 @@ const PaymentIn = () => {
           <DataTable.Title numeric>Amount</DataTable.Title>
           <DataTable.Title numeric>Orders</DataTable.Title>
           <DataTable.Title>Status</DataTable.Title>
+          <DataTable.Title>Date</DataTable.Title>
         </DataTable.Header>
 
         {filteredCompletedPayments.map((payment) => {
-          if (!payment || !payment.userId) return null;
+          if (!payment || !payment.orderedUserId) return null;
+          const uniqueKey = `${payment.orderedUserId}-${payment.createdAt}`;
           return (
-            <DataTable.Row key={payment._id}>
-              <DataTable.Cell>{payment.userId}</DataTable.Cell>
-              <DataTable.Cell>{payment.role || 'N/A'}</DataTable.Cell>
+            <DataTable.Row key={uniqueKey}>
+              <DataTable.Cell>{payment.orderedUserId}</DataTable.Cell>
+              <DataTable.Cell>{payment.orderedRole}</DataTable.Cell>
               <DataTable.Cell numeric>
-                ₹{(payment.amount || 0).toFixed(2)}
+                ₹{(payment.totalPrice || 0).toFixed(2)}
               </DataTable.Cell>
               <DataTable.Cell numeric>
-                {payment.orders ? payment.orders.split(',').length : 0}
+                {payment.orderIds ? payment.orderIds.length : 0}
               </DataTable.Cell>
               <DataTable.Cell>
                 <Text style={styles.paidText}>✅ Paid</Text>
+              </DataTable.Cell>
+              <DataTable.Cell>
+                {new Date(payment.createdAt).toLocaleDateString()}
               </DataTable.Cell>
             </DataTable.Row>
           );
         })}
       </DataTable>
+    );
+  };
+
+  const renderOrderSummary = (summary: Summary) => {
+    return (
+      <DataTable.Row key={summary.orderedUserId}>
+        <DataTable.Cell>{summary.orderedName || summary.orderedUserId}</DataTable.Cell>
+        <DataTable.Cell>{summary.orderedRole}</DataTable.Cell>
+        <DataTable.Cell numeric>₹{summary.totalPrice.toFixed(2)}</DataTable.Cell>
+        <DataTable.Cell numeric>{summary.orderIds.length}</DataTable.Cell>
+        <DataTable.Cell>{summary.paymentType}</DataTable.Cell>
+        <DataTable.Cell>
+          {summary.allPaid ? (
+            <Text style={styles.paidText}>✅ Paid</Text>
+          ) : (
+            <TouchableOpacity
+              style={styles.markPaidButton}
+              onPress={() => markAsPaid(summary.orderedUserId)}
+              disabled={processingPayment[summary.orderedUserId]}
+            >
+              {processingPayment[summary.orderedUserId] ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.markPaidButtonText}>Mark as Paid</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </DataTable.Cell>
+      </DataTable.Row>
     );
   };
 
@@ -346,32 +486,7 @@ const PaymentIn = () => {
               <DataTable.Title>Action</DataTable.Title>
             </DataTable.Header>
 
-            {pendingSummaries.map((summary) => (
-              <DataTable.Row key={`${summary.orderedUserId}-${summary.lastUpdated}`}>
-                <DataTable.Cell>{summary.orderedUserId}</DataTable.Cell>
-                <DataTable.Cell>{summary.orderedRole}</DataTable.Cell>
-                <DataTable.Cell numeric>
-                  ₹{summary.totalPrice.toFixed(2)}
-                </DataTable.Cell>
-                <DataTable.Cell numeric>{summary.orderIds.length}</DataTable.Cell>
-                <DataTable.Cell>
-                  <Text style={styles.unpaidText}>❌ Pending</Text>
-                </DataTable.Cell>
-                <DataTable.Cell>
-                  <TouchableOpacity
-                    style={styles.payButton}
-                    onPress={() => markAsPaid(summary.orderedUserId)}
-                    disabled={processingPayment[summary.orderedUserId]}
-                  >
-                    {processingPayment[summary.orderedUserId] ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <Text style={styles.payButtonText}>Mark Paid</Text>
-                    )}
-                  </TouchableOpacity>
-                </DataTable.Cell>
-              </DataTable.Row>
-            ))}
+            {pendingSummaries.map((summary) => renderOrderSummary(summary))}
           </DataTable>
         )
       ) : (
@@ -500,6 +615,20 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginVertical: 20
+  },
+  markPaidButton: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    minWidth: 80,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  markPaidButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold'
   }
 });
 

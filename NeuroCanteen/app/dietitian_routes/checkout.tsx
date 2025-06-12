@@ -230,7 +230,7 @@ function CheckoutButton() {
         if (!id) return;
 
         const order = {
-          orderedRole: 'Dietitian',
+          orderedRole: 'patient',
           orderedUserId: id,
           itemName: order_detailes.items.map((i: OrderItem) => i.item.name).join(', '),
           quantity: order_detailes.items.reduce((sum:any, i:any) => sum + i.quantity, 0),
