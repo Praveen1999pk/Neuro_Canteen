@@ -82,7 +82,7 @@ export default function DeliveryOrders() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Deliveries</Text>
+        <Text style={styles.headerTitle}>Delivery Dashboard</Text>
         <Text style={styles.headerSubtitle}>{filteredOrders.length} Active Orders</Text>
       </View>
 
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { padding: 20, backgroundColor: '#2E7D32', borderBottomWidth: 1, borderBottomColor: '#eee', marginTop: 0 },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 16, color: '#fff', marginTop: 4 },
+  headerSubtitle: { fontSize: 16, color: '#fff', marginTop: 0},
   searchContainer: { flexDirection: 'row', padding: 16, gap: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 8, paddingHorizontal: 12 },
   searchIcon: { marginRight: 8 },

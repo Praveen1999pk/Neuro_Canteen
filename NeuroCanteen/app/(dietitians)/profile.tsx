@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { logout } from '../services/authService';
 import { User, LogOut } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -34,7 +34,18 @@ export default function ProfileScreen() {
           text: 'Logout',
           onPress: async () => {
             await logout();
-            router.replace('/(Role)/dietitian');
+            // Clear all navigation state
+            await AsyncStorage.multiRemove([
+              'navigationState',
+              'expo-router-history',
+              'expo-router-state'
+            ]);
+            // Navigate to login screen
+            router.push('/(Role)/dietitian');
+            // Force reload the app
+            setTimeout(() => {
+              router.replace('/(Role)/dietitian');
+            }, 100);
           },
         },
       ]
@@ -43,6 +54,19 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen 
+        options={{ 
+          headerShown: true,
+          title: 'Profile',
+          headerStyle: {
+            backgroundColor: '#1B5E20',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: '600',
+          },
+        }} 
+      />
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
           <User size={40} color="white" />
@@ -69,10 +93,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+    paddingTop: 0,
   },
   profileHeader: {
     backgroundColor: 'white',
-    padding: 24,
+    padding: 16,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
@@ -84,7 +109,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1B5E20',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   username: {
     fontSize: 24,
