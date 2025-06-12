@@ -55,7 +55,7 @@ interface TransformedPayment {
   totalPrice: number;
   paymentType: string;
   allPaid: boolean;
-  orderIds: number[];
+  orderIds: string[];
   createdAt: string;
 }
 
@@ -92,7 +92,7 @@ const PaymentIn = () => {
     try {
       const response = await axiosInstance.get<Order[]>('/orders/filter/Credit', {
         params: {
-          orderedRole: roleFilter === 'Patient' ? 'patient' : roleFilter.toLowerCase(),
+          orderedRole: roleFilter,
           paymentType: 'CREDIT',
           paymentStatus: null
         },
@@ -111,18 +111,40 @@ const PaymentIn = () => {
 
         const filteredData = roleFilter === 'Patient' 
           ? originalData.filter(order => 
-              (order.orderedRole.toLowerCase() === 'patient' || order.orderedRole.toLowerCase() === 'dietitian') && 
+              (order.orderedRole === 'Patient' && 
               order.paymentType === 'CREDIT' &&
               order.orderedUserId
-            )
+            ))
           : originalData.filter(order => 
-              order.orderedRole.toLowerCase() === roleFilter.toLowerCase() &&
+              order.orderedRole === 'Staff' &&
               order.paymentType === 'CREDIT' &&
               order.orderedUserId
             );
 
+        console.log('Filtered orders:', filteredData);
         setOrders(filteredData);
         summarizeOrders(filteredData);
+
+        // Fetch credit payments
+        const creditResponse = await axiosInstance.get("/api/credit-payments");
+        if (creditResponse.status === 200) {
+          const transformed = creditResponse.data.map((payment: { 
+            userId: string | number;
+            role: string;
+            amount: number;
+            paymentType: string;
+            paid: boolean;
+            orders: string;
+          }) => ({
+            orderedUserId: String(payment.userId),
+            orderedRole: payment.role,
+            totalPrice: payment.amount,
+            paymentType: payment.paymentType,
+            allPaid: payment.paid,
+            orderIds: payment.orders.split(',').map((id: string) => parseInt(id))
+          }));
+          setSummaries((prev) => [...prev, ...transformed]);
+        }
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -157,22 +179,22 @@ const PaymentIn = () => {
       });
       
       if (response.status === 200) {
-        const transformed = response.data
-          .filter(payment => {
-            if (roleFilter === 'Patient') {
-              return payment.role.toUpperCase() === 'PATIENT' || payment.role.toUpperCase() === 'Patient';
-            }
-            return payment.role.toUpperCase() === roleFilter.toUpperCase();
-          })
-          .map((payment) => ({
-            orderedUserId: String(payment.userId),
-            orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
-            totalPrice: payment.amount,
-            paymentType: payment.paymentType,
-            allPaid: payment.paid,
-            orderIds: payment.orders.split(',').map((id) => parseInt(id)),
-            createdAt: payment.createdAt
-          }));
+          const transformed = response.data
+            .filter(payment => {
+              if (roleFilter === 'Patient') {
+                return payment.role.toUpperCase() === 'PATIENT' || payment.role.toUpperCase() === 'Patient';
+              }
+              return payment.role.toUpperCase() === roleFilter.toUpperCase();
+            })
+            .map((payment) => ({
+              orderedUserId: String(payment.userId),
+              orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
+              totalPrice: payment.amount,
+              paymentType: payment.paymentType,
+              allPaid: payment.paid,
+              orderIds: payment.orders.split(',').map((id) => id.trim()), // <-- keep as string
+              createdAt: payment.createdAt
+            }));
         setCompletedPayments(transformed);
       }
     } catch (error) {
@@ -213,7 +235,7 @@ const PaymentIn = () => {
       if (!grouped[userId]) {
         grouped[userId] = {
           orderedUserId: userId,
-          orderedRole: order.orderedRole.toLowerCase(),
+          orderedRole: order.orderedRole,
           orderedName: order.orderedName || userId,
           totalPrice: 0,
           paymentType: order.paymentType,
@@ -224,7 +246,7 @@ const PaymentIn = () => {
       }
 
       grouped[userId].totalPrice += order.price;
-      grouped[userId].orderIds.push(order.orderId);
+      grouped[userId].orderIds.push(String(order.orderId));
 
       if (!order.paymentRecived) {
         grouped[userId].allPaid = false;
@@ -272,7 +294,7 @@ const PaymentIn = () => {
       if (markPaidResponse.status === 200) {
         await axiosInstance.post('/api/credit-payments', {
           userId: parseInt(userId.replace(/[^0-9]/g, '')),
-          role: summary.orderedRole.toLowerCase(),
+          role: summary.orderedRole,
           amount: totalAmount,
           orders: unpaidOrderIds.join(","),
           paymentType: "CREDIT",
@@ -412,12 +434,8 @@ const PaymentIn = () => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2E7D32']} />
       }
     >
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerText}>Credit Payments</Text>
-      </View>
-
       <View style={styles.filterContainer}>
-        <View style={styles.filterItem}>
+        <View style={[styles.filterItem, { marginTop: 16 }]}>
           <Text style={styles.filterLabel}>Category:</Text>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
@@ -621,14 +639,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 4,
-    minWidth: 80,
-    justifyContent: 'center',
-    alignItems: 'center'
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   markPaidButtonText: {
     color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold'
+    fontSize: 13,
+    fontWeight: 'bold',
+    textAlign: 'center'
   }
 });
 
