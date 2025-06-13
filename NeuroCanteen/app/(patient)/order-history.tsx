@@ -7,12 +7,14 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { router } from 'expo-router';
 
 type OrderItem = {
   name: string;
@@ -240,31 +242,40 @@ export default function OrderHistory() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <FlatList
-        data={orders}
-        renderItem={renderOrderItem}
-        keyExtractor={(item, index) => item?.orderId ? String(item.orderId) : `order-${index}`}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No orders found</Text>
-              <Text style={styles.emptyText}>You haven't placed any orders yet</Text>
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={onRefresh}
-              >
-                <Text style={styles.retryButtonText}>Refresh</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
-      />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={20} color="#2E7D32" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content}>
+        <FlatList
+          data={orders}
+          renderItem={renderOrderItem}
+          keyExtractor={(item, index) => item?.orderId ? String(item.orderId) : `order-${index}`}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No orders found</Text>
+                <Text style={styles.emptyText}>You haven't placed any orders yet</Text>
+                <TouchableOpacity 
+                  style={styles.retryButton}
+                  onPress={onRefresh}
+                >
+                  <Text style={styles.retryButtonText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -272,7 +283,26 @@ export default function OrderHistory() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#F0F3F4',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  content: {
+    flex: 1,
+  },
+  backButton: {
+    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2E7D32',
   },
   loadingContainer: {
     flex: 1,
@@ -431,3 +461,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+

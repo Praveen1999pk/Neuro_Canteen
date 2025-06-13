@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-import { Plus, TriangleAlert as AlertTriangle, X, Check } from 'lucide-react-native';
+import { Plus, X, Check } from 'lucide-react-native';
 
 export default function CreateDietScreen() {
   const router = useRouter();
@@ -265,7 +265,6 @@ export default function CreateDietScreen() {
             <View style={styles.tagsContainer}>
               {allergies.map((allergy, index) => (
                 <View key={`allergy-${index}`} style={styles.tag}>
-                  <AlertTriangle size={14} color="#dc2626" />
                   <Text style={styles.tagText}>{allergy}</Text>
                   <TouchableOpacity 
                     style={styles.tagRemoveButton} 
@@ -306,7 +305,6 @@ export default function CreateDietScreen() {
             <View style={styles.tagsContainer}>
               {dislikes.map((dislike, index) => (
                 <View key={`dislike-${index}`} style={styles.dislikeTag}>
-                  <X size={14} color="#f59e0b" />
                   <Text style={styles.tagText}>{dislike}</Text>
                   <TouchableOpacity 
                     style={styles.tagRemoveButton} 

@@ -118,7 +118,7 @@ export default function OrderHistoryScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Orders - {patientuhid}</Text>
-          <Text style={styles.headerSubtitle}>Track your orders and deliveries</Text>
+          <Text style={styles.headerSubtitle}>Track Patient Orders</Text>
         </View>
         
         <TouchableOpacity 

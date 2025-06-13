@@ -1,27 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { DoorOpen as Door, ArrowRight } from 'lucide-react-native';
+import { DoorOpen as Door, ArrowRight, Search } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
+
 export default function DietitianHomeScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { floor } = route.params as { floor: number }; 
-  // Change: Corrected wards array
-  const [wards,setwards] = useState([]);  // Now it's correctly defined as an array.
-
+  const [wards, setwards] = useState<number[]>([]);
+  const [filteredWards, setFilteredWards] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [numColumns, setNumColumns] = useState(2);
-
 
   useEffect(() => {
     const fetchWards = async () => {
       try {
         const response = await axiosInstance.get(`/patient/wards/${floor}`);
         const data = response.data;
+        console.log('Fetched wards:', data);
         setwards(data);
+        setFilteredWards(data);
       } catch (error) {
         console.error('Failed to fetch floors:', error);
       }
@@ -29,6 +31,21 @@ export default function DietitianHomeScreen() {
 
     fetchWards();
   }, []);
+
+  useEffect(() => {
+    console.log('Search query:', searchQuery);
+    console.log('Current wards:', wards);
+    if (searchQuery.trim() === '') {
+      setFilteredWards(wards);
+    } else {
+      const filtered = wards.filter(ward => {
+        const wardStr = `Ward${ward.toString().padStart(3, '0')}`;
+        return wardStr.toLowerCase().includes(searchQuery.toLowerCase());
+      });
+      console.log('Filtered wards:', filtered);
+      setFilteredWards(filtered);
+    }
+  }, [searchQuery, wards]);
 
   const updateLayout = () => {
     const { width } = Dimensions.get('window');
@@ -47,21 +64,33 @@ export default function DietitianHomeScreen() {
     return () => subscription.remove();
   }, []);
 
-  // Change: navigateToWard instead of Floor
   const navigateToWard = (ward: number) => {
-    navigation.navigate('rooms', { ward,floor });
+    navigation.navigate('rooms', { ward, floor });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dietitian Dashboard</Text>
+        <Text style={styles.headerTitle}>Wards in Floor {floor}</Text>
         <Text style={styles.headerSubtitle}>Select a ward to view Rooms</Text>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search wards..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#64748b"
+          />
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.cardGrid}>
-          {wards.map((ward: number) => (
+          {filteredWards.map((ward: number) => (
             <TouchableOpacity
               key={ward}
               style={[styles.wardCard, { width: `${100 / numColumns - 3}%` }]}
@@ -101,6 +130,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1f2937',
+    padding: 0,
   },
   content: {
     flex: 1,

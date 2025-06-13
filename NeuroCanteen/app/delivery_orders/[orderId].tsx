@@ -58,7 +58,7 @@ export default function UpdateOrderScreen() {
         params: { deliveryStatus },
       });
 
-      router.replace('/delivery_orders');
+      router.back();
     } catch (error) {
       console.error('Error updating order:', error);
     }

@@ -9,7 +9,7 @@ import {
   Animated,
   Platform
 } from 'react-native';
-import { User, LogIn, LayoutGrid } from 'lucide-react-native';
+import { User, ArrowLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -47,6 +47,10 @@ export default function HomeScreen() {
       <StatusBar style="dark" />
       
       <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={20} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
         <View style={styles.iconBackground}>
           <User color="white" size={40} />
         </View>
@@ -68,12 +72,10 @@ export default function HomeScreen() {
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
             >
-              <LayoutGrid color="white" size={22} />
               <Text style={styles.navigationButtonText}>Floor Overview</Text>
             </TouchableOpacity>
           </Animated.View> 
         </View>
-
 
         <Text style={styles.footerText}>© 2025 NeuroCanteen</Text>
       </View>
@@ -99,6 +101,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    top: Platform.OS === 'web' ? 40 : 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
   },
   iconBackground: {
     width: 70,
@@ -195,15 +210,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
-  },
-  footer: {
-    marginTop: 'auto',
-    alignItems: 'center',
-    padding: 20,
   },
   footerText: {
-    color: '#757575',
-    fontSize: 14,
-  }
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+  },
 });

@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { BedSingle, ArrowRight } from 'lucide-react-native'; // changed to BedSingle for beds
+import { BedDouble, ArrowRight, Search } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function BedsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { room,ward,floor } = route.params as { room: number ,floor:number,ward:number};
+  const { room, ward, floor } = route.params as { room: number, ward: number, floor: number };
 
   const [beds, setBeds] = useState<number[]>([]);
+  const [filteredBeds, setFilteredBeds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [numColumns, setNumColumns] = useState(2);
 
   useEffect(() => {
@@ -18,7 +20,9 @@ export default function BedsScreen() {
       try {
         const response = await axiosInstance.get(`/patient/beds/${floor}/${ward}/${room}`);
         const data = response.data;
+        console.log('Fetched beds:', data);
         setBeds(data);
+        setFilteredBeds(data);
       } catch (error) {
         console.error('Failed to fetch beds:', error);
       }
@@ -26,6 +30,21 @@ export default function BedsScreen() {
 
     fetchBeds();
   }, [room]);
+
+  useEffect(() => {
+    console.log('Search query:', searchQuery);
+    console.log('Current beds:', beds);
+    if (searchQuery.trim() === '') {
+      setFilteredBeds(beds);
+    } else {
+      const filtered = beds.filter(bed => {
+        const bedStr = `BED${bed.toString().padStart(2, '0')}`;
+        return bedStr.toLowerCase().includes(searchQuery.toLowerCase());
+      });
+      console.log('Filtered beds:', filtered);
+      setFilteredBeds(filtered);
+    }
+  }, [searchQuery, beds]);
 
   const updateLayout = () => {
     const { width } = Dimensions.get('window');
@@ -44,27 +63,39 @@ export default function BedsScreen() {
     return () => subscription.remove();
   }, []);
 
-  const navigateToBed = (bed: number) => {
-    navigation.navigate('patient', { bed,floor,ward,room });
+  const navigateToPatient = (bed: number) => {
+    navigation.navigate('patient', { bed, room, ward, floor });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Beds in Room {room}</Text>
-        <Text style={styles.headerSubtitle}>Select a bed to view patient details</Text>
+        <Text style={styles.headerSubtitle}>Select a bed to view Patient</Text>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search beds..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#64748b"
+          />
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.cardGrid}>
-          {beds.map((bed: number) => (
+          {filteredBeds.map((bed: number) => (
             <TouchableOpacity
               key={bed}
               style={[styles.bedCard, { width: `${100 / numColumns - 3}%` }]}
-              onPress={() => navigateToBed(bed)}
+              onPress={() => navigateToPatient(bed)}
             >
               <View style={styles.bedIconContainer}>
-                <BedSingle size={32} color="#166534" />
+                <BedDouble size={32} color="#166534" />
               </View>
               <Text style={styles.bedTitle}>Bed {bed}</Text>
               <ArrowRight size={20} color="#166534" style={styles.arrowIcon} />
@@ -87,16 +118,34 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 8,
-  },
   headerSubtitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#1f2937',
+    padding: 0,
   },
   content: {
     flex: 1,

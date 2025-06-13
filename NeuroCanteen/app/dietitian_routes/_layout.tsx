@@ -6,18 +6,38 @@ export default function DietitianLayout() {
 
   return (
     <Stack>
-      <Stack.Screen 
-        name="index" 
-        options={{ 
-          headerShown: false,
-        }} 
-      />
+<Stack.Screen 
+  name="index" 
+  options={{ 
+    title: "Dietitian Dashboard",
+    headerShown: true,
+    headerStyle: {
+      backgroundColor: '#ffffff', // ✅ White background
+    },
+    headerTintColor: '#000000', // ✅ Black text & icons (back arrow, etc.)
+    headerTitleStyle: {
+      fontSize: 20, // ✅ Smaller font size
+      fontWeight: '600',
+    },
+    headerTitleAlign: 'center',
+  }} 
+/>
+
       <Stack.Screen 
         name="floor" 
         options={{ 
           title: "Wards",
           headerShown: true,
-          headerBackTitle: "Floors",
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTintColor: '#000000',
+          headerTitleStyle: {
+            fontSize: 20,
+            fontWeight: '600',
+          },
+          headerTitleAlign: 'center',
+          headerBackTitle: "Dashboard",
         }} 
       />
       <Stack.Screen 

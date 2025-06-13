@@ -1,10 +1,9 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
-import { Link, useFocusEffect } from 'expo-router';
+import { Link } from 'expo-router';
 import { Package, ShoppingCart, Wallet, Search, Filter } from 'lucide-react-native';
 import { useState, useMemo, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
-import React from 'react';
 
 type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'OrderReceived' | 'OutForDelivery' | 'Cancelled' | 'Delivered';
@@ -51,25 +50,8 @@ export default function DeliveryOrders() {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchOrders();
-  }, []);
-
-  // Refresh when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchOrders();
-    }, [])
-  );
-
-  // Polling effect
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchOrders();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(intervalId);
   }, []);
 
   const updateDeliveryStatus = async (orderId: number, deliveryStatus: string) => {
@@ -77,7 +59,7 @@ export default function DeliveryOrders() {
       await axiosInstance.patch(`/orders/${orderId}/delivery-status`, null, {
         params: { deliveryStatus }
       });
-      await fetchOrders();
+      fetchOrders();
     } catch (error) {
       console.error("Error updating delivery status:", error);
     }
@@ -88,8 +70,7 @@ export default function DeliveryOrders() {
       await axiosInstance.patch(`/orders/${orderId}/payment-received`, null, {
         params: { paymentReceived }
       });
-      // Immediately refresh the orders list after payment update
-      await fetchOrders();
+      fetchOrders();
     } catch (error) {
       console.error("Error updating payment received:", error);
     }
@@ -160,19 +141,33 @@ export default function DeliveryOrders() {
               <FilterButton title="Not Paid" isActive={paymentFilter === 'NOT_PAID'} onPress={() => setPaymentFilter('NOT_PAID')} />
             </ScrollView>
           </View>
-
-          <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Delivery Status</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-              <FilterButton title="All" isActive={statusFilter === 'ALL'} onPress={() => setStatusFilter('ALL')} />
-              <FilterButton title="Out for Delivery" isActive={statusFilter === 'OutForDelivery'} onPress={() => setStatusFilter('OutForDelivery')} />
-              <FilterButton title="Delivered" isActive={statusFilter === 'Delivered'} onPress={() => setStatusFilter('Delivered')} />
-              <FilterButton title="Cancelled" isActive={statusFilter === 'Cancelled'} onPress={() => setStatusFilter('Cancelled')} />
-              <FilterButton title="Order Received" isActive={statusFilter === 'OrderReceived'} onPress={() => setStatusFilter('OrderReceived')} />
-            </ScrollView>
-          </View>
         </View>
       )}
+
+      <View style={styles.tabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
+          <FilterButton 
+            title="Order Received" 
+            isActive={statusFilter === 'OrderReceived'} 
+            onPress={() => setStatusFilter('OrderReceived')} 
+          />
+          <FilterButton 
+            title="Out for Delivery" 
+            isActive={statusFilter === 'OutForDelivery'} 
+            onPress={() => setStatusFilter('OutForDelivery')} 
+          />
+          <FilterButton 
+            title="Delivered" 
+            isActive={statusFilter === 'Delivered'} 
+            onPress={() => setStatusFilter('Delivered')} 
+          />
+          <FilterButton 
+            title="Cancelled" 
+            isActive={statusFilter === 'Cancelled'} 
+            onPress={() => setStatusFilter('Cancelled')} 
+          />
+        </ScrollView>
+      </View>
 
       {loading ? (
         <View style={{ padding: 20 }}>
@@ -289,4 +284,13 @@ const styles = StyleSheet.create({
   footerInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footerText: { fontSize: 14, color: '#666' },
   roleTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 12, fontWeight: '500', color: '#333' },
+  tabsContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+  },
 });

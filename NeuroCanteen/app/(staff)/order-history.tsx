@@ -9,10 +9,11 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { useRouter } from 'expo-router';
 
 type OrderItem = {
   name: string;
@@ -44,6 +45,7 @@ export default function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     getUsernameFromToken();
@@ -241,6 +243,12 @@ export default function OrderHistory() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={20} color="#2E7D32" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={orders}
         renderItem={renderOrderItem}
@@ -429,5 +437,21 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontWeight: '500',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  backButton: {
+    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2E7D32',
   },
 });
