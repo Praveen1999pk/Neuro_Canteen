@@ -47,9 +47,9 @@ export default function HomeScreen() {
       <StatusBar style="dark" />
       
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
           <ArrowLeft size={20} color="#fff" />
-          <Text style={styles.backButtonText}>Back</Text>
+          <Text style={styles.backButtonText}>Backs</Text>
         </TouchableOpacity>
         <View style={styles.iconBackground}>
           <User color="white" size={40} />

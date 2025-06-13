@@ -77,7 +77,7 @@ export default function UpdateOrderScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#fff" />
+          <ArrowLeft size={24} color="#1B5E20" />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Order #{order.orderId}</Text>
@@ -178,8 +178,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   backButtonText: {
-    fontSize: 18,
-    color: '#fff',
+    fontSize: 20,
+    color: '#1B5E20',
     fontWeight: '500',
   },
   title: {
