@@ -103,7 +103,7 @@ const PaymentIn = () => {
     try {
       const response = await axiosInstance.get<Order[]>('/orders/filter/Credit', {
         params: {
-          orderedRole: roleFilter,
+          orderedRole: roleFilter.toLowerCase(),
           paymentType: 'CREDIT',
         },
         headers: {
@@ -119,17 +119,11 @@ const PaymentIn = () => {
           return;
         }
 
-        const filteredData = roleFilter === 'Patient' 
-          ? originalData.filter(order => 
-              (order.orderedRole === 'Patient' && 
-              order.paymentType === 'CREDIT' &&
-              order.orderedUserId
-            ))
-          : originalData.filter(order => 
-              order.orderedRole === 'Staff' &&
-              order.paymentType === 'CREDIT' &&
-              order.orderedUserId
-            );
+        const filteredData = originalData.filter(order => 
+          order.paymentType === 'CREDIT' &&
+          order.orderedUserId &&
+          order.orderedRole === roleFilter.toLowerCase()
+        );
 
         console.log('Filtered orders:', filteredData);
         setOrders(filteredData);
@@ -147,11 +141,11 @@ const PaymentIn = () => {
             orders: string;
           }) => ({
             orderedUserId: String(payment.userId),
-            orderedRole: payment.role,
+            orderedRole: payment.role.toLowerCase(),
             totalPrice: payment.amount,
             paymentType: payment.paymentType,
             allPaid: payment.paid,
-            orderIds: payment.orders.split(',').map((id: string) => id.trim()) // Keep as string
+            orderIds: payment.orders.split(',').map((id: string) => id.trim())
           }));
           setSummaries((prev) => [...prev, ...transformed]);
         }
@@ -381,7 +375,7 @@ const fetchCompletedPayments = async () => {
             <DataTable.Title style={[styles.headerCell, { width: 120 }]}>User ID</DataTable.Title>
             <DataTable.Title style={[styles.headerCell, { width: 80 }]}>Role</DataTable.Title>
             <DataTable.Title numeric style={[styles.headerCell, { width: 100 }]}>Amount</DataTable.Title>
-            <DataTable.Title style={[styles.headerCell, { flex: 1, minWidth: 200 }]}>Order ID</DataTable.Title>
+            <DataTable.Title style={[styles.headerCell, { width: 200 }]}>Order ID</DataTable.Title>
             <DataTable.Title style={[styles.headerCell, { width: 80 }]}>Status</DataTable.Title>
             <DataTable.Title style={[styles.headerCell, { width: 120 }]}>Date</DataTable.Title>
           </DataTable.Header>
@@ -406,7 +400,7 @@ const fetchCompletedPayments = async () => {
                     ₹{(payment.totalPrice || 0).toFixed(2)}
                   </Text>
                 </DataTable.Cell>
-                <DataTable.Cell style={[styles.cell, { flex: 1, minWidth: 200 }]}>
+                <DataTable.Cell style={[styles.cell, { width: 200 }]}>
                   <ScrollView nestedScrollEnabled style={styles.ordersScroll}>
                     <Text style={styles.ordersText}>
                       {payment.orderIds ? payment.orderIds.join(", ") : ""}
@@ -686,19 +680,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   cell: {
-    paddingHorizontal: 2,
+    paddingHorizontal: 8,
     paddingVertical: 12,
     justifyContent: 'center',
   },
   cellText: {
     fontSize: 14,
+    flexWrap: 'wrap',
   },
   ordersScroll: {
-    maxHeight: 20, // Adjust based on your needs
+    maxHeight: 60,
   },
   ordersText: {
     fontSize: 14,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   paidText: {
     color: '#2E7D32',
