@@ -1,9 +1,10 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
 import { Link } from 'expo-router';
-import { Package, ShoppingCart, Rss, Search, Filter } from 'lucide-react-native';
+import { Package, ShoppingCart, Rss, Search, Filter, ArrowLeft } from 'lucide-react-native';
 import { useState, useMemo, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
+import { useRouter } from 'expo-router';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
@@ -29,6 +30,7 @@ export default function DeliveryOrders() {
   };  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchOrders = async () => {
     try {
@@ -83,7 +85,15 @@ export default function DeliveryOrders() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Kitchen Dashboard</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Kitchen Dashboard</Text>
+        </View>
         <Text style={styles.headerSubtitle}>{filteredOrders.length} Active Orders</Text>
       </View>
 
@@ -184,9 +194,30 @@ export default function DeliveryOrders() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 20, backgroundColor: '#2E7D32', borderBottomWidth: 1, borderBottomColor: '#eee', marginTop: 0 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 16, color: '#fff', marginTop: 4 },
+  header: {
+    backgroundColor: '#166534',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: { 
+    fontSize: 16, 
+    color: '#fff',
+    marginLeft: 40,
+  },
   searchContainer: { flexDirection: 'row', padding: 16, gap: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 8, paddingHorizontal: 12 },
   searchIcon: { marginRight: 8 },

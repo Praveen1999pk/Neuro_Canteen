@@ -29,7 +29,7 @@ export default function TabLayout() {
           name="Profile"
           options={{
             title: 'Profile',
-            headerShown: true,
+            headerShown: false,
             tabBarIcon: ({ color, size }) => (
               <UserCog size={size} color={color} />
             ),
