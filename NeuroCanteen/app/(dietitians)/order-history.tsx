@@ -12,7 +12,6 @@ import {
 import {
   Calendar,
   Clock,
-  DollarSign,
   MapPin,
   Package,
   ArrowUp,
@@ -72,7 +71,7 @@ export default function OrderHistoryScreen() {
     const fetchRooms = async () => {
       try {
         const response = await axiosInstance.get<Order[]>('/orders');
-        const data = response.data.filter(order => order.orderedRole === 'Dietitian');
+        const data = response.data.filter(order => order.orderedRole === 'patient');
         setorders(data);
       } catch (error) {
         console.error('Failed to fetch rooms:', error);
@@ -187,7 +186,6 @@ export default function OrderHistoryScreen() {
               </View>
 
               <View style={styles.infoRow}>
-                <DollarSign size={18} color="#2E7D32" />
                 <Text style={styles.infoText}>
                   ₹{order.price.toFixed(2)}
                 </Text>

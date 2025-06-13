@@ -1,0 +1,173 @@
+.history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.history-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+  position: relative;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.history-header h2 {
+  margin: 0;
+  color: #1B5E20;
+  font-size: 24px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.close-button:hover {
+  color: #1B5E20;
+}
+
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.order-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eee;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.order-id {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-id span {
+  font-weight: 600;
+  color: #333;
+}
+
+.order-category {
+  font-size: 14px;
+  color: #2E7D32;
+}
+
+.order-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.order-status.pending {
+  background-color: #FFF3E0;
+  color: #E65100;
+}
+
+.order-status.completed {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.order-status.cancelled {
+  background-color: #FFEBEE;
+  color: #C62828;
+}
+
+.order-details {
+  background-color: #FAFAFA;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #1B5E20;
+}
+
+.item-quantity {
+  color: #666;
+  font-size: 14px;
+}
+
+.order-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.order-price span {
+  font-weight: 500;
+  color: #1B5E20;
+}
+
+.payment-type {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.order-time {
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 14px;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+}
+
+.no-orders {
+  text-align: center;
+  color: #666;
+  padding: 40px;
+} 

@@ -39,7 +39,10 @@ export default function OrderSuccess() {
   });
 
   const handleViewOrders = () => {
-    router.push('/(dietitians)/order-history');
+    router.push({
+      pathname: '/dietitian_routes/diet-history',
+      params: { patientuhid: uhid }
+    });
   };
 
   const handleBackToMenu = () => {

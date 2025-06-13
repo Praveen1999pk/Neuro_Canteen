@@ -1,17 +1,18 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { Package, ShoppingCart, Wallet, Search, Filter } from 'lucide-react-native';
 import { useState, useMemo, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
+import React from 'react';
 
 type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
-type OrderStatusFilter = 'ALL' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELED' | 'ORDER RECEIVED';
+type OrderStatusFilter = 'ALL' | 'OrderReceived' | 'OutForDelivery' | 'Cancelled' | 'Delivered';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('OrderReceived');
   const [showFilters, setShowFilters] = useState(false);
   type Order = {
     orderId: number;
@@ -25,7 +26,9 @@ export default function DeliveryOrders() {
     paymentRecived: boolean;
     address: string;
     deliveryStatus: string;
-  };  
+    orderDateTime: string;
+    phoneNo?: string;
+  };
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +36,10 @@ export default function DeliveryOrders() {
     try {
       setLoading(true);
       const response = await axiosInstance.get("/orders/out-for-delivery", { timeout: 5000 });
-      setOrders(response.data);
+      const sortedOrders = response.data.sort(
+        (a: Order, b: Order) => new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime()
+      );
+      setOrders(sortedOrders);
     } catch (error: any) {
       if (error.code === 'ECONNABORTED') {
         console.error("Request timed out");
@@ -45,9 +51,49 @@ export default function DeliveryOrders() {
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchOrders();
+    }, [])
+  );
+
+  // Polling effect
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchOrders();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const updateDeliveryStatus = async (orderId: number, deliveryStatus: string) => {
+    try {
+      await axiosInstance.patch(`/orders/${orderId}/delivery-status`, null, {
+        params: { deliveryStatus }
+      });
+      await fetchOrders();
+    } catch (error) {
+      console.error("Error updating delivery status:", error);
+    }
+  };
+
+  const updatePaymentReceived = async (orderId: number, paymentReceived: boolean) => {
+    try {
+      await axiosInstance.patch(`/orders/${orderId}/payment-received`, null, {
+        params: { paymentReceived }
+      });
+      // Immediately refresh the orders list after payment update
+      await fetchOrders();
+    } catch (error) {
+      console.error("Error updating payment received:", error);
+    }
+  };
 
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
@@ -59,10 +105,10 @@ export default function DeliveryOrders() {
         (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
 
       const matchesStatus = statusFilter === 'ALL' ||
-        (statusFilter === 'OUT_FOR_DELIVERY' && order.deliveryStatus === "OutForDelivery") ||
-        (statusFilter === 'CANCELED' && order.deliveryStatus === "Cancelled") ||
-        (statusFilter === 'ORDER RECEIVED' && order.deliveryStatus === "OrderReceived") ||
-        (statusFilter === 'DELIVERED' && order.deliveryStatus === "Delivered");
+        (statusFilter === 'OutForDelivery' && order.deliveryStatus === "OutForDelivery") ||
+        (statusFilter === 'Cancelled' && order.deliveryStatus === "Cancelled") ||
+        (statusFilter === 'OrderReceived' && (order.deliveryStatus === "OrderReceived" || order.deliveryStatus === null)) ||
+        (statusFilter === 'Delivered' && order.deliveryStatus === "Delivered");
         
       return matchesSearch && matchesPayment && matchesStatus;
     });
@@ -116,13 +162,13 @@ export default function DeliveryOrders() {
           </View>
 
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Order Status</Text>
+            <Text style={styles.filterTitle}>Delivery Status</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
               <FilterButton title="All" isActive={statusFilter === 'ALL'} onPress={() => setStatusFilter('ALL')} />
-              <FilterButton title="Out for Delivery" isActive={statusFilter === 'OUT_FOR_DELIVERY'} onPress={() => setStatusFilter('OUT_FOR_DELIVERY')} />
-              <FilterButton title="Delivered" isActive={statusFilter === 'DELIVERED'} onPress={() => setStatusFilter('DELIVERED')} />
-              <FilterButton title="Canceled" isActive={statusFilter === 'CANCELED'} onPress={() => setStatusFilter('CANCELED')} />
-              <FilterButton title="Order Received" isActive={statusFilter === 'ORDER RECEIVED'} onPress={() => setStatusFilter('ORDER RECEIVED')} />
+              <FilterButton title="Out for Delivery" isActive={statusFilter === 'OutForDelivery'} onPress={() => setStatusFilter('OutForDelivery')} />
+              <FilterButton title="Delivered" isActive={statusFilter === 'Delivered'} onPress={() => setStatusFilter('Delivered')} />
+              <FilterButton title="Cancelled" isActive={statusFilter === 'Cancelled'} onPress={() => setStatusFilter('Cancelled')} />
+              <FilterButton title="Order Received" isActive={statusFilter === 'OrderReceived'} onPress={() => setStatusFilter('OrderReceived')} />
             </ScrollView>
           </View>
         </View>
@@ -143,48 +189,55 @@ export default function DeliveryOrders() {
         >
           {filteredOrders.map((order) => (
             <Link
-            key={order.orderId}
-            href={{ pathname: "/delivery_orders/[orderId]", params: { orderId: order.orderId } }}
-            asChild
-          >
-            <TouchableOpacity style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <View style={styles.orderInfo}>
-                  <Text style={styles.orderId}>#{order.orderId}</Text>
-                  <View style={styles.statusBadge}>
-                    <Package size={16} color="#4CAF50" />
-                    <Text style={styles.statusText}>{order.deliveryStatus}</Text>
+              key={order.orderId}
+              href={{ pathname: "/delivery_orders/[orderId]", params: { orderId: order.orderId } }}
+              asChild
+            >
+              <TouchableOpacity style={styles.orderCard}>
+                <View style={styles.orderHeader}>
+                  <View style={styles.orderInfo}>
+                    <Text style={styles.orderId}>#{order.orderId}</Text>
+                    <View style={styles.statusBadge}>
+                      <Package size={16} color="#4CAF50" />
+                      <Text style={[
+                        styles.statusText,
+                        !order.deliveryStatus && styles.waitingStatusText,
+                        order.deliveryStatus === "OrderReceived" && styles.orderReceivedStatusText,
+                        order.deliveryStatus === "Cancelled" && styles.cancelledStatusText
+                      ]}>
+                        {order.deliveryStatus || "Waiting for confirmation"}
+                      </Text>
+                    </View>
                   </View>
+                  <Text style={styles.price}>₹{order.price}</Text>
                 </View>
-                <Text style={styles.price}>₹{order.price}</Text>
-              </View>
-          
-              <View style={styles.itemsContainer}>
-                <Text style={styles.itemsText} numberOfLines={2}>
-                  {order.itemName}
-                </Text>
-              </View>
-          
-              <View style={styles.orderFooter}>
-                <View style={styles.footerInfo}>
-                  <ShoppingCart size={16} color="#666" />
-                  <Text style={styles.footerText}>{order.quantity} items</Text>
-                </View>
-                <View style={styles.footerInfo}>
-                  <Wallet size={16} color="#666" />
-                  <Text style={styles.footerText}>
-                    {order.paymentRecived ? "Paid" : "Pending"}
+            
+                <View style={styles.itemsContainer}>
+                  <Text style={styles.itemsText} numberOfLines={2}>
+                    {order.itemName}
                   </Text>
                 </View>
-                <Text style={[styles.roleTag, {
-                  backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
-                }]}>
-                  {order.orderedRole}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </Link>
-            ))}
+            
+                <View style={styles.orderFooter}>
+                  <View style={styles.footerInfo}>
+                    <ShoppingCart size={16} color="#666" />
+                    <Text style={styles.footerText}>{order.quantity} items</Text>
+                  </View>
+                  <View style={styles.footerInfo}>
+                    <Wallet size={16} color="#666" />
+                    <Text style={styles.footerText}>
+                      {order.paymentRecived ? "Paid" : "Pending"}
+                    </Text>
+                  </View>
+                  <Text style={[styles.roleTag, {
+                    backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
+                  }]}>
+                    {order.orderedRole}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </Link>
+          ))}
         </ScrollView>
       )}
     </View>
@@ -215,7 +268,20 @@ const styles = StyleSheet.create({
   orderInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   orderId: { fontSize: 16, fontWeight: '600', color: '#333' },
   statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
-  statusText: { fontSize: 12, color: '#2E7D32', fontWeight: '500' },
+  statusText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#4CAF50',
+  },
+  waitingStatusText: {
+    color: '#FF9800', // Orange color for waiting status
+  },
+  orderReceivedStatusText: {
+    color: '#2196F3', // Blue color for OrderReceived status
+  },
+  cancelledStatusText: {
+    color: '#FF6B6B', // Light red color for Cancelled status
+  },
   price: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   itemsContainer: { marginBottom: 12 },
   itemsText: { fontSize: 15, color: '#666', lineHeight: 22 },

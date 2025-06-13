@@ -6,12 +6,12 @@ import { useState, useMemo, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
-type OrderStatusFilter = 'ALL' | 'OUT_FOR_DELIVERY' | 'Prepared' | 'RECEIVED';
+type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   // const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('RECEIVED');
   const [showFilters, setShowFilters] = useState(false);
   type Order = {
     orderId: number;
@@ -25,6 +25,7 @@ export default function DeliveryOrders() {
     paymentRecived: boolean;
     address: string;
     deliveryStatus: string;
+    orderDateTime: string;
   };  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,21 +51,22 @@ export default function DeliveryOrders() {
   }, [statusFilter]);
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-        order.orderId.toString().includes(searchQuery);
+    return orders
+      .filter(order => {
+        const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+          order.orderId.toString().includes(searchQuery);
 
-      // const matchesPayment = paymentFilter === 'ALL' ||
-      //   (paymentFilter === 'PAID' && order.paymentRecived === true) ||
-      //   (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
-
-      const matchesStatus = statusFilter === 'ALL' ||
-        (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === "OUT_FOR_DELIVERY") ||
-        (statusFilter === 'Prepared' && order.orderStatus === "PREPARED") ||
-        (statusFilter === 'RECEIVED' && order.orderStatus === "RECEIVED")
-        
-      return matchesSearch && matchesStatus;
-    });
+        const matchesStatus = statusFilter === 'ALL' ||
+          (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === "OUT_FOR_DELIVERY") ||
+          (statusFilter === 'PREPARED' && order.orderStatus === "PREPARED") ||
+          (statusFilter === 'RECEIVED' && (order.orderStatus === "RECEIVED" || !order.orderStatus))
+          
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        // Sort by orderDateTime in descending order (newest first)
+        return new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime();
+      });
   }, [orders, searchQuery, statusFilter]);
 
   const FilterButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
@@ -105,21 +107,12 @@ export default function DeliveryOrders() {
 
       {showFilters && (
         <View style={styles.filtersContainer}>
-          {/* <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Payment Status</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-              <FilterButton title="All" isActive={paymentFilter === 'ALL'} onPress={() => setPaymentFilter('ALL')} />
-              <FilterButton title="Paid" isActive={paymentFilter === 'PAID'} onPress={() => setPaymentFilter('PAID')} />
-              <FilterButton title="Not Paid" isActive={paymentFilter === 'NOT_PAID'} onPress={() => setPaymentFilter('NOT_PAID')} />
-            </ScrollView>
-          </View> */}
-
           <View style={styles.filterSection}>
             <Text style={styles.filterTitle}>Order Status</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
               <FilterButton title="All" isActive={statusFilter === 'ALL'} onPress={() => setStatusFilter('ALL')} />
-              <FilterButton title="Sent For Delivery" isActive={statusFilter === 'OUT_FOR_DELIVERY'} onPress={() => setStatusFilter('OUT_FOR_DELIVERY')} />
-              <FilterButton title="Prepared" isActive={statusFilter === 'Prepared'} onPress={() => setStatusFilter('Prepared')} />
+              <FilterButton title="Sent for Delivery" isActive={statusFilter === 'OUT_FOR_DELIVERY'} onPress={() => setStatusFilter('OUT_FOR_DELIVERY')} />
+              <FilterButton title="Prepared" isActive={statusFilter === 'PREPARED'} onPress={() => setStatusFilter('PREPARED')} />
               <FilterButton title="Order Received" isActive={statusFilter === 'RECEIVED'} onPress={() => setStatusFilter('RECEIVED')} />
             </ScrollView>
           </View>

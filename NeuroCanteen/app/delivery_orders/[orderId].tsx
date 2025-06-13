@@ -28,7 +28,7 @@ export default function UpdateOrderScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('PENDING');
-  const [deliveryStatus, setDeliveryStatus] = useState('OUT_FOR_DELIVERY');
+  const [deliveryStatus, setDeliveryStatus] = useState('OrderReceived');
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -37,7 +37,7 @@ export default function UpdateOrderScreen() {
         const orderData: Order = response.data;
         setOrder(orderData);
         setPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
-        setDeliveryStatus(orderData.deliveryStatus ?? 'OutForDelivery');
+        setDeliveryStatus(orderData.deliveryStatus ?? 'OrderReceived');
       } catch (error) {
         console.error('Error fetching order:', error);
       } finally {
@@ -58,7 +58,7 @@ export default function UpdateOrderScreen() {
         params: { deliveryStatus },
       });
 
-      router.back();
+      router.replace('/delivery_orders');
     } catch (error) {
       console.error('Error updating order:', error);
     }
@@ -95,7 +95,7 @@ export default function UpdateOrderScreen() {
             <View style={styles.statusItem}>
               <Package size={25} color="#03A791" />
               <Text style={styles.statusLabel}>Delivery</Text>
-              <Text style={styles.statusValue}>{order.deliveryStatus}</Text>
+              <Text style={styles.statusValue}>{order.deliveryStatus || "Waiting for confirmation"}</Text>
             </View>
             <View style={styles.statusItem}>
               <IndianRupee size={25} color="#28B463" />
@@ -169,14 +169,17 @@ export default function UpdateOrderScreen() {
 
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
-            {['OutForDelivery', 'Delivered', 'OrderReceived', 'Cancelled'].map((status) => (
+            {['OrderReceived', 'OutForDelivery', 'Delivered', 'Cancelled'].map((status) => (
               <TouchableOpacity
                 key={status}
                 style={[styles.button, deliveryStatus === status && styles.activeButton]}
                 onPress={() => setDeliveryStatus(status)}
               >
                 <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
-                  {status.replace(/([A-Z])/g, ' $1').trim()}
+                  {status === 'OrderReceived' ? 'Confirm Delivery' : 
+                   status === 'OutForDelivery' ? 'Out for Delivery' :
+                   status === 'Delivered' ? 'Delivered' :
+                   'Cancelled'}
                 </Text>
               </TouchableOpacity>
             ))}
