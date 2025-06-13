@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  Alert
+  Alert,
+  Dimensions
 } from 'react-native';
 import { DataTable } from 'react-native-paper';
 import axios from 'axios';
@@ -68,6 +69,16 @@ const PaymentIn = () => {
   const [processingPayment, setProcessingPayment] = useState<{ [userId: string]: boolean }>({});
   const [roleFilter, setRoleFilter] = useState<'Staff' | 'Patient'>('Staff');
   const [searchTerm, setSearchTerm] = useState('');
+  const screenWidth = Dimensions.get('window').width;
+  const columnWidths = {
+    userId: screenWidth * 0.2,
+    role: screenWidth * 0.15,
+    amount: screenWidth * 0.15,
+    orders: screenWidth * 0.2,
+    status: screenWidth * 0.2,
+    action: screenWidth * 0.25,
+    date: screenWidth * 0.15
+  };
   const [tab, setTab] = useState<'Pending' | 'Completed'>('Pending');
   const router = useRouter();
 
@@ -94,7 +105,6 @@ const PaymentIn = () => {
         params: {
           orderedRole: roleFilter,
           paymentType: 'CREDIT',
-          paymentStatus: null
         },
         headers: {
           'Content-Type': 'application/json',
@@ -359,57 +369,90 @@ const fetchCompletedPayments = async () => {
     if (!Array.isArray(completedPayments)) {
       return <Text style={styles.noOrdersText}>Error loading completed payments</Text>;
     }
-
+  
     if (filteredCompletedPayments.length === 0) {
       return <Text style={styles.noOrdersText}>No completed payments found.</Text>;
     }
-
+  
     return (
-      <DataTable>
-        <DataTable.Header>
-          <DataTable.Title>User ID</DataTable.Title>
-          <DataTable.Title>Role</DataTable.Title>
-          <DataTable.Title numeric>Amount</DataTable.Title>
-          <DataTable.Title numeric>Orders</DataTable.Title>
-          <DataTable.Title>Status</DataTable.Title>
-          <DataTable.Title>Date</DataTable.Title>
-        </DataTable.Header>
-
-        {filteredCompletedPayments.map((payment) => {
-          if (!payment || !payment.orderedUserId) return null;
-          const uniqueKey = `${payment.orderedUserId}-${payment.createdAt}`;
-          return (
-            <DataTable.Row key={uniqueKey}>
-              <DataTable.Cell>{payment.orderedUserId}</DataTable.Cell>
-              <DataTable.Cell>{payment.orderedRole}</DataTable.Cell>
-              <DataTable.Cell numeric>
-                ₹{(payment.totalPrice || 0).toFixed(2)}
-              </DataTable.Cell>
-              <DataTable.Cell numeric>
-                {payment.orderIds ? payment.orderIds.join(", ") : ""}
-              </DataTable.Cell>
-              <DataTable.Cell>
-                <Text style={styles.paidText}>✅ Paid</Text>
-              </DataTable.Cell>
-              <DataTable.Cell>
-                {new Date(payment.createdAt).toLocaleDateString()}
-              </DataTable.Cell>
-            </DataTable.Row>
-          );
-        })}
-      </DataTable>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+        <DataTable style={styles.table}>
+          <DataTable.Header>
+            <DataTable.Title style={[styles.headerCell, { width: 120 }]}>User ID</DataTable.Title>
+            <DataTable.Title style={[styles.headerCell, { width: 80 }]}>Role</DataTable.Title>
+            <DataTable.Title numeric style={[styles.headerCell, { width: 100 }]}>Amount</DataTable.Title>
+            <DataTable.Title style={[styles.headerCell, { flex: 1, minWidth: 200 }]}>Order ID</DataTable.Title>
+            <DataTable.Title style={[styles.headerCell, { width: 80 }]}>Status</DataTable.Title>
+            <DataTable.Title style={[styles.headerCell, { width: 120 }]}>Date</DataTable.Title>
+          </DataTable.Header>
+  
+          {filteredCompletedPayments.map((payment) => {
+            if (!payment || !payment.orderedUserId) return null;
+            const uniqueKey = `${payment.orderedUserId}-${payment.createdAt}`;
+            return (
+              <DataTable.Row key={uniqueKey}>
+                <DataTable.Cell style={[styles.cell, { width: 120 }]}>
+                  <Text style={styles.cellText}>
+                    {payment.orderedUserId}
+                  </Text>
+                </DataTable.Cell>
+                <DataTable.Cell style={[styles.cell, { width: 80 }]}>
+                  <Text style={styles.cellText}>
+                    {payment.orderedRole}
+                  </Text>
+                </DataTable.Cell>
+                <DataTable.Cell numeric style={[styles.cell, { width: 100 }]}>
+                  <Text style={styles.cellText}>
+                    ₹{(payment.totalPrice || 0).toFixed(2)}
+                  </Text>
+                </DataTable.Cell>
+                <DataTable.Cell style={[styles.cell, { flex: 1, minWidth: 200 }]}>
+                  <ScrollView nestedScrollEnabled style={styles.ordersScroll}>
+                    <Text style={styles.ordersText}>
+                      {payment.orderIds ? payment.orderIds.join(", ") : ""}
+                    </Text>
+                  </ScrollView>
+                </DataTable.Cell>
+                <DataTable.Cell style={[styles.cell, { width: 80 }]}>
+                  <Text style={styles.paidText}>✅ Paid</Text>
+                </DataTable.Cell>
+                <DataTable.Cell style={[styles.cell, { width: 120 }]}>
+                  <Text style={styles.cellText}>
+                    {new Date(payment.createdAt).toLocaleDateString()}
+                  </Text>
+                </DataTable.Cell>
+              </DataTable.Row>
+            );
+          })}
+        </DataTable>
+      </ScrollView>
     );
   };
 
   const renderOrderSummary = (summary: Summary) => {
     return (
       <DataTable.Row key={summary.orderedUserId}>
-        <DataTable.Cell>{summary.orderedName || summary.orderedUserId}</DataTable.Cell>
-        <DataTable.Cell>{summary.orderedRole}</DataTable.Cell>
-        <DataTable.Cell numeric>₹{summary.totalPrice.toFixed(2)}</DataTable.Cell>
-        <DataTable.Cell numeric>{summary.orderIds.length}</DataTable.Cell>
-        <DataTable.Cell>{summary.paymentType}</DataTable.Cell>
-        <DataTable.Cell>
+        <DataTable.Cell style={[styles.cell, { width: columnWidths.userId }]}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.cellText}>
+            {summary.orderedName || summary.orderedUserId}
+          </Text>
+        </DataTable.Cell>
+        <DataTable.Cell style={[styles.cell, { width: columnWidths.role }]}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.cellText}>
+            {summary.orderedRole}
+          </Text>
+        </DataTable.Cell>
+        <DataTable.Cell numeric style={[styles.cell, { width: columnWidths.amount }]}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.cellText}>
+            ₹{summary.totalPrice.toFixed(2)}
+          </Text>
+        </DataTable.Cell>
+        <DataTable.Cell numeric style={[styles.cell, { width: columnWidths.orders }]}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.cellText}>
+            {summary.orderIds.length}
+          </Text>
+        </DataTable.Cell>
+        <DataTable.Cell style={[styles.cell, { width: columnWidths.action }]}>
           {summary.allPaid ? (
             <Text style={styles.paidText}>✅ Paid</Text>
           ) : (
@@ -429,7 +472,6 @@ const fetchCompletedPayments = async () => {
       </DataTable.Row>
     );
   };
-
   return (
     <ScrollView
       style={styles.container}
@@ -497,18 +539,19 @@ const fetchCompletedPayments = async () => {
         pendingSummaries.length === 0 ? (
           <Text style={styles.noOrdersText}>No pending payments found.</Text>
         ) : (
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title>User ID</DataTable.Title>
-              <DataTable.Title>Role</DataTable.Title>
-              <DataTable.Title numeric>Amount</DataTable.Title>
-              <DataTable.Title numeric>Orders</DataTable.Title>
-              <DataTable.Title>Status</DataTable.Title>
-              <DataTable.Title>Action</DataTable.Title>
-            </DataTable.Header>
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <DataTable style={styles.table}>
+              <DataTable.Header>
+                <DataTable.Title style={styles.cell}>User ID</DataTable.Title>
+                <DataTable.Title style={styles.cell}>Role</DataTable.Title>
+                <DataTable.Title numeric style={styles.cell}>Amount</DataTable.Title>
+                <DataTable.Title numeric style={styles.cell}>Total Orders</DataTable.Title>
+                <DataTable.Title style={styles.cell}>Action</DataTable.Title>
+              </DataTable.Header>
 
-            {pendingSummaries.map((summary) => renderOrderSummary(summary))}
-          </DataTable>
+              {pendingSummaries.map((summary) => renderOrderSummary(summary))}
+            </DataTable>
+          </ScrollView>
         )
       ) : (
         renderCompletedPayments()
@@ -601,10 +644,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold'
   },
-  paidText: {
-    color: '#2E7D32',
-    fontWeight: 'bold'
-  },
   unpaidText: {
     color: '#D32F2F',
     fontWeight: 'bold'
@@ -637,21 +676,51 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: 20
   },
+  table: {
+    width: '100%',
+  },
+  headerCell: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  cell: {
+    paddingHorizontal: 2,
+    paddingVertical: 12,
+    justifyContent: 'center',
+  },
+  cellText: {
+    fontSize: 14,
+  },
+  ordersScroll: {
+    maxHeight: 20, // Adjust based on your needs
+  },
+  ordersText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  paidText: {
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
   markPaidButton: {
     backgroundColor: '#2E7D32',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 4,
-    minWidth: 100,
+    minWidth: 140,
     alignItems: 'center',
     justifyContent: 'center'
   },
   markPaidButtonText: {
     color: 'white',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+    width: '100%'
+  },
 });
 
 export default PaymentIn;
