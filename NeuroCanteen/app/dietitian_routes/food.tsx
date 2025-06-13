@@ -12,7 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { useRouter} from 'expo-router';
-import { ShoppingCart, Search, Plus, Check, Clock } from 'lucide-react-native';
+import { ShoppingCart, Search, Plus, Check, Clock, Calendar } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -65,6 +65,8 @@ export default function FoodScreen() {
   const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   useEffect(() => {
     const fetchRooms = async () => {
@@ -203,6 +205,38 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (selectedDate && selectedItemId) {
+      const item = foodData.find(food => food.id === selectedItemId);
+      if (item) {
+        const existingItemIndex = cart.findIndex(cartItem => cartItem.item.id === item.id);
+        if (existingItemIndex !== -1) {
+          const updatedCart = [...cart];
+          const currentTime = updatedCart[existingItemIndex].scheduledTime || new Date();
+          const newDateTime = new Date(selectedDate);
+          newDateTime.setHours(currentTime.getHours(), currentTime.getMinutes());
+          updatedCart[existingItemIndex].scheduledTime = newDateTime;
+          setCart(updatedCart);
+        }
+      }
+    }
+  };
+
+  const showDatePickerForItem = (itemId: number) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(true);
+    }
+    setSelectedItemId(itemId);
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
   const renderFoodItem = ({ item }: { item: FoodItem }) => {
     const isInCart = cart.some(cartItem => cartItem.item.id === item.id);
     const cartItem = cart.find(cartItem => cartItem.item.id === item.id);
@@ -262,15 +296,27 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           </View>
 
           {isInCart && (
-            <TouchableOpacity 
-              style={styles.timeButton}
-              onPress={() => showTimePickerForItem(item.id)}
-            >
-              <Clock size={16} color="#166534" />
-              <Text style={styles.timeText}>
-                {cartItem?.scheduledTime ? formatTime(cartItem.scheduledTime) : 'Set Time'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.scheduleContainer}>
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => showDatePickerForItem(item.id)}
+              >
+                <Calendar size={16} color="#166534" />
+                <Text style={styles.dateText}>
+                  {cartItem?.scheduledTime ? formatDate(cartItem.scheduledTime) : 'Set Date'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.timeButton}
+                onPress={() => showTimePickerForItem(item.id)}
+              >
+                <Clock size={16} color="#166534" />
+                <Text style={styles.timeText}>
+                  {cartItem?.scheduledTime ? formatTime(cartItem.scheduledTime) : 'Set Time'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -354,6 +400,17 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
         contentContainerStyle={styles.foodGrid}
         columnWrapperStyle={styles.foodRow}
       />
+      
+      {showDatePicker && (
+        <DateTimePicker
+          testID="datePicker"
+          value={selectedDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+        />
+      )}
       
       {showTimePicker && (
         <DateTimePicker
@@ -444,7 +501,7 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
                   style={styles.checkoutButton}
                   onPress={handleCheckout}
                 >
-                  <Text style={styles.checkoutButtonText}>Place Order</Text>
+                  <Text style={styles.checkoutButtonText}>Confirm Diet</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -773,6 +830,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  scheduleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  dateText: {
+    color: '#166534',
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -780,8 +858,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    marginTop: 8,
-    alignSelf: 'flex-start',
+    flex: 1,
   },
   timeText: {
     color: '#166534',

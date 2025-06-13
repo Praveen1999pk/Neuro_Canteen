@@ -110,7 +110,7 @@ function OrderSummary() {
             <Text style={styles.itemDescription}>{orderItem.item.description}</Text>
             {orderItem.scheduledTime && (
               <Text style={styles.scheduledTime}>
-                Scheduled for: {orderItem.scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                Scheduled for: {orderItem.scheduledTime.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })} at {orderItem.scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
             )}
           </View>
@@ -272,7 +272,7 @@ function CheckoutButton() {
         onPress={handlePress}
         disabled={!address.fullAddress || isLoading}
       >
-        <Text style={styles.confirmButtonText}>Confirm Diet</Text>
+        <Text style={styles.confirmButtonText}>Place Order</Text>
       </TouchableOpacity>
     </Animated.View>
   );
