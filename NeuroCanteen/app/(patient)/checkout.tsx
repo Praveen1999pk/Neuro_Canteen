@@ -15,6 +15,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
+import { Link } from 'expo-router';
+import { Package, ShoppingCart, Wallet, ArrowLeft } from 'lucide-react-native';
 
 type MenuItem = {
   id: number;
@@ -27,6 +29,7 @@ type CartItems = {
 };
 
 export default function patientOrderCheckout() {
+  const [phoneNumber, setPhoneNumber] = useState('');
   const params = useLocalSearchParams();
   const router = useRouter();
   const [tip, setTip] = useState(0);
@@ -85,11 +88,33 @@ export default function patientOrderCheckout() {
       Alert.alert("Error", "Please enter a delivery address");
       return;
     }
-    setSubmittedAddress(address);
+  
+    if (phoneNumber && !/^\d{10}$/.test(phoneNumber)) {
+      Alert.alert("Error", "Please enter a valid 10-digit phone number");
+      return;
+    }
+    
+    const fullAddress = phoneNumber 
+      ? `ph: ${phoneNumber}, address:${address}`
+      : address;
+      
+    setSubmittedAddress(fullAddress);
     setIsEditing(false);
   };
 
   const handleAddressEdit = () => {
+    if (submittedAddress.startsWith('ph:') && submittedAddress.includes(', address:')) {
+      const parts = submittedAddress.split(', address:');
+      const phonePart = parts[0].replace('ph:', '');
+      const addressPart = parts[1];
+      
+      setPhoneNumber(phonePart);
+      setAddress(addressPart);
+    } else {
+      setPhoneNumber('');
+      setAddress(submittedAddress);
+    }
+    
     setIsEditing(true);
   };
 
@@ -120,6 +145,10 @@ export default function patientOrderCheckout() {
   };
 
   const handleUPI = async () => {
+    if (!submittedAddress) {
+      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+      return;
+    }
     const token = await AsyncStorage.getItem("jwtToken");
     if (token) {
       try {
@@ -249,6 +278,10 @@ try {
   };
 
   const handleCOD = async () => {
+    if (!submittedAddress) {
+      Alert.alert("Error", "Please enter the delivery address first");
+      return;
+    }
     let usernameToUse = username;
     const token = await AsyncStorage.getItem("jwtToken");
     
@@ -293,8 +326,17 @@ try {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#2E7D32" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Checkout</Text>
+      </View>
+      <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+        >
         {/* Order Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
@@ -320,10 +362,23 @@ try {
           })}
         </View>
 
-        {/* Delivery Details */}
+                {/* Delivery Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
           <View style={styles.divider} />
+          
+          {/* Only show phone number field when editing */}
+          {isEditing && (
+            <View style={styles.phoneNumberContainer}>
+              <TextInput
+                style={styles.phoneNumberInput}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder="Enter phone number"
+                keyboardType="phone-pad"
+              />
+            </View>
+          )}
           
           {submittedAddress && !isEditing ? (
             <View style={styles.addressContainer}>
@@ -348,7 +403,6 @@ try {
             </View>
           )}
         </View>
-
         {/* Order Total */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Total:</Text>
@@ -398,14 +452,16 @@ try {
         </View>
 
         {/* Payment Options */}
-        <View style={styles.paymentOptions}>
-          <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
-            <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
-            <Text style={styles.paymentButtonText}>UPI</Text>
-          </TouchableOpacity>
+        <View style={styles.paymentOptionsContainer}>
+          <View style={styles.paymentOptions}>
+            <TouchableOpacity style={styles.codButton} onPress={handleCOD}>
+              <Text style={styles.paymentButtonText}>Cash On Delivery</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.upiButton} onPress={handleUPI}>
+              <Text style={styles.paymentButtonText}>UPI</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
@@ -458,7 +514,7 @@ try {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -651,4 +707,40 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  phoneNumberContainer: {
+    marginBottom: 16,
+  },
+  phoneNumberInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 12,
+    
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 20, // Add some padding at bottom
+  },
+  paymentOptionsContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    marginTop: 20,
+  },
+  
 });

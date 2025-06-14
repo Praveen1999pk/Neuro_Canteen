@@ -15,6 +15,8 @@ import { jwtDecode } from 'jwt-decode';
 import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useEffect } from 'react';
+import { Link } from 'expo-router';
+import { Package, ShoppingCart, Wallet, ArrowLeft } from 'lucide-react-native';
 
 type MenuItem = {
   id: number;
@@ -36,6 +38,7 @@ export default function StaffOrderCheckout() {
   const [isEditing, setIsEditing] = useState(true);
   const [username, setUsername] = useState('');
   const [creditBalance, setCreditBalance] = useState(0);
+  const [phoneNumber, setPhoneNumber] = useState('');
   useEffect(() => {
     const fetchUsername = async () => {
       const token = await AsyncStorage.getItem("jwtToken");
@@ -91,15 +94,41 @@ export default function StaffOrderCheckout() {
       Alert.alert("Error", "Please enter a delivery address");
       return;
     }
-    setSubmittedAddress(address);
+    
+    if (phoneNumber && !/^\d{10}$/.test(phoneNumber)) {
+      Alert.alert("Error", "Please enter a valid 10-digit phone number or leave it empty");
+      return;
+    }
+    
+    const fullAddress = phoneNumber.trim() 
+      ? `ph: ${phoneNumber}, address:${address}`
+      : address;
+      
+    setSubmittedAddress(fullAddress);
     setIsEditing(false);
   };
 
   const handleAddressEdit = () => {
+    if (submittedAddress.startsWith('ph:') && submittedAddress.includes(', address:')) {
+      const parts = submittedAddress.split(', address:');
+      const phonePart = parts[0].replace('ph:', '');
+      const addressPart = parts[1];
+      
+      setPhoneNumber(phonePart);
+      setAddress(addressPart);
+    } else {
+      setPhoneNumber('');
+      setAddress(submittedAddress);
+    }
+    
     setIsEditing(true);
   };
 
   const handleUPI = async () => {
+    if (!submittedAddress) {
+      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+      return;
+    }
     const token = await AsyncStorage.getItem("jwtToken");
     if (token) {
       try {
@@ -207,6 +236,10 @@ export default function StaffOrderCheckout() {
   };
 
   const handleCOD = async () => {
+      if (!submittedAddress) {
+        Alert.alert("Error", "Please enter the mobile number and delivery address!");
+        return;
+      }
     const token = await AsyncStorage.getItem("jwtToken");
     if (token) {
       try {
@@ -246,6 +279,10 @@ export default function StaffOrderCheckout() {
   };
 
   const handleCredit = async () => {
+    if (!submittedAddress) {
+      Alert.alert("Error", "Please enter the delivery address first");
+      return;
+    }
     Alert.alert(
       "Confirm Credit Purchase",
       `This will add ₹${grandTotal.toFixed(2)} to your credit balance. Continue?`,
@@ -305,27 +342,29 @@ export default function StaffOrderCheckout() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <ArrowLeft size={24} color="#2E7D32" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Checkout</Text>
+      </View>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+      >
         {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
-          <View style={styles.divider} />
-          
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Item</Text>
-            <Text style={styles.tableHeaderText}>Qty</Text>
-            <Text style={styles.tableHeaderText}>Price</Text>
+          <View style={styles.sectionHeader}>
+            <ShoppingCart size={20} color="#2E7D32" />
+            <Text style={styles.sectionTitle}>Order Summary</Text>
           </View>
-          
-          {Object.keys(cartItems).map(itemId => {
+          {Object.entries(cartItems).map(([itemId, quantity]) => {
             const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
             if (!item) return null;
-            
             return (
-              <View key={itemId} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{item.name}</Text>
-                <Text style={styles.tableCell}>{cartItems[parseInt(itemId)]}</Text>
-                <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
+              <View key={itemId} style={styles.orderItem}>
+                <Text style={styles.itemName}>{item.name} x{quantity}</Text>
+                <Text style={styles.itemPrice}>₹{calculateItemTotal(item, quantity)}</Text>
               </View>
             );
           })}
@@ -335,6 +374,19 @@ export default function StaffOrderCheckout() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
           <View style={styles.divider} />
+          
+          {/* Only show phone number field when editing */}
+          {isEditing && (
+            <View style={styles.phoneNumberContainer}>
+              <TextInput
+                style={styles.phoneNumberInput}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder="Mobile Number (Optional)"
+                keyboardType="phone-pad"
+              />
+            </View>
+          )}
           
           {submittedAddress && !isEditing ? (
             <View style={styles.addressContainer}>
@@ -447,44 +499,55 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginLeft: 8,
   },
   divider: {
     height: 1,
     backgroundColor: '#ddd',
     marginBottom: 12,
   },
-  tableHeader: {
+  orderItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  tableHeaderText: {
+  itemName: {
+    flex: 1,
+  },
+  itemPrice: {
     fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
   },
-  tableRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  tableCell: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  addressContainer: {
+  phoneNumberContainer: {
     marginBottom: 16,
   },
+  phoneNumberInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 12,
+  },
+  addressContainer: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 12,
+  },
   addressText: {
-    marginBottom: 8,
+    fontSize: 16,
+    color: '#333',
   },
   editButton: {
-    color: 'blue',
-    textAlign: 'right',
+    color: '#2E7D32',
+    marginTop: 8,
+    fontWeight: 'bold',
   },
   addressInputContainer: {
     marginBottom: 16,
@@ -493,9 +556,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 4,
-    padding: 8,
-    minHeight: 100,
-    marginBottom: 8,
+    padding: 12,
+    height: 100,
     textAlignVertical: 'top',
   },
   submitButton: {
@@ -503,6 +565,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 4,
     alignItems: 'center',
+    marginTop: 8,
   },
   submitButtonText: {
     color: 'white',
@@ -581,5 +644,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  paymentOptionsContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    marginTop: 20,
   },
 });
