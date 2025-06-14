@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
@@ -148,15 +148,19 @@ export default function UpdateOrderScreen() {
                 style={[
                   styles.button, 
                   paymentStatus === status && styles.activeButton,
-                  order.paymentType === 'CREDIT' && styles.disabledButton
+                  (order.paymentType === 'CREDIT' || paymentStatus === 'COMPLETED') && styles.disabledButton
                 ]}
-                onPress={() => order.paymentType !== 'CREDIT' && setPaymentStatus(status)}
-                disabled={order.paymentType === 'CREDIT'}
+                onPress={() => {
+                  if (order.paymentType !== 'CREDIT' && paymentStatus !== 'COMPLETED') {
+                    setPaymentStatus(status);
+                  }
+                }}
+                disabled={order.paymentType === 'CREDIT' || paymentStatus === 'COMPLETED'}
               >
                 <Text style={[
                   styles.buttonText, 
                   paymentStatus === status && styles.activeButtonText,
-                  order.paymentType === 'CREDIT' && styles.disabledButtonText
+                  (order.paymentType === 'CREDIT' || paymentStatus === 'COMPLETED') && styles.disabledButtonText
                 ]}>
                   {status}
                 </Text>
@@ -166,16 +170,45 @@ export default function UpdateOrderScreen() {
           {order.paymentType === 'CREDIT' && (
             <Text style={styles.disabledText}>Payment status cannot be changed for CREDIT orders</Text>
           )}
+          {paymentStatus === 'COMPLETED' && order.paymentType !== 'CREDIT' && (
+            <Text style={styles.disabledText}>Payment has been completed. Status cannot be changed.</Text>
+          )}
 
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
             {['OrderReceived', 'OutForDelivery', 'Delivered', 'Cancelled'].map((status) => (
               <TouchableOpacity
                 key={status}
-                style={[styles.button, deliveryStatus === status && styles.activeButton]}
-                onPress={() => setDeliveryStatus(status)}
+                style={[
+                  styles.button, 
+                  deliveryStatus === status && styles.activeButton,
+                  (order.deliveryStatus === 'Delivered' || deliveryStatus === 'Delivered') && styles.disabledButton,
+                  status === 'Delivered' && paymentStatus !== 'COMPLETED' && styles.disabledButton
+                ]}
+                onPress={() => {
+                  if (order.deliveryStatus !== 'Delivered' && deliveryStatus !== 'Delivered') {
+                    if (status === 'Delivered' && paymentStatus !== 'COMPLETED') {
+                      Alert.alert(
+                        "Cannot Mark as Delivered",
+                        "Payment must be completed before marking the order as delivered."
+                      );
+                      return;
+                    }
+                    setDeliveryStatus(status);
+                  }
+                }}
+                disabled={
+                  order.deliveryStatus === 'Delivered' || 
+                  deliveryStatus === 'Delivered' ||
+                  (status === 'Delivered' && paymentStatus !== 'COMPLETED')
+                }
               >
-                <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
+                <Text style={[
+                  styles.buttonText, 
+                  deliveryStatus === status && styles.activeButtonText,
+                  (order.deliveryStatus === 'Delivered' || deliveryStatus === 'Delivered') && styles.disabledButtonText,
+                  status === 'Delivered' && paymentStatus !== 'COMPLETED' && styles.disabledButtonText
+                ]}>
                   {status === 'OrderReceived' ? 'Confirm Delivery' : 
                    status === 'OutForDelivery' ? 'Out for Delivery' :
                    status === 'Delivered' ? 'Delivered' :
@@ -184,6 +217,12 @@ export default function UpdateOrderScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          {(order.deliveryStatus === 'Delivered' || deliveryStatus === 'Delivered') && (
+            <Text style={styles.disabledText}>Order has been delivered. Status cannot be changed.</Text>
+          )}
+          {paymentStatus !== 'COMPLETED' && (
+            <Text style={styles.disabledText}>Payment must be completed before marking the order as delivered.</Text>
+          )}
         </View>
 
         <TouchableOpacity style={styles.updateButton} onPress={handleUpdateOrder}>
@@ -323,7 +362,7 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#E0E0E0',
-    opacity: 0.7,
+    borderColor: '#E0E0E0',
   },
   disabledButtonText: {
     color: '#9E9E9E',
@@ -331,7 +370,7 @@ const styles = StyleSheet.create({
   disabledText: {
     color: '#9E9E9E',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 8,
     fontStyle: 'italic',
   },
 });
