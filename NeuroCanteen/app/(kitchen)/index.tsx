@@ -8,11 +8,13 @@ import { useRouter } from 'expo-router';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'CONFIRMED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
+type RoleFilter = 'ALL' | 'Staff' | 'Patient';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   // const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('RECEIVED');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
   const [showFilters, setShowFilters] = useState(false);
   type Order = {
     orderId: number;
@@ -63,14 +65,18 @@ export default function DeliveryOrders() {
           (statusFilter === 'CONFIRMED' && order.orderStatus === 'RECEIVED') ||
           (statusFilter === 'PREPARED' && order.orderStatus === 'PREPARED') ||
           (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === 'OUT_FOR_DELIVERY');
+
+        const matchesRole = roleFilter === 'ALL' ||
+          (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
+          (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
           
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesRole;
       })
       .sort((a, b) => {
         // Sort by orderDateTime in descending order (newest first)
         return new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime();
       });
-  }, [orders, searchQuery, statusFilter]);
+  }, [orders, searchQuery, statusFilter, roleFilter]);
 
   const FilterButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
     <TouchableOpacity
@@ -108,7 +114,28 @@ export default function DeliveryOrders() {
             onChangeText={setSearchQuery}
           />
         </View>
+        <TouchableOpacity 
+          style={styles.filterToggle}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Filter size={20} color={showFilters ? "#2196F3" : "#666"} />
+        </TouchableOpacity>
       </View>
+
+      {showFilters && (
+        <View style={styles.filtersContainer}>
+          {/* ... existing payment filter if any, add here ... */}
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterTitle}>Role</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+              <FilterButton title="All" isActive={roleFilter === 'ALL'} onPress={() => setRoleFilter('ALL')} />
+              <FilterButton title="Staff" isActive={roleFilter === 'Staff'} onPress={() => setRoleFilter('Staff')} />
+              <FilterButton title="Patient" isActive={roleFilter === 'Patient'} onPress={() => setRoleFilter('Patient')} />
+            </ScrollView>
+          </View>
+        </View>
+      )}
 
       <View style={styles.tabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>

@@ -142,27 +142,20 @@ export default function UpdateOrderScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Update Status</Text>
+          <Text style={styles.sectionTitle}>Update Status</Text>
           <View style={styles.buttonGroup}>
             {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => (
               <TouchableOpacity
                 key={status}
                 style={[
                   styles.button,
-                  deliveryStatus === status && styles.activeButton,
-                  (status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT') && styles.disabledButton
+                  deliveryStatus === status && styles.activeButton
                 ]}
-                onPress={() => {
-                  if (!(status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT')) {
-                    setDeliveryStatus(status);
-                  }
-                }}
-                disabled={status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT'}
+                onPress={() => setDeliveryStatus(status)}
               >
                 <Text style={[
                   styles.buttonText,
-                  deliveryStatus === status && styles.activeButtonText,
-                  (status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT') && styles.disabledButtonText
+                  deliveryStatus === status && styles.activeButtonText
                 ]}>
                   {status === 'RECEIVED' ? 'Confirm' :
                    status === 'PREPARED' ? 'Prepared' :
@@ -171,9 +164,6 @@ export default function UpdateOrderScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          {paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT' && (
-            <Text style={styles.disabledText}>Payment must be completed before sending for delivery</Text>
-          )}
         </View>
 
         <TouchableOpacity
