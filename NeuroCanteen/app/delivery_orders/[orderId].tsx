@@ -28,9 +28,9 @@ export default function UpdateOrderScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPaymentStatus, setCurrentPaymentStatus] = useState('PENDING');
-  const [currentDeliveryStatus, setCurrentDeliveryStatus] = useState('OrderReceived');
+  const [currentDeliveryStatus, setCurrentDeliveryStatus] = useState<string | null>(null);
   const [pendingPaymentStatus, setPendingPaymentStatus] = useState('PENDING');
-  const [pendingDeliveryStatus, setPendingDeliveryStatus] = useState('OrderReceived');
+  const [pendingDeliveryStatus, setPendingDeliveryStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -40,8 +40,8 @@ export default function UpdateOrderScreen() {
         setOrder(orderData);
         setCurrentPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
         setPendingPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
-        setCurrentDeliveryStatus(orderData.deliveryStatus ?? 'OrderReceived');
-        setPendingDeliveryStatus(orderData.deliveryStatus ?? 'OrderReceived');
+        setCurrentDeliveryStatus(orderData.deliveryStatus ?? null);
+        setPendingDeliveryStatus(orderData.deliveryStatus ?? null);
       } catch (error) {
         console.error('Error fetching order:', error);
       } finally {
@@ -70,7 +70,7 @@ export default function UpdateOrderScreen() {
           const paymentResponse = await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
             params: { paymentReceived: pendingPaymentStatus === "COMPLETED" },
           });
-          
+
           if (paymentResponse.status === 200) {
             setCurrentPaymentStatus(pendingPaymentStatus);
           }
@@ -84,12 +84,24 @@ export default function UpdateOrderScreen() {
           
           if (deliveryResponse.status === 200) {
             setCurrentDeliveryStatus(pendingDeliveryStatus);
+            // Reset pending status to allow re-confirmation
+            setPendingDeliveryStatus(pendingDeliveryStatus);
           }
         }
-        
+
         router.back();
       } else {
-        Alert.alert("No Changes", "No changes to update.");
+        // If no changes, still allow the update to process
+        const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+          params: { deliveryStatus: pendingDeliveryStatus },
+        });
+        
+        if (deliveryResponse.status === 200) {
+          setCurrentDeliveryStatus(pendingDeliveryStatus);
+          // Reset pending status to allow re-confirmation
+          setPendingDeliveryStatus(pendingDeliveryStatus);
+        }
+        router.back();
       }
     } catch (error) {
       console.error('Error updating order:', error);
@@ -123,12 +135,19 @@ export default function UpdateOrderScreen() {
 
       <View style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Status</Text>
+          <Text style={styles.sectionTitle}>Delivery Status</Text>
           <View style={styles.statusContainer}>
             <View style={styles.statusItem}>
               <Package size={25} color="#03A791" />
               <Text style={styles.statusLabel}>Delivery</Text>
-              <Text style={styles.statusValue}>{currentDeliveryStatus || "Waiting for confirmation"}</Text>
+              <Text style={styles.statusValue}>
+                {!currentDeliveryStatus ? "Waiting for confirmation" : 
+                 currentDeliveryStatus === 'OrderReceived' ? "Confirmed" :
+                 currentDeliveryStatus === 'OutForDelivery' ? "Out for Delivery" :
+                 currentDeliveryStatus === 'Delivered' ? "Delivered" :
+                 currentDeliveryStatus === 'Cancelled' ? "Cancelled" :
+                 currentDeliveryStatus}
+              </Text>
             </View>
             <View style={styles.statusItem}>
               <IndianRupee size={25} color="#28B463" />
@@ -258,8 +277,7 @@ export default function UpdateOrderScreen() {
              pendingDeliveryStatus === currentDeliveryStatus) && styles.disabledUpdateButton
           ]} 
           onPress={handleUpdateOrder}
-          disabled={pendingPaymentStatus === currentPaymentStatus && 
-                   pendingDeliveryStatus === currentDeliveryStatus}
+          disabled={false}
         >
           <Text style={styles.updateButtonText}>Update Order</Text>
         </TouchableOpacity>

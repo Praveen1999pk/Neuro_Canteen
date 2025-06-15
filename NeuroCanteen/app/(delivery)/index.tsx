@@ -7,12 +7,12 @@ import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 
 type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
-type OrderStatusFilter = 'ALL' | 'OrderReceived' | 'OutForDelivery' | 'Cancelled' | 'Delivered';
+type OrderStatusFilter = 'ALL' | 'WAITING' | 'CONFIRMED' | 'OutForDelivery' | 'Cancelled' | 'Delivered';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('OrderReceived');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('WAITING');
   const [showFilters, setShowFilters] = useState(false);
   type Order = {
     orderId: number;
@@ -87,11 +87,12 @@ export default function DeliveryOrders() {
         (paymentFilter === 'PAID' && order.paymentRecived === true) ||
         (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
 
-      const matchesStatus = statusFilter === 'ALL' ||
-        (statusFilter === 'OutForDelivery' && order.deliveryStatus === "OutForDelivery") ||
-        (statusFilter === 'Cancelled' && order.deliveryStatus === "Cancelled") ||
-        (statusFilter === 'OrderReceived' && (order.deliveryStatus === "OrderReceived" || order.deliveryStatus === null)) ||
-        (statusFilter === 'Delivered' && order.deliveryStatus === "Delivered");
+      const matchesStatus = 
+        (statusFilter === 'WAITING' && !order.deliveryStatus) ||
+        (statusFilter === 'CONFIRMED' && order.deliveryStatus === 'OrderReceived') ||
+        (statusFilter === 'OutForDelivery' && order.deliveryStatus === 'OutForDelivery') ||
+        (statusFilter === 'Cancelled' && order.deliveryStatus === 'Cancelled') ||
+        (statusFilter === 'Delivered' && order.deliveryStatus === 'Delivered');
         
       return matchesSearch && matchesPayment && matchesStatus;
     });
@@ -154,28 +155,48 @@ export default function DeliveryOrders() {
         </View>
       )}
 
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          <FilterButton 
-            title="Order Received" 
-            isActive={statusFilter === 'OrderReceived'} 
-            onPress={() => setStatusFilter('OrderReceived')} 
-          />
-          <FilterButton 
-            title="Out for Delivery" 
-            isActive={statusFilter === 'OutForDelivery'} 
-            onPress={() => setStatusFilter('OutForDelivery')} 
-          />
-          <FilterButton 
-            title="Delivered" 
-            isActive={statusFilter === 'Delivered'} 
-            onPress={() => setStatusFilter('Delivered')} 
-          />
-          <FilterButton 
-            title="Cancelled" 
-            isActive={statusFilter === 'Cancelled'} 
-            onPress={() => setStatusFilter('Cancelled')} 
-          />
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'WAITING' && styles.activeTab]}
+            onPress={() => setStatusFilter('WAITING')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'WAITING' && styles.activeTabText]}>
+              Waiting Orders
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'CONFIRMED' && styles.activeTab]}
+            onPress={() => setStatusFilter('CONFIRMED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'CONFIRMED' && styles.activeTabText]}>
+              Confirmed Delivery
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'OutForDelivery' && styles.activeTab]}
+            onPress={() => setStatusFilter('OutForDelivery')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'OutForDelivery' && styles.activeTabText]}>
+              Out for Delivery
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'Delivered' && styles.activeTab]}
+            onPress={() => setStatusFilter('Delivered')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'Delivered' && styles.activeTabText]}>
+              Delivered
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'Cancelled' && styles.activeTab]}
+            onPress={() => setStatusFilter('Cancelled')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'Cancelled' && styles.activeTabText]}>
+              Cancelled
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
@@ -202,15 +223,21 @@ export default function DeliveryOrders() {
                 <View style={styles.orderHeader}>
                   <View style={styles.orderInfo}>
                     <Text style={styles.orderId}>#{order.orderId}</Text>
-                    <View style={styles.statusBadge}>
-                      <Package size={16} color="#4CAF50" />
+                    <View style={[
+                      styles.statusBadge,
+                      (!order.deliveryStatus || order.deliveryStatus === 'OrderReceived') && styles.waitingStatusBadge
+                    ]}>
+                      <Package size={16} color={!order.deliveryStatus || order.deliveryStatus === 'OrderReceived' ? "#FF9800" : "#4CAF50"} />
                       <Text style={[
                         styles.statusText,
-                        !order.deliveryStatus && styles.waitingStatusText,
-                        order.deliveryStatus === "OrderReceived" && styles.orderReceivedStatusText,
-                        order.deliveryStatus === "Cancelled" && styles.cancelledStatusText
+                        (!order.deliveryStatus || order.deliveryStatus === 'OrderReceived') && styles.waitingStatusText
                       ]}>
-                        {order.deliveryStatus || "Waiting for confirmation"}
+                        {!order.deliveryStatus ? "Waiting for confirmation" : 
+                         order.deliveryStatus === 'OrderReceived' ? "Confirmed" :
+                         order.deliveryStatus === 'OutForDelivery' ? "Out for Delivery" :
+                         order.deliveryStatus === 'Delivered' ? "Delivered" :
+                         order.deliveryStatus === 'Cancelled' ? "Cancelled" :
+                         order.deliveryStatus}
                       </Text>
                     </View>
                   </View>
@@ -293,20 +320,29 @@ const styles = StyleSheet.create({
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   orderInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   orderId: { fontSize: 16, fontWeight: '600', color: '#333' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#E8F5E9', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6, 
+    gap: 4 
+  },
+  waitingStatusBadge: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
   statusText: {
-    marginLeft: 4,
-    fontSize: 14,
+    fontSize: 12,
     color: '#4CAF50',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   waitingStatusText: {
-    color: '#FF9800', // Orange color for waiting status
-  },
-  orderReceivedStatusText: {
-    color: '#2196F3', // Blue color for OrderReceived status
-  },
-  cancelledStatusText: {
-    color: '#FF6B6B', // Light red color for Cancelled status
+    color: '#FF9800',
+    fontWeight: '500',
   },
   price: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   itemsContainer: { marginBottom: 12 },
@@ -315,13 +351,28 @@ const styles = StyleSheet.create({
   footerInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footerText: { fontSize: 14, color: '#666' },
   roleTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 12, fontWeight: '500', color: '#333' },
-  tabsContainer: {
+  tabContainer: {
     backgroundColor: '#fff',
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  tabsScroll: {
+  tab: {
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  activeTab: {
+    backgroundColor: '#2E7D32',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#fff',
   },
 });

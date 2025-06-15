@@ -89,8 +89,14 @@ export default function UpdateOrderScreen() {
           <View style={styles.statusContainer}>
             <View style={styles.statusItem}>
               <Package size={25} color="#03A791" />
-              <Text style={styles.statusLabel}>Delivery</Text>
-              <Text style={styles.statusValue}>{order.deliveryStatus}</Text>
+              <Text style={styles.statusLabel}>Status</Text>
+              <Text style={styles.statusValue}>
+                {!order.orderStatus ? "Waiting for confirmation" : 
+                 order.orderStatus === 'RECEIVED' ? "Confirmed" :
+                 order.orderStatus === 'PREPARED' ? "Prepared" :
+                 order.orderStatus === 'OUT_FOR_DELIVERY' ? "Sent for Delivery" :
+                 order.orderStatus}
+              </Text>
             </View>
             <View style={styles.statusItem}>
               <IndianRupee size={25} color="#28B463" />
@@ -133,21 +139,40 @@ export default function UpdateOrderScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Order Status</Text>
+          <Text style={styles.label}>Update Status</Text>
           <View style={styles.buttonGroup}>
-            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={[styles.button, deliveryStatus === status && styles.activeButton]}
-                onPress={() => setDeliveryStatus(status)}
-              >
-                <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
-                  {status === 'RECEIVED' ? 'Confirm Order' : 
-                   status === 'PREPARED' ? 'Prepared' : 
-                   'Sent for Delivery'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => {
+              const isDisabled = 
+                (status === 'PREPARED' && order.orderStatus !== 'RECEIVED') ||
+                (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
+
+              return (
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.button, 
+                    deliveryStatus === status && styles.activeButton,
+                    isDisabled && styles.disabledButton
+                  ]}
+                  onPress={() => {
+                    if (!isDisabled) {
+                      setDeliveryStatus(status);
+                    }
+                  }}
+                  disabled={isDisabled}
+                >
+                  <Text style={[
+                    styles.buttonText, 
+                    deliveryStatus === status && styles.activeButtonText,
+                    isDisabled && styles.disabledButtonText
+                  ]}>
+                    {status === 'RECEIVED' ? 'Confirm Order' : 
+                     status === 'PREPARED' ? 'Prepared' : 
+                     'Sent for Delivery'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -204,7 +229,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#34495E',
+    color: '#2E7D32',
     marginBottom: 16,
   },
   statusContainer: {
@@ -222,7 +247,7 @@ const styles = StyleSheet.create({
   statusValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
+    color: '#2E7D32',
     marginTop: 4,
   },
   itemText: {

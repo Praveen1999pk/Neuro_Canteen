@@ -7,7 +7,7 @@ import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
-type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
+type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'CONFIRMED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,10 +58,11 @@ export default function DeliveryOrders() {
         const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
           order.orderId.toString().includes(searchQuery);
 
-        const matchesStatus = statusFilter === 'ALL' ||
-          (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === "OUT_FOR_DELIVERY") ||
-          (statusFilter === 'PREPARED' && order.orderStatus === "PREPARED") ||
-          (statusFilter === 'RECEIVED' && (order.orderStatus === "RECEIVED" || !order.orderStatus))
+        const matchesStatus = 
+          (statusFilter === 'RECEIVED' && !order.orderStatus) ||
+          (statusFilter === 'CONFIRMED' && order.orderStatus === 'RECEIVED') ||
+          (statusFilter === 'PREPARED' && order.orderStatus === 'PREPARED') ||
+          (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === 'OUT_FOR_DELIVERY');
           
         return matchesSearch && matchesStatus;
       })
@@ -107,27 +108,44 @@ export default function DeliveryOrders() {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity 
-          style={styles.filterToggle}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <Filter size={20} color={showFilters ? "#2196F3" : "#666"} />
-        </TouchableOpacity>
       </View>
 
-      {showFilters && (
-        <View style={styles.filtersContainer}>
-          <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Order Status</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-              <FilterButton title="All" isActive={statusFilter === 'ALL'} onPress={() => setStatusFilter('ALL')} />
-              <FilterButton title="Sent for Delivery" isActive={statusFilter === 'OUT_FOR_DELIVERY'} onPress={() => setStatusFilter('OUT_FOR_DELIVERY')} />
-              <FilterButton title="Prepared" isActive={statusFilter === 'PREPARED'} onPress={() => setStatusFilter('PREPARED')} />
-              <FilterButton title="Order Received" isActive={statusFilter === 'RECEIVED'} onPress={() => setStatusFilter('RECEIVED')} />
-            </ScrollView>
-          </View>
-        </View>
-      )}
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'RECEIVED' && styles.activeTab]}
+            onPress={() => setStatusFilter('RECEIVED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'RECEIVED' && styles.activeTabText]}>
+              Waiting Orders
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'CONFIRMED' && styles.activeTab]}
+            onPress={() => setStatusFilter('CONFIRMED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'CONFIRMED' && styles.activeTabText]}>
+              Confirmed Orders
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'PREPARED' && styles.activeTab]}
+            onPress={() => setStatusFilter('PREPARED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'PREPARED' && styles.activeTabText]}>
+              Prepared
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'OUT_FOR_DELIVERY' && styles.activeTab]}
+            onPress={() => setStatusFilter('OUT_FOR_DELIVERY')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'OUT_FOR_DELIVERY' && styles.activeTabText]}>
+              Sent for Delivery
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       {loading ? (
         <View style={{ padding: 20 }}>
@@ -153,8 +171,17 @@ export default function DeliveryOrders() {
                 <View style={styles.orderInfo}>
                   <Text style={styles.orderId}>#{order.orderId}</Text>
                   <View style={styles.statusBadge}>
-                    <Package size={16} color="#4CAF50" />
-                    <Text style={styles.statusText}>{order.deliveryStatus}</Text>
+                    <Package size={16} color={!order.orderStatus ? "#FF9800" : "#4CAF50"} />
+                    <Text style={[
+                      styles.statusText,
+                      (!order.orderStatus || order.orderStatus === 'RECEIVED') && styles.waitingStatusText
+                    ]}>
+                      {!order.orderStatus ? "Waiting for confirmation" : 
+                       order.orderStatus === 'RECEIVED' ? "Confirmed" :
+                       order.orderStatus === 'PREPARED' ? "Prepared" :
+                       order.orderStatus === 'OUT_FOR_DELIVERY' ? "Sent for Delivery" :
+                       order.orderStatus}
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.price}>₹{order.price}</Text>
@@ -165,17 +192,11 @@ export default function DeliveryOrders() {
                   {order.itemName}
                 </Text>
               </View>
-          
+
               <View style={styles.orderFooter}>
                 <View style={styles.footerInfo}>
                   <ShoppingCart size={16} color="#666" />
                   <Text style={styles.footerText}>{order.quantity} items</Text>
-                </View>
-                <View style={styles.footerInfo}>
-                  <Rss size={16} color="#666" />
-                  <Text style={styles.footerText}>
-                    {order.orderStatus}
-                  </Text>
                 </View>
                 <Text style={[styles.roleTag, {
                   backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
@@ -236,8 +257,30 @@ const styles = StyleSheet.create({
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   orderInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   orderId: { fontSize: 16, fontWeight: '600', color: '#333' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
-  statusText: { fontSize: 12, color: '#2E7D32', fontWeight: '500' },
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#E8F5E9', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6, 
+    gap: 4 
+  },
+  waitingStatusBadge: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  waitingStatusText: {
+    color: '#FF9800',
+    fontWeight: '500',
+  },
   price: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   itemsContainer: { marginBottom: 12 },
   itemsText: { fontSize: 15, color: '#666', lineHeight: 22 },
@@ -245,4 +288,38 @@ const styles = StyleSheet.create({
   footerInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footerText: { fontSize: 14, color: '#666' },
   roleTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 12, fontWeight: '500', color: '#333' },
+  tabContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  activeTab: {
+    backgroundColor: '#2E7D32',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
+  orderStatusContainer: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  orderStatusText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
 });
