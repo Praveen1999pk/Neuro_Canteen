@@ -9,11 +9,12 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Minus, Plus, ChevronRight, ArrowLeft } from 'lucide-react-native';
+import { Minus, Plus, ChevronRight, ArrowLeft, ShoppingCart, History } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 
@@ -28,6 +29,7 @@ type MenuItem = {
   category: string;
   available: boolean;
   role: string;
+  image: string;
 };
 
 type CartItems = { [key: string]: number };
@@ -57,7 +59,7 @@ export default function StaffOrder() {
         setMenuItems(response.data);
         const uniqueCategories = [...new Set(response.data.map((item: MenuItem) => item.category))];
         console.log('Loaded categories:', uniqueCategories);
-        setCategories(uniqueCategories);
+        setCategories(['All', ...uniqueCategories]);
       } else {
         console.error('API response is not an array:', response.data);
         setMenuItems([]);
@@ -71,6 +73,7 @@ export default function StaffOrder() {
       setCategories([]);
       setLoading(false);
       setRefreshing(false);
+      Alert.alert('Error', 'Failed to fetch menu items');
     }
   };
 
@@ -108,20 +111,13 @@ export default function StaffOrder() {
     }));
   };
 
-  const handleIncreaseQuantity = (itemId: number) => {
-    setCartItems((prevCart) => ({
-      ...prevCart,
-      [itemId]: (prevCart[itemId] || 0) + 1,
-    }));
-  };
-
-  const handleDecreaseQuantity = (itemId: number) => {
+  const handleRemoveFromCart = (item: MenuItem) => {
     setCartItems((prevCart) => {
       const newCart = { ...prevCart };
-      if (newCart[itemId] > 1) {
-        newCart[itemId] -= 1;
+      if (newCart[item.id] > 1) {
+        newCart[item.id] -= 1;
       } else {
-        delete newCart[itemId];
+        delete newCart[item.id];
       }
       return newCart;
     });
@@ -129,7 +125,7 @@ export default function StaffOrder() {
 
   const handleCheckout = () => {
     if (Object.keys(cartItems).length === 0) {
-      alert('Your cart is empty!');
+      Alert.alert('Error', 'Your cart is empty');
       return;
     }
     
@@ -142,6 +138,16 @@ export default function StaffOrder() {
     });
       setCartItems({});
       AsyncStorage.removeItem('staff_cart');
+  };
+
+  const handleOrderHistory = () => {
+    router.push({
+      pathname: '/(staff)/order-history',
+      params: {
+        orderedUserId: 'admin',
+        orderedRole: 'Staff',
+      },
+    });
   };
 
   const calculateTotal = () => {
@@ -170,119 +176,104 @@ export default function StaffOrder() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={20} color="#2E7D32" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.categoryWrapper}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.categoryContainer}
-        >
-          <TouchableOpacity
-            key="All"
-            style={[
-              styles.categoryButton,
-              selectedCategory === 'All' && styles.categoryButtonActive
-            ]}
-            onPress={() => setSelectedCategory('All')}
-          >
-            <Text style={[
-              styles.categoryButtonText,
-              selectedCategory === 'All' && styles.categoryButtonTextActive
-            ]}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categoryButton,
-                selectedCategory === category && styles.categoryButtonActive
-              ]}
-              onPress={() => setSelectedCategory(category)}
-            >
-              <Text style={[
-                styles.categoryButtonText,
-                selectedCategory === category && styles.categoryButtonTextActive
-              ]}>
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <Text style={styles.headerTitle}>Menu</Text>
       </View>
 
-      <ScrollView
-        style={styles.menuArea}
-        contentContainerStyle={styles.menuGrid}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {filteredMenuItems.map((item) => (
-          <View key={item.id} style={styles.menuItem}>
-            <Image 
-              source={item.picture ? { uri: item.picture } : require('../../assets/images/icon.png')} 
-              style={styles.itemImage}
-            />
-            <View style={styles.menuItemDetails}>
-              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-              <Text style={styles.itemDescription} numberOfLines={2}>
-                {item.description}
-              </Text>
-              <View style={styles.priceActionContainer}>
-                <Text style={styles.itemPrice}>₹{item.staffPrice}</Text>
-                {cartItems[item.id] ? (
-                  <View style={styles.quantityControls}>
+      <View style={styles.content}>
+        <View style={styles.categoryWrapper}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.categoryContainer}
+          >
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.categoryButton,
+                  selectedCategory === category && styles.categoryButtonActive
+                ]}
+                onPress={() => setSelectedCategory(category)}
+              >
+                <Text style={[
+                  styles.categoryButtonText,
+                  selectedCategory === category && styles.categoryButtonTextActive
+                ]}>
+                  {category}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <ScrollView
+          style={styles.menuArea}
+          contentContainerStyle={styles.menuGrid}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {filteredMenuItems.map((item) => (
+            <View key={item.id} style={styles.menuItem}>
+              <Image 
+                source={{ uri: item.image }} 
+                style={styles.itemImage}
+              />
+              <View style={styles.menuItemDetails}>
+                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.itemDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+                <View style={styles.priceActionContainer}>
+                  <Text style={styles.itemPrice}>₹{item.staffPrice}</Text>
+                  {cartItems[item.id] ? (
+                    <View style={styles.quantityControls}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => handleRemoveFromCart(item)}
+                      >
+                        <Minus size={14} color="#4A8F47" />
+                      </TouchableOpacity>
+                      <Text style={styles.quantityText}>{cartItems[item.id]}</Text>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => handleAddToCart(item)}
+                      >
+                        <Plus size={14} color="#4A8F47" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
                     <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => handleDecreaseQuantity(item.id)}
+                      style={styles.addButton}
+                      onPress={() => handleAddToCart(item)}
+                      disabled={!item.available}
                     >
-                      <Minus size={14} color="#4A8F47" />
+                      <Text style={styles.addButtonText}>
+                        {item.available ? 'ADD' : 'UNAVAILABLE'}
+                      </Text>
                     </TouchableOpacity>
-                    <Text style={styles.quantityText}>{cartItems[item.id]}</Text>
-                    <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => handleIncreaseQuantity(item.id)}
-                    >
-                      <Plus size={14} color="#4A8F47" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => handleAddToCart(item)}
-                    disabled={!item.available}
-                  >
-                    <Text style={styles.addButtonText}>
-                      {item.available ? 'ADD' : 'UNAVAILABLE'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                  )}
+                </View>
               </View>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
 
-      {Object.keys(cartItems).length > 0 && (
-        <TouchableOpacity style={styles.cartBar} onPress={handleCheckout}>
-          <View style={styles.cartInfo}>
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{totalItems}</Text>
+        {Object.keys(cartItems).length > 0 && (
+          <TouchableOpacity style={styles.cartBar} onPress={handleCheckout}>
+            <View style={styles.cartInfo}>
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{totalItems}</Text>
+              </View>
+              <Text style={styles.cartText}>View Cart</Text>
             </View>
-            <Text style={styles.cartText}>View Cart</Text>
-          </View>
-          <View style={styles.cartTotal}>
-            <Text style={styles.cartTotalText}>₹{calculateTotal()}</Text>
-            <ChevronRight size={20} color="white" />
-          </View>
-        </TouchableOpacity>
-      )}
+            <View style={styles.cartTotal}>
+              <Text style={styles.cartTotalText}>₹{calculateTotal()}</Text>
+              <ChevronRight size={20} color="white" />
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -290,23 +281,23 @@ export default function StaffOrder() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff',
   },
   header: {
     padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-  },
-  backButton: {
-    padding: 4,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
   },
-  backButtonText: {
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#2E7D32',
+  },
+  content: {
+    flex: 1,
   },
   categoryWrapper: {
     backgroundColor: 'white',

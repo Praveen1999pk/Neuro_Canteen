@@ -84,19 +84,19 @@ export default function patientOrderCheckout() {
   const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
 
   const handleAddressSubmit = () => {
-    if (!address.trim()) {
-      Alert.alert("Error", "Please enter a delivery address");
+    if (!phoneNumber.trim()) {
+      Alert.alert("Error", "Please enter your mobile number");
       return;
     }
-  
-    if (phoneNumber && !/^\d{10}$/.test(phoneNumber)) {
+    
+    if (!/^\d{10}$/.test(phoneNumber)) {
       Alert.alert("Error", "Please enter a valid 10-digit phone number");
       return;
     }
     
-    const fullAddress = phoneNumber 
+    const fullAddress = address.trim() 
       ? `ph: ${phoneNumber}, address:${address}`
-      : address;
+      : `ph: ${phoneNumber}`;
       
     setSubmittedAddress(fullAddress);
     setIsEditing(false);
@@ -111,8 +111,9 @@ export default function patientOrderCheckout() {
       setPhoneNumber(phonePart);
       setAddress(addressPart);
     } else {
-      setPhoneNumber('');
-      setAddress(submittedAddress);
+      const phonePart = submittedAddress.replace('ph:', '');
+      setPhoneNumber(phonePart);
+      setAddress('');
     }
     
     setIsEditing(true);
@@ -367,37 +368,38 @@ try {
           <Text style={styles.sectionTitle}>Delivery Details</Text>
           <View style={styles.divider} />
           
-          {/* Only show phone number field when editing */}
-          {isEditing && (
-            <View style={styles.phoneNumberContainer}>
-              <TextInput
-                style={styles.phoneNumberInput}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="Enter phone number"
-                keyboardType="phone-pad"
-              />
-            </View>
-          )}
-          
           {submittedAddress && !isEditing ? (
             <View style={styles.addressContainer}>
               <Text style={styles.addressText}>{submittedAddress}</Text>
               <TouchableOpacity onPress={handleAddressEdit}>
-                <Text style={styles.editButton}>Edit Address</Text>
+                <Text style={styles.editButton}>Edit Details</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.addressInputContainer}>
+              <View style={styles.phoneNumberContainer}>
+                <TextInput
+                  style={styles.phoneNumberInput}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  placeholder="Mobile Number *"
+                  keyboardType="phone-pad"
+                />
+                <Text style={styles.requiredText}>* Required</Text>
+              </View>
+              
               <TextInput
                 style={styles.addressInput}
                 value={address}
                 onChangeText={setAddress}
-                placeholder="Enter delivery address"
+                placeholder="Delivery Address (Optional)"
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
               />
-              <TouchableOpacity style={styles.submitButton} onPress={handleAddressSubmit}>
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleAddressSubmit}
+              >
                 <Text style={styles.submitButtonText}>Submit</Text>
               </TouchableOpacity>
             </View>
@@ -729,9 +731,16 @@ const styles = StyleSheet.create({
   phoneNumberInput: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 4,
+    borderRadius: 8,
     padding: 12,
-    
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  requiredText: {
+    color: '#ff0000',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   scrollViewContent: {
     flexGrow: 1,

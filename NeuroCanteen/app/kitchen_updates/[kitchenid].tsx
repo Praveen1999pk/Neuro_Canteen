@@ -73,6 +73,9 @@ export default function UpdateOrderScreen() {
   const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const totalPrice = order.price;
 
+  // Determine payment status
+  const paymentStatus = order.paymentType === 'UPI' ? 'COMPLETED' : (order.paymentRecived ? 'COMPLETED' : 'PENDING');
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -102,7 +105,7 @@ export default function UpdateOrderScreen() {
               <IndianRupee size={25} color="#28B463" />
               <Text style={styles.statusLabel}>Payment</Text>
               <Text style={styles.statusValue}>
-                {order.paymentRecived ? 'Received' : 'Pending'} ({order.paymentType})
+                {paymentStatus === 'COMPLETED' ? 'Received' : 'Pending'} ({order.paymentType})
               </Text>
             </View>
           </View>
@@ -141,43 +144,46 @@ export default function UpdateOrderScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Update Status</Text>
           <View style={styles.buttonGroup}>
-            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => {
-              const isDisabled = 
-                (status === 'PREPARED' && order.orderStatus !== 'RECEIVED') ||
-                (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
-
-              return (
-                <TouchableOpacity
-                  key={status}
-                  style={[
-                    styles.button, 
-                    deliveryStatus === status && styles.activeButton,
-                    isDisabled && styles.disabledButton
-                  ]}
-                  onPress={() => {
-                    if (!isDisabled) {
-                      setDeliveryStatus(status);
-                    }
-                  }}
-                  disabled={isDisabled}
-                >
-                  <Text style={[
-                    styles.buttonText, 
-                    deliveryStatus === status && styles.activeButtonText,
-                    isDisabled && styles.disabledButtonText
-                  ]}>
-                    {status === 'RECEIVED' ? 'Confirm Order' : 
-                     status === 'PREPARED' ? 'Prepared' : 
-                     'Sent for Delivery'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.button,
+                  deliveryStatus === status && styles.activeButton,
+                  (status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT') && styles.disabledButton
+                ]}
+                onPress={() => {
+                  if (!(status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT')) {
+                    setDeliveryStatus(status);
+                  }
+                }}
+                disabled={status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT'}
+              >
+                <Text style={[
+                  styles.buttonText,
+                  deliveryStatus === status && styles.activeButtonText,
+                  (status === 'OUT_FOR_DELIVERY' && paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT') && styles.disabledButtonText
+                ]}>
+                  {status === 'RECEIVED' ? 'Confirm' :
+                   status === 'PREPARED' ? 'Prepared' :
+                   'Send for Delivery'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
+          {paymentStatus !== 'COMPLETED' && order.paymentType !== 'CREDIT' && (
+            <Text style={styles.disabledText}>Payment must be completed before sending for delivery</Text>
+          )}
         </View>
 
-        <TouchableOpacity style={styles.updateButton} onPress={handleUpdateOrder}>
-          <Text style={styles.updateButtonText}>Update Order</Text>
+        <TouchableOpacity
+          style={[styles.updateButton, !deliveryStatus && styles.disabledButton]}
+          onPress={handleUpdateOrder}
+          disabled={!deliveryStatus}
+        >
+          <Text style={[styles.updateButtonText, !deliveryStatus && styles.disabledButtonText]}>
+            Update Status
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -233,22 +239,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 8,
+    gap: 16,
   },
   statusItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   statusLabel: {
     fontSize: 14,
-    color: '#888',
-    marginTop: 8,
+    color: '#666',
+    width: 80,
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2E7D32',
-    marginTop: 4,
+    color: '#333',
+    flex: 1,
   },
   itemText: {
     fontSize: 16,

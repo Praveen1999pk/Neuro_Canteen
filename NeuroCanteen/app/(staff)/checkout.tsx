@@ -28,6 +28,23 @@ type CartItems = {
   [key: number]: number;
 };
 
+type OrderDetails = {
+  orderedRole: string;
+  orderedName: string;
+  orderedUserId: string;
+  itemName: string;
+  quantity: number;
+  category: string;
+  price: number;
+  orderStatus: string | null;
+  paymentType: string;
+  paymentStatus: string | null;
+  orderDateTime: string;
+  address: string;
+  paymentRecived?: boolean;
+  phoneNo?: string;
+};
+
 export default function StaffOrderCheckout() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -124,19 +141,64 @@ export default function StaffOrderCheckout() {
     setIsEditing(true);
   };
 
+  const verifyPayment = async (response: any) => {
+    const paymentData = {
+      orderId: response.razorpay_order_id,
+      paymentId: response.razorpay_payment_id,
+      paymentSignature: response.razorpay_signature,
+      paymentMethod: "UPI",
+      amount: orderTotal,
+      createdAt: new Date().toISOString(),
+    };
+
+    const orderDetails: OrderDetails = {
+      orderedRole: "Staff",
+      orderedName: username,
+      orderedUserId: username,
+      itemName: Object.keys(cartItems).map(itemId => {
+        const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
+        return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+      }).join(", "),
+      quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
+      category: "South",
+      price: orderTotal,
+      orderStatus: null,
+      paymentType: "UPI",
+      paymentStatus: null,
+      orderDateTime: new Date().toISOString(),
+      address: submittedAddress,
+      paymentRecived: false,
+      phoneNo: phoneNumber
+    };
+
+    try {
+      const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
+      if (result.data) {
+        orderDetails.paymentRecived = true;
+        orderDetails.paymentStatus = "COMPLETED";
+        await axiosInstance.post("/orders", orderDetails);
+        await AsyncStorage.removeItem('staff_cart');
+        router.push({
+          pathname: '/(staff)/order-success',
+          params: {
+            orderHistoryRedirect: '/(staff)/order-history',
+            orderedUserId: username,
+            orderedRole: 'Staff'
+          }
+        });
+      } else {
+        Alert.alert("Error", "Payment verification failed!");
+      }
+    } catch (error) {
+      console.error("Error verifying payment:", error);
+      Alert.alert("Error", "There was an issue verifying your payment.");
+    }
+  };
+
   const handleUPI = async () => {
     if (!submittedAddress) {
       Alert.alert("Error", "Please enter the mobile number and delivery address!");
       return;
-    }
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (token) {
-      try {
-        const userpayload = JSON.parse(atob(token.split('.')[1]));
-        setUsername(userpayload.sub);
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
     }
 
     try {
@@ -147,7 +209,7 @@ export default function StaffOrderCheckout() {
         key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
         currency: "INR",
-        name: "Your Company Name",
+        name: "Neuro Canteen",
         description: "Payment for Order",
         order_id: orderId,
         prefill: {
@@ -175,103 +237,42 @@ export default function StaffOrderCheckout() {
     }
   };
 
-  const verifyPayment = async (response: any) => {
-    const paymentData = {
-      orderId: response.razorpay_order_id,
-      paymentId: response.razorpay_payment_id,
-      paymentStatus: response.razorpay_payment_status || "captured",
-      paymentMethod: response.method || "upi",
-      amount: orderTotal,
-      createdAt: new Date().toISOString(),
-    };
-
-    const orderDetails = {
-      orderedRole: "staff",
-      orderedName: username,
-      orderedUserId: username,
-      itemName: Object.keys(cartItems).map(itemId => {
-        const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name} x${cartItems[parseInt(itemId)]}` : '';
-      }).join(", "),
-      quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
-      category: "South",
-      price: orderTotal,
-      orderStatus: null,
-      paymentType: "UPI",
-      paymentStatus: null,
-      razorpayOrderId: response.razorpay_order_id,
-      razorpayPaymentId: response.razorpay_payment_id,
-      razorpayPaymentStatus: response.razorpay_payment_status || "captured",
-      razorpayMethod: response.method || "upi",
-      razorpayCreatedAt: new Date().toISOString(),
-      razorpayAmount: orderTotal,
-      razorpayNotes: {
-        address: submittedAddress,
-      },
-      razorpayMetadata: {
-        userId: username,
-      },
-      razorpayPaymentData: paymentData,
-      razorpayPaymentVerification: true,
-      razorpayPaymentVerificationStatus: "VERIFIED",
-      razorpayPaymentVerificationMessage: "Payment verified successfully",
-      razorpayPaymentVerificationDate: new Date().toISOString(),
-      orderDateTime: new Date().toISOString(),
-      address: submittedAddress,
-    };
-
-    try {
-      const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
-      if (result.status === 200) {
-        await axiosInstance.post("/orders", orderDetails);
-        await AsyncStorage.removeItem('staff_cart');
-        router.push('/(staff)/order-success');
-      } else {
-        Alert.alert("Error", "Payment verification failed!");
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
-      Alert.alert("Error", "There was an issue verifying your payment.");
-    }
-  };
-
   const handleCOD = async () => {
-      if (!submittedAddress) {
-        Alert.alert("Error", "Please enter the mobile number and delivery address!");
-        return;
-      }
-    const token = await AsyncStorage.getItem("jwtToken");
-    if (token) {
-      try {
-        const userpayload = JSON.parse(atob(token.split('.')[1]));
-        setUsername(userpayload.sub);
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
+    if (!submittedAddress) {
+      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+      return;
     }
 
-    const orderDetails = {
+    const orderDetails: OrderDetails = {
       orderedRole: "Staff",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name} x${cartItems[parseInt(itemId)]}` : '';
+        return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
       price: orderTotal,
       orderStatus: null,
       paymentType: "COD",
-      paymentStatus: "PENDING",
+      paymentStatus: null,
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
+      phoneNo: phoneNumber
     };
 
     try {
       await axiosInstance.post("/orders", orderDetails);
       await AsyncStorage.removeItem('staff_cart');
-      router.push('/(staff)/order-success');
+      router.push({
+        pathname: '/(staff)/order-success',
+        params: {
+          orderHistoryRedirect: '/(staff)/order-history',
+          orderedUserId: username,
+          orderedRole: 'Staff'
+        }
+      });
     } catch (error) {
       console.error("Order error:", error);
       Alert.alert("Error", "There was an issue submitting your order.");
@@ -283,6 +284,7 @@ export default function StaffOrderCheckout() {
       Alert.alert("Error", "Please enter the delivery address first");
       return;
     }
+
     Alert.alert(
       "Confirm Credit Purchase",
       `This will add ₹${grandTotal.toFixed(2)} to your credit balance. Continue?`,
@@ -291,23 +293,13 @@ export default function StaffOrderCheckout() {
         { 
           text: "Confirm", 
           onPress: async () => {
-            const token = await AsyncStorage.getItem("jwtToken");
-            if (token) {
-              try {
-                const userpayload = JSON.parse(atob(token.split('.')[1]));
-                setUsername(userpayload.sub);
-              } catch (error) {
-                console.error('Error decoding token:', error);
-              }
-            }
-            
-            const orderDetails = {
+            const orderDetails: OrderDetails = {
               orderedRole: "Staff",
               orderedName: username,
               orderedUserId: username,
               itemName: Object.keys(cartItems).map(itemId => {
                 const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-                return item ? `${item.name} x${cartItems[parseInt(itemId)]}` : '';
+                return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
               }).join(", "),
               quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
               category: "South",
@@ -317,22 +309,23 @@ export default function StaffOrderCheckout() {
               paymentStatus: null,
               orderDateTime: new Date().toISOString(),
               address: submittedAddress,
+              phoneNo: phoneNumber
             };
 
             try {
-              const response = await axiosInstance.post("/orders", orderDetails);
-        
-              console.log("Order placed successfully:", response.data);
+              await axiosInstance.post("/orders", orderDetails);
               await AsyncStorage.removeItem('staff_cart');
-              router.push('/(staff)/order-success');
+              router.push({
+                pathname: '/(staff)/order-success',
+                params: {
+                  orderHistoryRedirect: '/(staff)/order-history',
+                  orderedUserId: username,
+                  orderedRole: 'Staff'
+                }
+              });
             } catch (error) {
               console.error("Order error:", error);
-              let message = "There was an issue recording your credit purchase.";
-              if (typeof error === "object" && error !== null && "response" in error) {
-                const err = error as { response?: { data?: { message?: string } } };
-                message = err.response?.data?.message || message;
-              }
-              Alert.alert("Error", message);
+              Alert.alert("Error", "There was an issue submitting your order.");
             }
           }
         }
@@ -401,11 +394,14 @@ export default function StaffOrderCheckout() {
                 style={styles.addressInput}
                 value={address}
                 onChangeText={setAddress}
-                placeholder="Enter delivery address"
+                placeholder="Enter your delivery address"
                 multiline
-                numberOfLines={4}
+                numberOfLines={3}
               />
-              <TouchableOpacity style={styles.submitButton} onPress={handleAddressSubmit}>
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleAddressSubmit}
+              >
                 <Text style={styles.submitButtonText}>Submit</Text>
               </TouchableOpacity>
             </View>
@@ -531,8 +527,10 @@ const styles = StyleSheet.create({
   phoneNumberInput: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 4,
+    borderRadius: 8,
     padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
   addressContainer: {
     backgroundColor: '#f5f5f5',

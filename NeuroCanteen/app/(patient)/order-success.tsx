@@ -53,7 +53,7 @@ export default function OrderSuccess() {
         </Animated.Text>
         
         <Animated.Text style={[styles.message, { opacity: textOpacity }]}>
-          Your order has been confirmed and is being processed. Thank you for choosing us!
+        Your order has successfully placed and is being processed. Thank you for choosing us!
         </Animated.Text>
         
         {/* <Animated.View style={[styles.buttonsContainer, { opacity: textOpacity }]}>

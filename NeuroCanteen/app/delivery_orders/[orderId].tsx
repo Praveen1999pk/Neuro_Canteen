@@ -331,22 +331,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 8,
+    gap: 16,
   },
   statusItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   statusLabel: {
     fontSize: 14,
-    color: '#888',
-    marginTop: 8,
+    color: '#666',
+    width: 80,
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2E7D32',
-    marginTop: 4,
+    color: '#333',
+    flex: 1,
   },
   itemText: {
     fontSize: 16,
