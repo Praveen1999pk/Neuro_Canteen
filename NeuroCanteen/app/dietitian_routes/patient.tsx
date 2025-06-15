@@ -8,7 +8,7 @@ import {
   Image 
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, CircleAlert as AlertCircle, X, Utensils, Calendar, Clock, Navigation, Phone } from 'lucide-react-native';
+import { User, Clock, Navigation, Phone } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -144,7 +144,6 @@ export default function PatientScreen() {
           <Text style={styles.cardTitle}>Medical Information</Text>
           
           <View style={styles.infoRow}>
-            <User size={20} color="#166534" />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Primary Consultant</Text>
               <Text style={styles.infoValue}>{patient.primaryConsultant || 'None assigned'}</Text>
@@ -152,7 +151,6 @@ export default function PatientScreen() {
           </View>
           
           <View style={styles.infoRow}>
-            <AlertCircle size={20} color="#166534" />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Diagnosis</Text>
               <Text style={styles.infoValue}>{patient.diagnosisDescription || 'None'}</Text>
@@ -160,7 +158,6 @@ export default function PatientScreen() {
           </View>
           
           <View style={styles.infoRow}>
-            <Calendar size={20} color="#166534" />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Admission Date & Time</Text>
               <Text style={styles.infoValue}>{formatDate(patient.admissionDateTime)}</Text>
@@ -231,7 +228,6 @@ export default function PatientScreen() {
           <Text style={styles.cardTitle}>Dietary Information</Text>
           
           <View style={styles.infoRow}>
-            <AlertCircle size={20} color="#dc2626" />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Allergies</Text>
               <Text style={styles.infoValue}>{patient.allergies || 'No known allergies'}</Text>
@@ -239,7 +235,6 @@ export default function PatientScreen() {
           </View>
           
           <View style={styles.infoRow}>
-            <X size={20} color="#f59e0b" />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Dislikes</Text>
               <Text style={styles.infoValue}>{patient.dislikes || 'None specified'}</Text>
@@ -247,7 +242,6 @@ export default function PatientScreen() {
           </View>
           
           <View style={styles.infoRow}>
-            <Utensils size={20} color="#166534" />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Diet Combination</Text>
               <Text style={styles.infoValue}>{patient.combo || 'Not specified'}</Text>

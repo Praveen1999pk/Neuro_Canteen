@@ -1,17 +1,20 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
 import { Link } from 'expo-router';
-import { Package, ShoppingCart, Rss, Search, Filter } from 'lucide-react-native';
+import { Package, ShoppingCart, Rss, Search, Filter, ArrowLeft } from 'lucide-react-native';
 import { useState, useMemo, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
+import { useRouter } from 'expo-router';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
-type OrderStatusFilter = 'ALL' | 'OUT_FOR_DELIVERY' | 'Prepared' | 'RECEIVED';
+type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'CONFIRMED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
+type RoleFilter = 'ALL' | 'Staff' | 'Patient';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   // const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('ALL');
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('RECEIVED');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
   const [showFilters, setShowFilters] = useState(false);
   type Order = {
     orderId: number;
@@ -25,9 +28,11 @@ export default function DeliveryOrders() {
     paymentRecived: boolean;
     address: string;
     deliveryStatus: string;
+    orderDateTime: string;
   };  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchOrders = async () => {
     try {
@@ -50,22 +55,28 @@ export default function DeliveryOrders() {
   }, [statusFilter]);
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-        order.orderId.toString().includes(searchQuery);
+    return orders
+      .filter(order => {
+        const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+          order.orderId.toString().includes(searchQuery);
 
-      // const matchesPayment = paymentFilter === 'ALL' ||
-      //   (paymentFilter === 'PAID' && order.paymentRecived === true) ||
-      //   (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
+        const matchesStatus = 
+          (statusFilter === 'RECEIVED' && !order.orderStatus) ||
+          (statusFilter === 'CONFIRMED' && order.orderStatus === 'RECEIVED') ||
+          (statusFilter === 'PREPARED' && order.orderStatus === 'PREPARED') ||
+          (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === 'OUT_FOR_DELIVERY');
 
-      const matchesStatus = statusFilter === 'ALL' ||
-        (statusFilter === 'OUT_FOR_DELIVERY' && order.orderStatus === "OUT_FOR_DELIVERY") ||
-        (statusFilter === 'Prepared' && order.orderStatus === "PREPARED") ||
-        (statusFilter === 'RECEIVED' && order.orderStatus === "RECEIVED")
-        
-      return matchesSearch && matchesStatus;
-    });
-  }, [orders, searchQuery, statusFilter]);
+        const matchesRole = roleFilter === 'ALL' ||
+          (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
+          (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
+          
+        return matchesSearch && matchesStatus && matchesRole;
+      })
+      .sort((a, b) => {
+        // Sort by orderDateTime in descending order (newest first)
+        return new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime();
+      });
+  }, [orders, searchQuery, statusFilter, roleFilter]);
 
   const FilterButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
     <TouchableOpacity
@@ -81,7 +92,15 @@ export default function DeliveryOrders() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Kitchen Dashboard</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Kitchen Dashboard</Text>
+        </View>
         <Text style={styles.headerSubtitle}>{filteredOrders.length} Active Orders</Text>
       </View>
 
@@ -105,26 +124,55 @@ export default function DeliveryOrders() {
 
       {showFilters && (
         <View style={styles.filtersContainer}>
-          {/* <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Payment Status</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-              <FilterButton title="All" isActive={paymentFilter === 'ALL'} onPress={() => setPaymentFilter('ALL')} />
-              <FilterButton title="Paid" isActive={paymentFilter === 'PAID'} onPress={() => setPaymentFilter('PAID')} />
-              <FilterButton title="Not Paid" isActive={paymentFilter === 'NOT_PAID'} onPress={() => setPaymentFilter('NOT_PAID')} />
-            </ScrollView>
-          </View> */}
+          {/* ... existing payment filter if any, add here ... */}
 
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Order Status</Text>
+            <Text style={styles.filterTitle}>Role</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-              <FilterButton title="All" isActive={statusFilter === 'ALL'} onPress={() => setStatusFilter('ALL')} />
-              <FilterButton title="Sent For Delivery" isActive={statusFilter === 'OUT_FOR_DELIVERY'} onPress={() => setStatusFilter('OUT_FOR_DELIVERY')} />
-              <FilterButton title="Prepared" isActive={statusFilter === 'Prepared'} onPress={() => setStatusFilter('Prepared')} />
-              <FilterButton title="Order Received" isActive={statusFilter === 'RECEIVED'} onPress={() => setStatusFilter('RECEIVED')} />
+              <FilterButton title="All" isActive={roleFilter === 'ALL'} onPress={() => setRoleFilter('ALL')} />
+              <FilterButton title="Staff" isActive={roleFilter === 'Staff'} onPress={() => setRoleFilter('Staff')} />
+              <FilterButton title="Patient" isActive={roleFilter === 'Patient'} onPress={() => setRoleFilter('Patient')} />
             </ScrollView>
           </View>
         </View>
       )}
+
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'RECEIVED' && styles.activeTab]}
+            onPress={() => setStatusFilter('RECEIVED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'RECEIVED' && styles.activeTabText]}>
+              Waiting Orders
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'CONFIRMED' && styles.activeTab]}
+            onPress={() => setStatusFilter('CONFIRMED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'CONFIRMED' && styles.activeTabText]}>
+              Confirmed Orders
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'PREPARED' && styles.activeTab]}
+            onPress={() => setStatusFilter('PREPARED')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'PREPARED' && styles.activeTabText]}>
+              Prepared
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, statusFilter === 'OUT_FOR_DELIVERY' && styles.activeTab]}
+            onPress={() => setStatusFilter('OUT_FOR_DELIVERY')}
+          >
+            <Text style={[styles.tabText, statusFilter === 'OUT_FOR_DELIVERY' && styles.activeTabText]}>
+              Sent for Delivery
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       {loading ? (
         <View style={{ padding: 20 }}>
@@ -150,8 +198,17 @@ export default function DeliveryOrders() {
                 <View style={styles.orderInfo}>
                   <Text style={styles.orderId}>#{order.orderId}</Text>
                   <View style={styles.statusBadge}>
-                    <Package size={16} color="#4CAF50" />
-                    <Text style={styles.statusText}>{order.deliveryStatus}</Text>
+                    <Package size={16} color={!order.orderStatus ? "#FF9800" : "#4CAF50"} />
+                    <Text style={[
+                      styles.statusText,
+                      (!order.orderStatus || order.orderStatus === 'RECEIVED') && styles.waitingStatusText
+                    ]}>
+                      {!order.orderStatus ? "Waiting for confirmation" : 
+                       order.orderStatus === 'RECEIVED' ? "Confirmed" :
+                       order.orderStatus === 'PREPARED' ? "Prepared" :
+                       order.orderStatus === 'OUT_FOR_DELIVERY' ? "Sent for Delivery" :
+                       order.orderStatus}
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.price}>₹{order.price}</Text>
@@ -162,17 +219,11 @@ export default function DeliveryOrders() {
                   {order.itemName}
                 </Text>
               </View>
-          
+
               <View style={styles.orderFooter}>
                 <View style={styles.footerInfo}>
                   <ShoppingCart size={16} color="#666" />
                   <Text style={styles.footerText}>{order.quantity} items</Text>
-                </View>
-                <View style={styles.footerInfo}>
-                  <Rss size={16} color="#666" />
-                  <Text style={styles.footerText}>
-                    {order.orderStatus}
-                  </Text>
                 </View>
                 <Text style={[styles.roleTag, {
                   backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
@@ -191,9 +242,30 @@ export default function DeliveryOrders() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee', marginTop: 0 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333' },
-  headerSubtitle: { fontSize: 16, color: '#666', marginTop: 4 },
+  header: {
+    backgroundColor: '#166534',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: { 
+    fontSize: 16, 
+    color: '#fff',
+    marginLeft: 40,
+  },
   searchContainer: { flexDirection: 'row', padding: 16, gap: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 8, paddingHorizontal: 12 },
   searchIcon: { marginRight: 8 },
@@ -204,7 +276,7 @@ const styles = StyleSheet.create({
   filterTitle: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 8 },
   filterScroll: { flexDirection: 'row' },
   filterButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f5f5f5', marginRight: 8 },
-  activeFilterButton: { backgroundColor: '#2196F3' },
+  activeFilterButton: { backgroundColor: '#2E7D32' },
   filterButtonText: { fontSize: 14, color: '#666' },
   activeFilterButtonText: { color: '#fff' },
   orderList: { padding: 16 },
@@ -212,8 +284,30 @@ const styles = StyleSheet.create({
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   orderInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   orderId: { fontSize: 16, fontWeight: '600', color: '#333' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
-  statusText: { fontSize: 12, color: '#4CAF50', fontWeight: '500' },
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#E8F5E9', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 6, 
+    gap: 4 
+  },
+  waitingStatusBadge: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  waitingStatusText: {
+    color: '#FF9800',
+    fontWeight: '500',
+  },
   price: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   itemsContainer: { marginBottom: 12 },
   itemsText: { fontSize: 15, color: '#666', lineHeight: 22 },
@@ -221,4 +315,38 @@ const styles = StyleSheet.create({
   footerInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   footerText: { fontSize: 14, color: '#666' },
   roleTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, fontSize: 12, fontWeight: '500', color: '#333' },
+  tabContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  activeTab: {
+    backgroundColor: '#2E7D32',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
+  orderStatusContainer: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  orderStatusText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
 });

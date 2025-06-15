@@ -1,43 +1,50 @@
 import { Tabs } from 'expo-router';
-import { Package, UserCog } from 'lucide-react-native';
-import { StyleSheet } from 'react-native';
+import { Home, UserCog } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   return (
-    <Tabs       screenOptions={{
-        headerShown: true,
+    <SafeAreaView style={styles.container}>
+      <Tabs
+        screenOptions={{
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: '#4A8F47',
         tabBarInactiveTintColor: '#666',
         headerStyle: styles.header,
         headerTitleStyle: styles.headerTitle,
-      }}>
+        }}
+      >
       <Tabs.Screen
-        name="index" // This refers to the delivery orders screen
+          name="index"
         options={{
-          title: 'Delivery',
+            title: 'Home',
+            headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Package size={size} color={color} />
+              <Home size={size} color={color} />
           ),
-          // Disable swipe gesture when on this screen
-          tabBarStyle: { display: 'flex' },
         }}
       />
       <Tabs.Screen
-        name="Profile" // Profile screen
+          name="Profile"
         options={{
           title: 'Profile',
+            headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <UserCog size={size} color={color} />
           ),
-          // Disable swipe gesture for Profile screen if required
-          tabBarStyle: { display: 'flex' },
         }}
       />
     </Tabs>
+    </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 20, // Small white space at the top
+  },
   tabBar: {
     borderTopWidth: 1,
     borderTopColor: '#EAEAEA',

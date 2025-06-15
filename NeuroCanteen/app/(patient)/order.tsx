@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Minus, Plus, ChevronRight } from 'lucide-react-native';
+import { Minus, Plus, ChevronRight, ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
+import { Link } from 'expo-router';
 
 type MenuItem = {
   id: number;
@@ -36,7 +37,7 @@ const { width } = Dimensions.get('window');
 const CARD_MARGIN = 8;
 const CARD_WIDTH = Platform.OS === 'web' ? 300 : (width - (CARD_MARGIN * 4)) / 2;
 
-export default function patientOrder() {
+export default function PatientOrderScreen() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItems>({});
   const [loading, setLoading] = useState(true);
@@ -168,115 +169,124 @@ export default function patientOrder() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.categoryWrapper}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.categoryContainer}
-        >
-          <TouchableOpacity
-            key="All"
-            style={[
-              styles.categoryButton,
-              selectedCategory === 'All' && styles.categoryButtonActive
-            ]}
-            onPress={() => setSelectedCategory('All')}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={20} color="#2E7D32" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.categoryWrapper}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.categoryContainer}
           >
-            <Text style={[
-              styles.categoryButtonText,
-              selectedCategory === 'All' && styles.categoryButtonTextActive
-            ]}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {categories.map((category) => (
             <TouchableOpacity
-              key={category}
+              key="All"
               style={[
                 styles.categoryButton,
-                selectedCategory === category && styles.categoryButtonActive
+                selectedCategory === 'All' && styles.categoryButtonActive
               ]}
-              onPress={() => setSelectedCategory(category)}
+              onPress={() => setSelectedCategory('All')}
             >
               <Text style={[
                 styles.categoryButtonText,
-                selectedCategory === category && styles.categoryButtonTextActive
+                selectedCategory === 'All' && styles.categoryButtonTextActive
               ]}>
-                {category}
+                All
               </Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.categoryButton,
+                  selectedCategory === category && styles.categoryButtonActive
+                ]}
+                onPress={() => setSelectedCategory(category)}
+              >
+                <Text style={[
+                  styles.categoryButtonText,
+                  selectedCategory === category && styles.categoryButtonTextActive
+                ]}>
+                  {category}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      <ScrollView
-        style={styles.menuArea}
-        contentContainerStyle={styles.menuGrid}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {filteredMenuItems.map((item) => (
-          <View key={item.id} style={styles.menuItem}>
-            <Image 
-              source={item.picture ? { uri: item.picture } : require('../../assets/images/icon.png')} 
-              style={styles.itemImage}
-            />
-            <View style={styles.menuItemDetails}>
-              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-              <Text style={styles.itemDescription} numberOfLines={2}>
-                {item.description}
-              </Text>
-              <View style={styles.priceActionContainer}>
-                <Text style={styles.itemPrice}>₹{item.patientPrice}</Text>
-                {cartItems[item.id] ? (
-                  <View style={styles.quantityControls}>
+        <ScrollView
+          style={styles.menuArea}
+          contentContainerStyle={styles.menuGrid}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {filteredMenuItems.map((item) => (
+            <View key={item.id} style={styles.menuItem}>
+              <Image 
+                source={item.picture ? { uri: item.picture } : require('../../assets/images/icon.png')} 
+                style={styles.itemImage}
+              />
+              <View style={styles.menuItemDetails}>
+                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.itemDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+                <View style={styles.priceActionContainer}>
+                  <Text style={styles.itemPrice}>₹{item.patientPrice}</Text>
+                  {cartItems[item.id] ? (
+                    <View style={styles.quantityControls}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => handleDecreaseQuantity(item.id)}
+                      >
+                        <Minus size={14} color="#4A8F47" />
+                      </TouchableOpacity>
+                      <Text style={styles.quantityText}>{cartItems[item.id]}</Text>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => handleIncreaseQuantity(item.id)}
+                      >
+                        <Plus size={14} color="#4A8F47" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
                     <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => handleDecreaseQuantity(item.id)}
+                      style={styles.addButton}
+                      onPress={() => handleAddToCart(item)}
+                      disabled={!item.available}
                     >
-                      <Minus size={14} color="#4A8F47" />
+                      <Text style={styles.addButtonText}>
+                        {item.available ? 'ADD' : 'UNAVAILABLE'}
+                      </Text>
                     </TouchableOpacity>
-                    <Text style={styles.quantityText}>{cartItems[item.id]}</Text>
-                    <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => handleIncreaseQuantity(item.id)}
-                    >
-                      <Plus size={14} color="#4A8F47" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => handleAddToCart(item)}
-                    disabled={!item.available}
-                  >
-                    <Text style={styles.addButtonText}>
-                      {item.available ? 'ADD' : 'UNAVAILABLE'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                  )}
+                </View>
               </View>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
 
-      {Object.keys(cartItems).length > 0 && (
-        <TouchableOpacity style={styles.cartBar} onPress={handleCheckout}>
-          <View style={styles.cartInfo}>
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{totalItems}</Text>
+        {Object.keys(cartItems).length > 0 && (
+          <TouchableOpacity style={styles.cartBar} onPress={handleCheckout}>
+            <View style={styles.cartInfo}>
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{totalItems}</Text>
+              </View>
+              <Text style={styles.cartText}>View Cart</Text>
             </View>
-            <Text style={styles.cartText}>View Cart</Text>
-          </View>
-          <View style={styles.cartTotal}>
-            <Text style={styles.cartTotalText}>₹{calculateTotal()}</Text>
-            <ChevronRight size={20} color="white" />
-          </View>
-        </TouchableOpacity>
-      )}
+            <View style={styles.cartTotal}>
+              <Text style={styles.cartTotalText}>₹{calculateTotal()}</Text>
+              <ChevronRight size={20} color="white" />
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -284,7 +294,31 @@ export default function patientOrder() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#F0F3F4',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  content: {
+    flex: 1,
+  },
+  backButton: {
+    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2E7D32',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   categoryWrapper: {
     backgroundColor: 'white',
@@ -458,4 +492,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 5,
   },
-});
+}); 

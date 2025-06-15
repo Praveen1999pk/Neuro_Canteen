@@ -11,7 +11,6 @@ import {
 import {
   Calendar,
   Clock,
-  DollarSign,
   MapPin,
   Package,
   ArrowUp,
@@ -48,7 +47,7 @@ export default function OrderHistoryScreen() {
   const [sortNewest, setSortNewest] = React.useState(true);
 
   const route = useRoute();
-  const {patientuhid} = route.params as {patientuhid:object};
+  const {patientuhid} = route.params as {patientuhid: string};
   console.log(patientuhid);
 
   const [orders,setorders] = useState<Order[]>([])
@@ -72,7 +71,7 @@ export default function OrderHistoryScreen() {
     try {
     const response = await axiosInstance.get('/orders/filter', {
       params: {
-        orderedRole: 'Patient',
+        orderedRole: 'patient',
         orderedUserId: patientuhid
       }
     });
@@ -118,8 +117,8 @@ export default function OrderHistoryScreen() {
       
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Orders</Text>
-          <Text style={styles.headerSubtitle}>Track your orders and deliveries</Text>
+          <Text style={styles.headerTitle}>Orders - {patientuhid}</Text>
+          <Text style={styles.headerSubtitle}>Track Patient Orders</Text>
         </View>
         
         <TouchableOpacity 
@@ -175,7 +174,6 @@ export default function OrderHistoryScreen() {
               </View>
 
               <View style={styles.infoRow}>
-                <DollarSign size={18} color="#2E7D32" />
                 <Text style={styles.infoText}>
                   ₹{order.price.toFixed(2)}
                 </Text>

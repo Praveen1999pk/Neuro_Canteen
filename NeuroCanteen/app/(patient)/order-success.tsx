@@ -28,9 +28,9 @@ export default function OrderSuccess() {
     outputRange: [0, 0, 1],
   });
 
-  const handleViewOrders = () => {
-    router.push('/(patient)/order-history');
-  };
+  // const handleViewOrders = () => {
+  //   router.push('/(patient)/order-history');
+  // };
 
   const handleBackToMenu = () => {
     router.push('/(patient)/order');
@@ -53,14 +53,14 @@ export default function OrderSuccess() {
         </Animated.Text>
         
         <Animated.Text style={[styles.message, { opacity: textOpacity }]}>
-          Your order has been confirmed and is being processed. Thank you for choosing us!
+        Your order has successfully placed and is being processed. Thank you for choosing us!
         </Animated.Text>
         
-        <Animated.View style={[styles.buttonsContainer, { opacity: textOpacity }]}>
+        {/* <Animated.View style={[styles.buttonsContainer, { opacity: textOpacity }]}>
           <TouchableOpacity style={styles.button} onPress={handleViewOrders}>
             <ShoppingBag size={20} color="white" />
             <Text style={styles.buttonText}>View My Orders</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           
           <TouchableOpacity 
             style={[styles.button, styles.secondaryButton]} 
@@ -68,7 +68,7 @@ export default function OrderSuccess() {
           >
             <Text style={styles.secondaryButtonText}>Back to Menu</Text>
           </TouchableOpacity>
-        </Animated.View>
+        
       </View>
     </SafeAreaView>
   );

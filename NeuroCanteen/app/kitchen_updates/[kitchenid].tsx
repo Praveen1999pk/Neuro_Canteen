@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Phone, Calendar, Package, IndianRupee } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function UpdateOrderScreen() {
@@ -24,11 +24,11 @@ export default function UpdateOrderScreen() {
     phoneNo: string | null;
   };
 
+  const router = useRouter();
   const { kitchenid } = useLocalSearchParams<{ kitchenid: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-//   const [paymentStatus, setPaymentStatus] = useState('PENDING');
-  const [orderStatus, setorderStatus] = useState('OUT_FOR_DELIVERY');
+  const [deliveryStatus, setDeliveryStatus] = useState('');
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -36,8 +36,7 @@ export default function UpdateOrderScreen() {
         const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
         const orderData: Order = response.data;
         setOrder(orderData);
-        // setPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
-        setorderStatus(orderData.orderStatus ?? 'NO STATUS UPDATED');
+        setDeliveryStatus(orderData.orderStatus ?? '');
       } catch (error) {
         console.error('Error fetching order:', error);
       } finally {
@@ -50,12 +49,8 @@ export default function UpdateOrderScreen() {
 
   const handleUpdateOrder = async () => {
     try {
-    //   await axiosInstance.patch(`orders/${kitchenid}/payment-received`, null, {
-    //     params: { paymentReceived: paymentStatus === "COMPLETED" },
-    //   });
-
       await axiosInstance.patch(`orders/${kitchenid}/status`, null, {
-        params: { orderStatus },
+        params: { orderStatus: deliveryStatus },
       });
 
       router.back();
@@ -78,11 +73,15 @@ export default function UpdateOrderScreen() {
   const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const totalPrice = order.price;
 
+  // Determine payment status
+  const paymentStatus = order.paymentType === 'UPI' ? 'COMPLETED' : (order.paymentRecived ? 'COMPLETED' : 'PENDING');
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <ArrowLeft size={24} color="#1B5E20" />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Order #{order.orderId}</Text>
       </View>
@@ -93,14 +92,20 @@ export default function UpdateOrderScreen() {
           <View style={styles.statusContainer}>
             <View style={styles.statusItem}>
               <Package size={25} color="#03A791" />
-              <Text style={styles.statusLabel}>Delivery</Text>
-              <Text style={styles.statusValue}>{order.deliveryStatus}</Text>
+              <Text style={styles.statusLabel}>Status</Text>
+              <Text style={styles.statusValue}>
+                {!order.orderStatus ? "Waiting for confirmation" : 
+                 order.orderStatus === 'RECEIVED' ? "Confirmed" :
+                 order.orderStatus === 'PREPARED' ? "Prepared" :
+                 order.orderStatus === 'OUT_FOR_DELIVERY' ? "Sent for Delivery" :
+                 order.orderStatus}
+              </Text>
             </View>
             <View style={styles.statusItem}>
               <IndianRupee size={25} color="#28B463" />
               <Text style={styles.statusLabel}>Payment</Text>
               <Text style={styles.statusValue}>
-                {order.paymentRecived ? 'Received' : 'Pending'}
+                {paymentStatus === 'COMPLETED' ? 'Received' : 'Pending'} ({order.paymentType})
               </Text>
             </View>
           </View>
@@ -138,40 +143,37 @@ export default function UpdateOrderScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Update Status</Text>
-
-          {/* <Text style={styles.label}>Payment Status</Text>
           <View style={styles.buttonGroup}>
-            {['PENDING', 'COMPLETED'].map((status) => (
+            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => (
               <TouchableOpacity
                 key={status}
-                style={[styles.button, paymentStatus === status && styles.activeButton]}
-                onPress={() => setPaymentStatus(status)}
+                style={[
+                  styles.button,
+                  deliveryStatus === status && styles.activeButton
+                ]}
+                onPress={() => setDeliveryStatus(status)}
               >
-                <Text style={[styles.buttonText, paymentStatus === status && styles.activeButtonText]}>
-                  {status}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View> */}
-
-          <Text style={styles.label}>Kitchen Status</Text>
-          <View style={styles.buttonGroup}>
-            {['OUT_FOR_DELIVERY', 'PREPARED', 'RECEIVED','NO STATUS UPDATED'].map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={[styles.button, orderStatus === status && styles.activeButton]}
-                onPress={() => setorderStatus(status)}
-              >
-                <Text style={[styles.buttonText, orderStatus === status && styles.activeButtonText]}>
-                  {status.replace(/\b\w/g, c => c.toUpperCase())}
+                <Text style={[
+                  styles.buttonText,
+                  deliveryStatus === status && styles.activeButtonText
+                ]}>
+                  {status === 'RECEIVED' ? 'Confirm' :
+                   status === 'PREPARED' ? 'Prepared' :
+                   'Send for Delivery'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <TouchableOpacity style={styles.updateButton} onPress={handleUpdateOrder}>
-          <Text style={styles.updateButtonText}>Update Order</Text>
+        <TouchableOpacity
+          style={[styles.updateButton, !deliveryStatus && styles.disabledButton]}
+          onPress={handleUpdateOrder}
+          disabled={!deliveryStatus}
+        >
+          <Text style={[styles.updateButtonText, !deliveryStatus && styles.disabledButtonText]}>
+            Update Status
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -192,10 +194,14 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   backButtonText: {
-    fontSize: 16,
-    color: '#2E86AB',
+    fontSize: 20,
+    color: '#1B5E20',
+    fontWeight: '500',
   },
   title: {
     fontSize: 24,
@@ -219,26 +225,31 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#34495E',
+    color: '#2E7D32',
     marginBottom: 16,
   },
   statusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 8,
+    gap: 16,
   },
   statusItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   statusLabel: {
     fontSize: 14,
-    color: '#888',
-    marginTop: 8,
+    color: '#666',
+    width: 80,
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
-    marginTop: 4,
+    color: '#333',
+    flex: 1,
   },
   itemText: {
     fontSize: 16,
@@ -273,23 +284,22 @@ const styles = StyleSheet.create({
   buttonGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
-    flexGrow: 1,
     minWidth: '48%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   buttonText: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
   },
   activeButton: {
@@ -298,6 +308,20 @@ const styles = StyleSheet.create({
   },
   activeButtonText: {
     color: '#fff',
+  },
+  disabledButton: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#e0e0e0',
+  },
+  disabledButtonText: {
+    color: '#aaa',
+  },
+  disabledText: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: -8,
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   updateButton: {
     backgroundColor: '#28B463',

@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { BedDouble, ArrowRight } from 'lucide-react-native';
+import { BedDouble, ArrowRight, Search } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function RoomsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { ward,floor } = route.params as { ward: number, floor: number };
+  const { ward, floor } = route.params as { ward: number, floor: number };
 
   const [rooms, setRooms] = useState<number[]>([]);
+  const [filteredRooms, setFilteredRooms] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [numColumns, setNumColumns] = useState(2);
 
   useEffect(() => {
@@ -18,7 +20,9 @@ export default function RoomsScreen() {
       try {
         const response = await axiosInstance.get(`/patient/rooms/${floor}/${ward}`);
         const data = response.data;
+        console.log('Fetched rooms:', data);
         setRooms(data);
+        setFilteredRooms(data);
       } catch (error) {
         console.error('Failed to fetch rooms:', error);
       }
@@ -26,6 +30,21 @@ export default function RoomsScreen() {
 
     fetchRooms();
   }, [ward]);
+
+  useEffect(() => {
+    console.log('Search query:', searchQuery);
+    console.log('Current rooms:', rooms);
+    if (searchQuery.trim() === '') {
+      setFilteredRooms(rooms);
+    } else {
+      const filtered = rooms.filter(room => {
+        const roomStr = `Room${room.toString().padStart(3, '0')}`;
+        return roomStr.toLowerCase().includes(searchQuery.toLowerCase());
+      });
+      console.log('Filtered rooms:', filtered);
+      setFilteredRooms(filtered);
+    }
+  }, [searchQuery, rooms]);
 
   const updateLayout = () => {
     const { width } = Dimensions.get('window');
@@ -45,7 +64,7 @@ export default function RoomsScreen() {
   }, []);
 
   const navigateToRoom = (room: number) => {
-    navigation.navigate('beds', { room,ward,floor });
+    navigation.navigate('beds', { room, ward, floor });
   };
 
   return (
@@ -55,9 +74,22 @@ export default function RoomsScreen() {
         <Text style={styles.headerSubtitle}>Select a room to view Beds</Text>
       </View>
 
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search rooms..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#64748b"
+          />
+        </View>
+      </View>
+
       <ScrollView style={styles.content}>
         <View style={styles.cardGrid}>
-          {rooms.map((room: number) => (
+          {filteredRooms.map((room: number) => (
             <TouchableOpacity
               key={room}
               style={[styles.roomCard, { width: `${100 / numColumns - 3}%` }]}
@@ -97,6 +129,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1f2937',
+    padding: 0,
   },
   content: {
     flex: 1,

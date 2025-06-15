@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Building, ArrowRight } from 'lucide-react-native';
+import { Building, ArrowRight, Search } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 
@@ -10,8 +10,9 @@ export default function DietitianHomeScreen() {
   const navigation = useNavigation<any>(); 
   const router = useRouter();
   const [floors, setFloors] = useState<number[]>([]);
+  const [filteredFloors, setFilteredFloors] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [numColumns, setNumColumns] = useState(2);
-
 
   useEffect(() => {
     const fetchFloors = async () => {
@@ -19,6 +20,7 @@ export default function DietitianHomeScreen() {
         const response = await axiosInstance.get("/patient/floors");
         const data = response.data;
         setFloors(data);
+        setFilteredFloors(data);
       } catch (error) {
         console.error('Failed to fetch floors:', error);
       }
@@ -27,6 +29,44 @@ export default function DietitianHomeScreen() {
     fetchFloors();
   }, []);
 
+  useEffect(() => {
+    console.log('Search query:', searchQuery);
+    console.log('Current floors:', floors);
+    if (searchQuery.trim() === '') {
+      setFilteredFloors(floors);
+    } else {
+      const filtered = floors.filter(floor => {
+        const floorStr = `Floor${floor.toString().padStart(3, '0')}`;
+        const searchLower = searchQuery.toLowerCase().trim();
+        
+        // Remove any non-alphanumeric characters from search
+        const cleanSearch = searchLower.replace(/[^a-z0-9]/gi, '');
+        
+        // If search is just numbers, try different number formats
+        if (/^\d+$/.test(cleanSearch)) {
+          const numSearch = parseInt(cleanSearch);
+          return (
+            floor === numSearch || // Exact number match
+            floorStr.includes(cleanSearch) || // Number in string
+            floorStr.includes(cleanSearch.padStart(3, '0')) // Padded number
+          );
+        }
+        
+        // For text searches
+        return (
+          floorStr.toLowerCase().includes(cleanSearch) || // Full string match
+          floorStr.toLowerCase().includes(`floor${cleanSearch}`) || // With "floor" prefix
+          floorStr.toLowerCase().includes(`f${cleanSearch}`) || // With "f" prefix
+          floorStr.toLowerCase().includes(`fl${cleanSearch}`) || // With "fl" prefix
+          floorStr.toLowerCase().includes(`flo${cleanSearch}`) || // With "flo" prefix
+          floorStr.toLowerCase().includes(`floo${cleanSearch}`) || // With "floo" prefix
+          floorStr.toLowerCase().includes(`floor${cleanSearch.padStart(3, '0')}`) // With padded number
+        );
+      });
+      console.log('Filtered floors:', filtered);
+      setFilteredFloors(filtered);
+    }
+  }, [searchQuery, floors]);
 
   const updateLayout = () => {
     const { width } = Dimensions.get('window');
@@ -50,23 +90,35 @@ export default function DietitianHomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dietitian Dashboard</Text>
         <Text style={styles.headerSubtitle}>Select a floor to view Wards</Text>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search floors..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#64748b"
+          />
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.cardGrid}>
-          {floors.map((floor) => (
+          {filteredFloors.map((floor) => (
             <TouchableOpacity
               key={floor}
               style={[styles.floorCard, { width: `${100 / numColumns - 3}%` }]}
               onPress={() => {
-                navigateToWards(floor)
+                navigateToWards(floor);
                 console.log(floor);
-              }
-              }
+              }}
             >
               <View style={styles.floorIconContainer}>
                 <Building size={32} color="#166534" />
@@ -89,19 +141,37 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#166534',
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 20,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 8,
-  },
   headerSubtitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#1f2937',
+    padding: 0,
   },
   content: {
     flex: 1,

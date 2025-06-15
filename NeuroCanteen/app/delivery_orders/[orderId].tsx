@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Phone, Calendar, Package, IndianRupee } from 'lucide-react-native';
+import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function UpdateOrderScreen() {
@@ -27,8 +27,10 @@ export default function UpdateOrderScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paymentStatus, setPaymentStatus] = useState('PENDING');
-  const [deliveryStatus, setDeliveryStatus] = useState('OUT_FOR_DELIVERY');
+  const [currentPaymentStatus, setCurrentPaymentStatus] = useState('PENDING');
+  const [currentDeliveryStatus, setCurrentDeliveryStatus] = useState<string | null>(null);
+  const [pendingPaymentStatus, setPendingPaymentStatus] = useState('PENDING');
+  const [pendingDeliveryStatus, setPendingDeliveryStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -36,8 +38,10 @@ export default function UpdateOrderScreen() {
         const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
         const orderData: Order = response.data;
         setOrder(orderData);
-        setPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
-        setDeliveryStatus(orderData.deliveryStatus ?? 'OutForDelivery');
+        setCurrentPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
+        setPendingPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
+        setCurrentDeliveryStatus(orderData.deliveryStatus ?? null);
+        setPendingDeliveryStatus(orderData.deliveryStatus ?? null);
       } catch (error) {
         console.error('Error fetching order:', error);
       } finally {
@@ -50,17 +54,58 @@ export default function UpdateOrderScreen() {
 
   const handleUpdateOrder = async () => {
     try {
-      await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
-        params: { paymentReceived: paymentStatus === "COMPLETED" },
-      });
+      // Check if there are any changes
+      if (pendingPaymentStatus !== currentPaymentStatus || pendingDeliveryStatus !== currentDeliveryStatus) {
+        // Validate delivery status before updating
+        if (pendingDeliveryStatus === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT') {
+          Alert.alert(
+            "Cannot Mark as Delivered",
+            "Payment must be completed before marking the order as delivered."
+          );
+          return;
+        }
 
-      await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
-        params: { deliveryStatus },
-      });
+        // First update payment status
+        if (pendingPaymentStatus !== currentPaymentStatus) {
+          const paymentResponse = await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
+            params: { paymentReceived: pendingPaymentStatus === "COMPLETED" },
+          });
 
-      router.back();
+          if (paymentResponse.status === 200) {
+            setCurrentPaymentStatus(pendingPaymentStatus);
+          }
+        }
+
+        // Then update delivery status
+        if (pendingDeliveryStatus !== currentDeliveryStatus) {
+          const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+            params: { deliveryStatus: pendingDeliveryStatus },
+          });
+          
+          if (deliveryResponse.status === 200) {
+            setCurrentDeliveryStatus(pendingDeliveryStatus);
+            // Reset pending status to allow re-confirmation
+            setPendingDeliveryStatus(pendingDeliveryStatus);
+          }
+        }
+
+        router.back();
+      } else {
+        // If no changes, still allow the update to process
+        const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+          params: { deliveryStatus: pendingDeliveryStatus },
+        });
+        
+        if (deliveryResponse.status === 200) {
+          setCurrentDeliveryStatus(pendingDeliveryStatus);
+          // Reset pending status to allow re-confirmation
+          setPendingDeliveryStatus(pendingDeliveryStatus);
+        }
+        router.back();
+      }
     } catch (error) {
       console.error('Error updating order:', error);
+      Alert.alert("Error", "Failed to update order status.");
     }
   };
 
@@ -82,25 +127,33 @@ export default function UpdateOrderScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Order #{order.orderId}</Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Status</Text>
+          <Text style={styles.sectionTitle}>Delivery Status</Text>
           <View style={styles.statusContainer}>
             <View style={styles.statusItem}>
               <Package size={25} color="#03A791" />
               <Text style={styles.statusLabel}>Delivery</Text>
-              <Text style={styles.statusValue}>{order.deliveryStatus}</Text>
+              <Text style={styles.statusValue}>
+                {!currentDeliveryStatus ? "Waiting for confirmation" : 
+                 currentDeliveryStatus === 'OrderReceived' ? "Confirmed" :
+                 currentDeliveryStatus === 'OutForDelivery' ? "Out for Delivery" :
+                 currentDeliveryStatus === 'Delivered' ? "Delivered" :
+                 currentDeliveryStatus === 'Cancelled' ? "Cancelled" :
+                 currentDeliveryStatus}
+              </Text>
             </View>
             <View style={styles.statusItem}>
               <IndianRupee size={25} color="#28B463" />
               <Text style={styles.statusLabel}>Payment</Text>
               <Text style={styles.statusValue}>
-                {order.paymentRecived ? 'Received' : 'Pending'}
+                {currentPaymentStatus === 'COMPLETED' ? 'Received' : 'Pending'}
               </Text>
             </View>
           </View>
@@ -144,33 +197,88 @@ export default function UpdateOrderScreen() {
             {['PENDING', 'COMPLETED'].map((status) => (
               <TouchableOpacity
                 key={status}
-                style={[styles.button, paymentStatus === status && styles.activeButton]}
-                onPress={() => setPaymentStatus(status)}
+                style={[
+                  styles.button, 
+                  pendingPaymentStatus === status && styles.activeButton,
+                  (order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED') && styles.disabledButton
+                ]}
+                onPress={() => {
+                  if (order?.paymentType !== 'CREDIT' && currentPaymentStatus !== 'COMPLETED') {
+                    setPendingPaymentStatus(status);
+                  }
+                }}
+                disabled={order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED'}
               >
-                <Text style={[styles.buttonText, paymentStatus === status && styles.activeButtonText]}>
+                <Text style={[
+                  styles.buttonText, 
+                  pendingPaymentStatus === status && styles.activeButtonText,
+                  (order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED') && styles.disabledButtonText
+                ]}>
                   {status}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+          {order?.paymentType === 'CREDIT' && (
+            <Text style={styles.disabledText}>Payment status cannot be changed for CREDIT orders</Text>
+          )}
+          {currentPaymentStatus === 'COMPLETED' && order?.paymentType !== 'CREDIT' && (
+            <Text style={styles.disabledText}>Payment has been completed. Status cannot be changed.</Text>
+          )}
 
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
-            {['OutForDelivery', 'Delivered', 'OrderReceived', 'Cancelled'].map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={[styles.button, deliveryStatus === status && styles.activeButton]}
-                onPress={() => setDeliveryStatus(status)}
-              >
-                <Text style={[styles.buttonText, deliveryStatus === status && styles.activeButtonText]}>
-                  {status.replace(/\b\w/g, c => c.toUpperCase())}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {['OrderReceived', 'OutForDelivery', 'Delivered', 'Cancelled'].map((status) => {
+              const isDisabled = 
+                currentDeliveryStatus === 'Delivered' || 
+                (status === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT');
+
+              return (
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.button, 
+                    pendingDeliveryStatus === status && styles.activeButton,
+                    isDisabled && styles.disabledButton
+                  ]}
+                  onPress={() => {
+                    if (!isDisabled) {
+                      setPendingDeliveryStatus(status);
+                    }
+                  }}
+                  disabled={isDisabled}
+                >
+                  <Text style={[
+                    styles.buttonText, 
+                    pendingDeliveryStatus === status && styles.activeButtonText,
+                    isDisabled && styles.disabledButtonText
+                  ]}>
+                    {status === 'OrderReceived' ? 'Confirm Delivery' : 
+                     status === 'OutForDelivery' ? 'Out for Delivery' :
+                     status === 'Delivered' ? 'Delivered' :
+                     'Cancelled'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+          {currentDeliveryStatus === 'Delivered' && (
+            <Text style={styles.disabledText}>Order has been delivered. Status cannot be changed.</Text>
+          )}
+          {pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT' && (
+            <Text style={styles.disabledText}>Payment must be completed before marking the order as delivered.</Text>
+          )}
         </View>
 
-        <TouchableOpacity style={styles.updateButton} onPress={handleUpdateOrder}>
+        <TouchableOpacity 
+          style={[
+            styles.updateButton,
+            (pendingPaymentStatus === currentPaymentStatus && 
+             pendingDeliveryStatus === currentDeliveryStatus) && styles.disabledUpdateButton
+          ]} 
+          onPress={handleUpdateOrder}
+          disabled={false}
+        >
           <Text style={styles.updateButtonText}>Update Order</Text>
         </TouchableOpacity>
       </View>
@@ -185,7 +293,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#2E7D32',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     marginTop: 44,
@@ -195,12 +303,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#2E86AB',
+    color: '#fff',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007074',
+    color: '#fff',
   },
   content: {
     padding: 16,
@@ -219,26 +327,31 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#34495E',
+    color: '#2E7D32',
     marginBottom: 16,
   },
   statusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column',
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 8,
+    gap: 16,
   },
   statusItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   statusLabel: {
     fontSize: 14,
-    color: '#888',
-    marginTop: 8,
+    color: '#666',
+    width: 80,
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
-    marginTop: 4,
+    color: '#333',
+    flex: 1,
   },
   itemText: {
     fontSize: 16,
@@ -248,68 +361,78 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#2E86AB',
-    marginTop: 8,
+    color: '#2E7D32',
   },
   detailItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
   detailText: {
-    flex: 1,
     fontSize: 16,
     color: '#444',
-    lineHeight: 24,
+    marginLeft: 12,
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2C3E50',
-    marginBottom: 12,
-    marginTop: 16,
+    color: '#333',
+    marginBottom: 8,
   },
   buttonGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
-    flexGrow: 1,
     minWidth: '48%',
-  },
-  buttonText: {
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   activeButton: {
-    backgroundColor: '#28B463',
-    borderColor: '#2E86AB',
+    backgroundColor: '#2E7D32',
+  },
+  buttonText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
   activeButtonText: {
     color: '#fff',
   },
   updateButton: {
-    backgroundColor: '#28B463',
+    backgroundColor: '#2E7D32',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
+    marginTop: 8,
   },
   updateButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#E0E0E0',
+  },
+  disabledButtonText: {
+    color: '#9E9E9E',
+  },
+  disabledText: {
+    color: '#9E9E9E',
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  disabledUpdateButton: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#E0E0E0',
   },
 });

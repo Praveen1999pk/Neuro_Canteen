@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 const TOKEN_KEY = 'jwtToken';
 
@@ -12,7 +12,21 @@ export const getToken = async () => {
 };
 
 export const removeToken = async () => {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  try {
+    // Clear all stored data
+    await AsyncStorage.multiRemove([
+      'jwtToken',
+      'patientUHID',
+      'patientPHONE',
+      'userRole',
+      'navigationState',
+      'expo-router-history',
+      'expo-router-state'
+    ]);
+  } catch (error) {
+    console.error('Error removing tokens:', error);
+    throw error;
+  }
 };
 
 export const getUsernameFromToken = async (): Promise<string | null> => {

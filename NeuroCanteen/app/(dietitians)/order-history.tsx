@@ -6,19 +6,22 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
-  Platform
+  Platform,
+  TextInput
 } from 'react-native';
 import {
   Calendar,
   Clock,
-  DollarSign,
   MapPin,
   Package,
   ArrowUp,
   ArrowDown,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft,
+  Search
 } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
 
 interface Order {
@@ -44,8 +47,11 @@ export default function OrderHistoryScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const [sortNewest, setSortNewest] = React.useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
-  const [orders,setorders] = useState<Order[]>([])
+  const [orders, setorders] = useState<Order[]>([]);
+  
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -63,17 +69,17 @@ export default function OrderHistoryScreen() {
 
   useEffect(() => {
     const fetchRooms = async () => {
-    try {
-    const response = await axiosInstance.get<Order[]>('/orders');
-        const data = response.data.filter(order => order.orderedRole === 'Dietitian');
-        setorders(data)
-    } catch (error) {
+      try {
+        const response = await axiosInstance.get<Order[]>('/orders');
+        const data = response.data.filter(order => order.orderedRole === 'patient');
+        setorders(data);
+      } catch (error) {
         console.error('Failed to fetch rooms:', error);
-    }
+      }
     };
 
     fetchRooms();
-}, [sortNewest]);
+  }, [sortNewest]);
   
 
 
@@ -94,22 +100,26 @@ export default function OrderHistoryScreen() {
     });
   };
 
-  const sortedOrders = [...orders].sort((a, b) => {
-    const dateA = new Date(a.orderDateTime).getTime();
-    const dateB = new Date(b.orderDateTime).getTime();
-    return sortNewest ? dateB - dateA : dateA - dateB;
-  });
+  const sortedAndFilteredOrders = [...orders]
+    .filter(order => 
+      order.orderedUserId.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.orderDateTime).getTime();
+      const dateB = new Date(b.orderDateTime).getTime();
+      return sortNewest ? dateB - dateA : dateA - dateB;
+    });
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Orders</Text>
-          <Text style={styles.headerSubtitle}>Track your orders and deliveries</Text>
-        </View>
-        
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Order History</Text>
         <TouchableOpacity 
           style={styles.sortButton}
           onPress={() => setSortNewest(!sortNewest)}
@@ -124,11 +134,24 @@ export default function OrderHistoryScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by UHID..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#64748b"
+          />
+        </View>
+      </View>
+
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
       >
-        {sortedOrders.map((order, index) => (
+        {sortedAndFilteredOrders.map((order, index) => (
           <Animated.View 
             key={order.orderId} 
             style={[
@@ -163,7 +186,6 @@ export default function OrderHistoryScreen() {
               </View>
 
               <View style={styles.infoRow}>
-                <DollarSign size={18} color="#2E7D32" />
                 <Text style={styles.infoText}>
                   ₹{order.price.toFixed(2)}
                 </Text>
@@ -195,11 +217,6 @@ export default function OrderHistoryScreen() {
                 </View>
               )}
             </View>
-            
-            {/* <TouchableOpacity style={styles.detailsButton}>
-              <Text style={styles.detailsButtonText}>View Details</Text>
-              <ChevronRight size={16} color="#2E7D32" />
-            </TouchableOpacity> */}
           </Animated.View>
         ))}
       </ScrollView>
@@ -213,32 +230,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: '#1B5E20',
-    paddingTop: Platform.OS === 'web' ? 40 : 20,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    padding: 20,
+    backgroundColor: '#2E7D32',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   headerContent: {
     marginBottom: 16,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#E8F5E9',
-    opacity: 0.9,
+    color: '#fff',
+    marginTop: 4,
   },
   sortButton: {
     flexDirection: 'row',
@@ -260,45 +268,47 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   orderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
-    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   orderIdContainer: {
     flex: 1,
   },
   orderIdLabel: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1B5E20',
-    marginBottom: 4,
+    color: '#333',
   },
   orderCategory: {
     fontSize: 14,
     color: '#2E7D32',
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
   },
   statusText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
     color: '#2E7D32',
+    fontWeight: '500',
   },
   orderContent: {
     backgroundColor: '#FAFAFA',
@@ -371,5 +381,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     marginRight: 4,
-  }
+  },
+  backButton: {
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    color: '#0f172a',
+  },
 });

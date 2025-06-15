@@ -9,10 +9,17 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { Clock, CircleCheck as CheckCircle2, Circle as XCircle, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { useRouter } from 'expo-router';
+
+type OrderItem = {
+  name: string;
+  quantity: number;
+  price: number;
+};
 
 type Order = {
   orderId: number; 
@@ -38,55 +45,74 @@ export default function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [username, setUsername] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     getUsernameFromToken();
   }, []);
 
-const getUsernameFromToken = async () => {
-  try {
-    const token = await AsyncStorage.getItem('jwtToken');
-    if (token) {
-      console.log('Token:', token);
-      const decoded: any = jwtDecode(token);
-      const user = decoded.sub || '';
-      setUsername(user);
-      await fetchOrders(token, user); // Add await here
+  const getUsernameFromToken = async () => {
+    try {
+      const token = await AsyncStorage.getItem('jwtToken');
+      if (token) {
+        const decoded: any = jwtDecode(token);
+        const user = decoded.sub || '';
+        setUsername(user);
+        await fetchOrders(token, user);
+      }
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      setLoading(false); 
     }
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    setLoading(false); 
-  }
-};
+  };
 
-const fetchOrders = async (token: string, user: string) => {
-  setLoading(true);
-  try {
-    const response = await axiosInstance.get(`/orders`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const fetchOrders = async (token: string, user: string) => {
+    setLoading(true);
+    try {
+      const response = await axiosInstance.get(`/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    // Improved filtering with null checks
-    const userOrders = response.data.filter((order: Order) => {
-      if (!order.orderedName) return false;
-      return order.orderedName.trim().toLowerCase() === user.trim().toLowerCase();
-    });
+      const userOrders = response.data
+        .filter((order: any) => {
+          if (!order.orderedName) return false;
+          return order.orderedName.trim().toLowerCase() === user.trim().toLowerCase();
+        })
+        .sort((a: Order, b: Order) => {
+          const dateA = new Date(a.orderDateTime).getTime();
+          const dateB = new Date(b.orderDateTime).getTime();
+          return dateB - dateA; // Sort newest first
+        });
 
-    setOrders(userOrders);
+      setOrders(userOrders);
+      
+      if (userOrders.length === 0) {
+        console.log('No orders found for user:', user);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const parseOrderItems = (order: Order): OrderItem[] => {
+    if (!order.itemName) return [];
     
-    if (userOrders.length === 0) {
-      console.log('No orders found for user:', user);
-    }
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    // Add error state handling if needed
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+    const itemNames = order.itemName.split('\n').filter(name => name.trim() !== '');
+    const pricePerItem = itemNames.length > 0 ? order.price / itemNames.length : 0;
+    const quantityPerItem = itemNames.length > 0 ? order.quantity / itemNames.length : 0;
+    
+    return itemNames.map(name => ({
+      name: name.trim(),
+      quantity: Math.round(quantityPerItem * 100) / 100,
+      price: Math.round(pricePerItem * 100) / 100
+    }));
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     const token = await AsyncStorage.getItem('jwtToken');
@@ -133,62 +159,78 @@ const fetchOrders = async (token: string, user: string) => {
     }
   };
 
-const renderOrderItem = ({ item }: { item: Order }) => (
-  <View style={styles.orderCard}>
-    <View style={styles.orderHeader}>
-      <Text style={styles.orderId}>Order #{item.orderId}</Text>
-      <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
-    </View>
-      <View style={styles.orderDetails}>
-        <Text style={styles.itemName} numberOfLines={2}>{item.itemName}</Text>
-        <Text style={styles.itemQuantity}>Quantity: {item.quantity}</Text>
-      </View>
-      
-      <View style={styles.orderFooter}>
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceLabel}>Total:</Text>
-          <Text style={styles.price}>₹{item.price}</Text>
+  const renderOrderItem = ({ item }: { item: Order }) => {
+    const orderItems = parseOrderItems(item);
+    
+    return (
+      <View style={styles.orderCard}>
+        <View style={styles.orderHeader}>
+          <Text style={styles.orderId}>Order #{item.orderId}</Text>
+          <Text style={styles.orderDate}>{formatDate(item.orderDateTime)}</Text>
         </View>
         
-        <View style={styles.statusContainer}>
-          <View style={styles.statusIconContainer}>
-            {getStatusIcon(item.orderStatus)}
+        <View style={styles.itemsTable}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderText, styles.itemColumn]}>Item</Text>
+            <Text style={[styles.tableHeaderText, styles.qtyColumn]}>Qty</Text>
+            <Text style={[styles.tableHeaderText, styles.priceColumn]}>Price</Text>
           </View>
+          
+          {orderItems.map((foodItem, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={[styles.tableCell, styles.itemColumn]}>{foodItem.name}</Text>
+              <Text style={[styles.tableCell, styles.qtyColumn]}>{foodItem.quantity}</Text>
+              <Text style={[styles.tableCell, styles.priceColumn]}>₹{foodItem.price.toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+        
+        <View style={styles.orderFooter}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceLabel}>Total:</Text>
+            <Text style={styles.price}>₹{item.price.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.statusContainer}>
+            <View style={styles.statusIconContainer}>
+              {getStatusIcon(item.orderStatus)}
+            </View>
+            <Text 
+              style={[
+                styles.statusText, 
+                { color: getStatusColor(item.orderStatus) }
+              ]}
+            >
+              {item.orderStatus || 'Pending'}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentLabel}>Payment Method:</Text>
+          <Text style={styles.paymentValue}>{item.paymentType}</Text>
+          
+          <Text style={styles.paymentLabel}>Payment Status:</Text>
           <Text 
             style={[
-              styles.statusText, 
-              { color: getStatusColor(item.orderStatus) }
+              styles.paymentValue,
+              { 
+                color: item.paymentStatus === 'Completed' ? '#4CAF50' : 
+                      item.paymentStatus === 'Failed' ? '#F44336' : '#FF9800' 
+              }
             ]}
           >
-            {item.orderStatus || 'Pending'}
+            {item.paymentStatus || 'Pending'}
           </Text>
         </View>
-      </View>
-      
-      <View style={styles.paymentInfo}>
-        <Text style={styles.paymentLabel}>Payment Method:</Text>
-        <Text style={styles.paymentValue}>{item.paymentType}</Text>
         
-        <Text style={styles.paymentLabel}>Payment Status:</Text>
-        <Text 
-          style={[
-            styles.paymentValue,
-            { 
-              color: item.paymentStatus === 'Completed' ? '#4CAF50' : 
-                    item.paymentStatus === 'Failed' ? '#F44336' : '#FF9800' 
-            }
-          ]}
-        >
-          {item.paymentStatus || 'Pending'}
-        </Text>
+        <View style={styles.addressContainer}>
+          <Text style={styles.addressLabel}>Delivery Address:</Text>
+          <Text style={styles.addressValue}>{item.address}</Text>
+        </View>
       </View>
-      
-      <View style={styles.addressContainer}>
-        <Text style={styles.addressLabel}>Delivery Address:</Text>
-        <Text style={styles.addressValue}>{item.address}</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (loading && !refreshing) {
     return (
@@ -201,11 +243,16 @@ const renderOrderItem = ({ item }: { item: Order }) => (
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={20} color="#2E7D32" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={orders}
         renderItem={renderOrderItem}
         keyExtractor={(item, index) => item?.orderId ? String(item.orderId) : `order-${index}`}
-
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -229,9 +276,6 @@ const renderOrderItem = ({ item }: { item: Order }) => (
     </SafeAreaView>
   );
 }
-
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -276,17 +320,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  orderDetails: {
+  itemsTable: {
     marginBottom: 12,
   },
-  itemName: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
+  tableHeader: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingBottom: 8,
+    marginBottom: 8,
   },
-  itemQuantity: {
+  tableHeaderText: {
+    fontWeight: '600',
+    color: '#333',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  tableCell: {
     fontSize: 14,
-    color: '#666',
+    color: '#555',
+  },
+  itemColumn: {
+    flex: 3,
+  },
+  qtyColumn: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  priceColumn: {
+    flex: 1.5,
+    textAlign: 'right',
   },
   orderFooter: {
     flexDirection: 'row',
@@ -372,5 +437,21 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontWeight: '500',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  backButton: {
+    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2E7D32',
   },
 });

@@ -8,12 +8,14 @@ import {
   Image,
   FlatList,
   TextInput,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { useRouter} from 'expo-router';
-import { ShoppingCart, Search, Plus, Check } from 'lucide-react-native';
+import { ShoppingCart, Search, Plus, Check, Clock, Calendar } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 
 const { width } = Dimensions.get('window');
@@ -43,6 +45,12 @@ interface DietFilter {
   dislikes: string[];
 }
 
+interface CartItem {
+  item: FoodItem;
+  quantity: number;
+  scheduledTime?: Date;
+}
+
 export default function FoodScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>()
@@ -52,8 +60,13 @@ export default function FoodScreen() {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [cart, setCart] = useState<{item: FoodItem, quantity: number}[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState<boolean>(false);
+  const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [selectedTime, setSelectedTime] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   useEffect(() => {
     const fetchRooms = async () => {
@@ -117,7 +130,8 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
       updatedCart[existingItemIndex].quantity += 1;
       setCart(updatedCart);
     } else {
-      setCart([...cart, { item, quantity: 1 }]);
+      setSelectedItemId(item.id);
+      setShowTimePicker(true);
     }
   };
   
@@ -159,6 +173,70 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
     navigateOrederSuccess(orderSummary);
   };
   
+  const handleTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    
+    if (selectedDate && selectedItemId) {
+      const item = foodData.find(food => food.id === selectedItemId);
+      if (item) {
+        const existingItemIndex = cart.findIndex(cartItem => cartItem.item.id === item.id);
+        if (existingItemIndex !== -1) {
+          const updatedCart = [...cart];
+          updatedCart[existingItemIndex].scheduledTime = selectedDate;
+          setCart(updatedCart);
+        } else {
+          setCart([...cart, { item, quantity: 1, scheduledTime: selectedDate }]);
+        }
+      }
+    }
+    setSelectedItemId(null);
+  };
+
+  const showTimePickerForItem = (itemId: number) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(true);
+    }
+    setSelectedItemId(itemId);
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (selectedDate && selectedItemId) {
+      const item = foodData.find(food => food.id === selectedItemId);
+      if (item) {
+        const existingItemIndex = cart.findIndex(cartItem => cartItem.item.id === item.id);
+        if (existingItemIndex !== -1) {
+          const updatedCart = [...cart];
+          const currentTime = updatedCart[existingItemIndex].scheduledTime || new Date();
+          const newDateTime = new Date(selectedDate);
+          newDateTime.setHours(currentTime.getHours(), currentTime.getMinutes());
+          updatedCart[existingItemIndex].scheduledTime = newDateTime;
+          setCart(updatedCart);
+        }
+      }
+    }
+  };
+
+  const showDatePickerForItem = (itemId: number) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(true);
+    }
+    setSelectedItemId(itemId);
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
   const renderFoodItem = ({ item }: { item: FoodItem }) => {
     const isInCart = cart.some(cartItem => cartItem.item.id === item.id);
     const cartItem = cart.find(cartItem => cartItem.item.id === item.id);
@@ -216,6 +294,30 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
               </TouchableOpacity>
             )}
           </View>
+
+          {isInCart && (
+            <View style={styles.scheduleContainer}>
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => showDatePickerForItem(item.id)}
+              >
+                <Calendar size={16} color="#166534" />
+                <Text style={styles.dateText}>
+                  {cartItem?.scheduledTime ? formatDate(cartItem.scheduledTime) : 'Set Date'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.timeButton}
+                onPress={() => showTimePickerForItem(item.id)}
+              >
+                <Clock size={16} color="#166534" />
+                <Text style={styles.timeText}>
+                  {cartItem?.scheduledTime ? formatTime(cartItem.scheduledTime) : 'Set Time'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -299,6 +401,28 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
         columnWrapperStyle={styles.foodRow}
       />
       
+      {showDatePicker && (
+        <DateTimePicker
+          testID="datePicker"
+          value={selectedDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+      
+      {showTimePicker && (
+        <DateTimePicker
+          testID="dateTimePicker"
+          value={selectedTime}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleTimeChange}
+        />
+      )}
+      
       {showCart && (
         <View style={styles.cartContainer}>
           <View style={styles.cartHeader}>
@@ -377,7 +501,7 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
                   style={styles.checkoutButton}
                   onPress={handleCheckout}
                 >
-                  <Text style={styles.checkoutButtonText}>Place Order</Text>
+                  <Text style={styles.checkoutButtonText}>Confirm Diet</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -705,5 +829,41 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  scheduleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  dateText: {
+    color: '#166534',
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    flex: 1,
+  },
+  timeText: {
+    color: '#166534',
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
