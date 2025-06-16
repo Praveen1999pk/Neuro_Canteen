@@ -16,6 +16,7 @@ import {
   ChefHat,
   Menu,
   BanknoteArrowDown,
+  ArrowLeft,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -69,6 +70,10 @@ export default function AdminDashboard() {
     router.push(`/(admin)/${route}`);
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   const managementItems = [
     { title: 'Staff', icon: <Users size={32} color="#2E7D32" />, route: 'staff' },
     { title: 'Patients', icon: <User size={32} color="#2E7D32" />, route: 'patient' },
@@ -87,7 +92,11 @@ export default function AdminDashboard() {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Neuro Canteen Admin</Text>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ArrowLeft size={20} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Admin Dashboard</Text>
       </View>
 
       <View style={styles.statsContainer}>
@@ -153,13 +162,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    padding: 20,
     backgroundColor: '#2E7D32',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
   },
   headerTitle: {
     color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   statsContainer: {
     flexDirection: 'row',

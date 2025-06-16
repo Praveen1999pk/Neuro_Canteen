@@ -42,14 +42,22 @@ export default function HomeScreen() {
     }).start();
   };
 
+  const handleBack = () => {
+    router.replace('/(Role)/dietitian');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
       
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={handleBack} 
+          style={styles.backButton}
+          activeOpacity={1}
+        >
           <ArrowLeft size={20} color="#fff" />
-          <Text style={styles.backButtonText}>Backs</Text>
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <View style={styles.iconBackground}>
           <User color="white" size={40} />
@@ -71,6 +79,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/dietitian_routes')}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
+              activeOpacity={1}
             >
               <Text style={styles.navigationButtonText}>Floor Overview</Text>
             </TouchableOpacity>
@@ -109,6 +118,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: 'transparent',
   },
   backButtonText: {
     color: '#fff',

@@ -245,9 +245,10 @@ export default function OrderHistory() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={20} color="#2E7D32" />
+          <ArrowLeft size={24} color="#fff" />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Order History</Text>
       </View>
       <FlatList
         data={orders}
@@ -280,7 +281,7 @@ export default function OrderHistory() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#F5F5F5',
   },
   loadingContainer: {
     flex: 1,
@@ -439,19 +440,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  backButton: {
-    padding: 4,
+    backgroundColor: '#2E7D32',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 80,
   },
   backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
     fontSize: 16,
-    color: '#2E7D32',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
 });

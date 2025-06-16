@@ -26,7 +26,7 @@ export default function AdminLayout() {
           paddingBottom: 10,
           paddingTop: 10,
         },
-        headerShown: true,
+        headerShown: false,
         headerStyle: {
           backgroundColor: '#2E7D32',
         },

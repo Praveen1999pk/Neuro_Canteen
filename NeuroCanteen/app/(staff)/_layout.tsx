@@ -6,7 +6,7 @@ export default function StaffLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: '#4A8F47',
         tabBarInactiveTintColor: '#666',

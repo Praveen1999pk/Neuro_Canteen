@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { logout } from '../services/authService';
-import { User, LogOut } from 'lucide-react-native';
+import { User, LogOut, ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
@@ -52,6 +52,10 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen 
@@ -65,6 +69,12 @@ export default function ProfileScreen() {
           headerTitleStyle: {
             fontWeight: '600',
           },
+          headerLeft: () => (
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <ArrowLeft size={24} color="#fff" />
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          ),
         }} 
       />
       <View style={styles.profileHeader}>
@@ -94,6 +104,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
     paddingTop: 0,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
   },
   profileHeader: {
     backgroundColor: 'white',
