@@ -37,6 +37,7 @@ export default function HomeScreen() {
             key={role.id}
             style={styles.roleCard}
             onPress={() => router.push(`/(Role)/${role.id}`)}
+            activeOpacity={0.9}
           >
             <View style={styles.iconContainer}>
               <role.icon size={32} color="#FFFFFF" />
