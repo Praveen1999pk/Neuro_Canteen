@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,9 +6,13 @@ import { CircleCheck, ShoppingBag } from 'lucide-react-native';
 
 export default function OrderSuccess() {
   const router = useRouter();
-  const animatedValue = new Animated.Value(0);
+  const animatedValue = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
+    // Reset animation value to 0
+    animatedValue.setValue(0);
+    
+    // Start animation sequence
     Animated.sequence([
       Animated.timing(animatedValue, {
         toValue: 1,
@@ -62,12 +66,14 @@ export default function OrderSuccess() {
             <Text style={styles.buttonText}>View My Orders</Text>
           </TouchableOpacity> */}
           
+        <Animated.View style={[styles.buttonsContainer, { opacity: textOpacity }]}>
           <TouchableOpacity 
             style={[styles.button, styles.secondaryButton]} 
             onPress={handleBackToMenu}
           >
             <Text style={styles.secondaryButtonText}>Back to Menu</Text>
           </TouchableOpacity>
+        </Animated.View>
         
       </View>
     </SafeAreaView>

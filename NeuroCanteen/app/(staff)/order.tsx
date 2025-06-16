@@ -176,6 +176,10 @@ export default function StaffOrder() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Menu</Text>
       </View>
 
@@ -284,17 +288,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    backgroundColor: '#2E7D32',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
   content: {
     flex: 1,

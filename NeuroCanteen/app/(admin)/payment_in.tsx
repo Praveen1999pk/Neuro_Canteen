@@ -16,6 +16,7 @@ import axios from 'axios';
 import axiosInstance from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 
 type Order = {
   orderId: string;
@@ -466,6 +467,11 @@ const fetchCompletedPayments = async () => {
       </DataTable.Row>
     );
   };
+
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -473,6 +479,14 @@ const fetchCompletedPayments = async () => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2E7D32']} />
       }
     >
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Credit Payments</Text>
+      </View>
+
       <View style={styles.filterContainer}>
         <View style={[styles.filterItem, { marginTop: 16 }]}>
           <Text style={styles.filterLabel}>Category:</Text>
@@ -560,15 +574,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff'
   },
   headerContainer: {
-    padding: 16,
+    paddingVertical: 30,
+    padding:50,
     backgroundColor: '#2E7D32',
-    marginBottom: 16
+    
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative'
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 1
+  },
+  backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16
   },
   headerText: {
     color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center'
+    textAlign: 'center',
+    flex: 1
   },
   filterContainer: {
     paddingHorizontal: 16,

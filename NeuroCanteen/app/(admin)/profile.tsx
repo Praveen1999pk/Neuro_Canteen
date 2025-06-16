@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { logout } from '../services/authService';
-import { User, LogOut } from 'lucide-react-native';
+import { User, LogOut, ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
@@ -41,8 +41,20 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+      </View>
+
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
           <User size={40} color="#FF6B00" />
@@ -69,6 +81,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  header: {
+    backgroundColor: '#2E7D32',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative'
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 1
+  },
+  backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center'
   },
   profileHeader: {
     backgroundColor: 'white',

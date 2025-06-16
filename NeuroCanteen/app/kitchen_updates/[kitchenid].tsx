@@ -144,26 +144,42 @@ export default function UpdateOrderScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Update Status</Text>
           <View style={styles.buttonGroup}>
-            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={[
-                  styles.button,
-                  deliveryStatus === status && styles.activeButton
-                ]}
-                onPress={() => setDeliveryStatus(status)}
-              >
-                <Text style={[
-                  styles.buttonText,
-                  deliveryStatus === status && styles.activeButtonText
-                ]}>
-                  {status === 'RECEIVED' ? 'Confirm' :
-                   status === 'PREPARED' ? 'Prepared' :
-                   'Send for Delivery'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => {
+              const isDisabled = 
+                (status === 'RECEIVED' && order.orderStatus !== null) ||
+                (status === 'PREPARED' && !order.orderStatus) ||
+                (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
+
+              return (
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.button,
+                    deliveryStatus === status && styles.activeButton,
+                    isDisabled && styles.disabledButton
+                  ]}
+                  onPress={() => setDeliveryStatus(status)}
+                  disabled={isDisabled}
+                >
+                  <Text style={[
+                    styles.buttonText,
+                    deliveryStatus === status && styles.activeButtonText,
+                    isDisabled && styles.disabledButtonText
+                  ]}>
+                    {status === 'RECEIVED' ? 'Confirm' :
+                     status === 'PREPARED' ? 'Prepared' :
+                     'Send for Delivery'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+          {order.orderStatus === 'OUT_FOR_DELIVERY' && (
+            <Text style={styles.disabledText}>Order has been sent for delivery. Status cannot be changed.</Text>
+          )}
+          {order.orderStatus !== null && (
+            <Text style={styles.disabledText}>Order has been confirmed. Status cannot be changed back.</Text>
+          )}
         </View>
 
         <TouchableOpacity
@@ -310,18 +326,17 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   disabledButton: {
-    backgroundColor: '#f5f5f5',
-    borderColor: '#e0e0e0',
+    backgroundColor: '#E0E0E0',
+    borderColor: '#E0E0E0',
   },
   disabledButtonText: {
-    color: '#aaa',
+    color: '#9E9E9E',
   },
   disabledText: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: -8,
-    marginBottom: 12,
-    fontStyle: 'italic',
+    color: '#9E9E9E',
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
   },
   updateButton: {
     backgroundColor: '#28B463',

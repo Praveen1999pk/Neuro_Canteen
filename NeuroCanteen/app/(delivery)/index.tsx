@@ -2,14 +2,32 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert } from 'react-native';
 import { Link } from 'expo-router';
 import { Package, ShoppingCart, Wallet, Search, Filter, ArrowLeft, ListOrdered } from 'lucide-react-native';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 import OrderSelectionModal from '../../components/OrderSelectionModal';
+import React from 'react';
 
 type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'WAITING' | 'CONFIRMED' | 'OutForDelivery' | 'Cancelled' | 'Delivered';
 type RoleFilter = 'ALL' | 'Staff' | 'Patient';
+
+type Order = {
+  orderId: number;
+  orderedRole: string;
+  orderedName: string;
+  itemName: string;
+  quantity: number;
+  price: number;
+  orderStatus: string;
+  paymentType: string;
+  paymentRecived: boolean;
+  address: string;
+  deliveryStatus: string;
+  orderDateTime: string;
+  phoneNo?: string;
+  deliveryPriority?: number;
+};
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,26 +39,37 @@ export default function DeliveryOrders() {
   const [prioritySlots, setPrioritySlots] = useState<(Order | null)[]>(Array(10).fill(null));
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
-  type Order = {
-    orderId: number;
-    orderedRole: string;
-    orderedName: string;
-    itemName: string;
-    quantity: number;
-    price: number;
-    orderStatus: string;
-    paymentType: string;
-    paymentRecived: boolean;
-    address: string;
-    deliveryStatus: string;
-    orderDateTime: string;
-    phoneNo?: string;
-    deliveryPriority?: number;
-  };
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const previousOrdersRef = useRef<Order[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const lastOrderCountRef = useRef<number>(0);
+
+  const checkForNewOrders = async () => {
+    try {
+      const response = await axiosInstance.get("/orders/out-for-delivery", { 
+        timeout: 5000,
+        params: { status: 'WAITING' }
+      });
+      
+      const currentOrderCount = response.data.length;
+      if (currentOrderCount > lastOrderCountRef.current) {
+        // New orders detected, fetch all orders
+        fetchOrders();
+        // Update new orders count
+        const newCount = currentOrderCount - lastOrderCountRef.current;
+        if (newCount > 0 && statusFilter !== 'WAITING') {
+          setNewOrdersCount(prev => prev + newCount);
+        }
+      }
+      lastOrderCountRef.current = currentOrderCount;
+    } catch (error) {
+      console.error("Error checking for new orders:", error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -49,7 +78,22 @@ export default function DeliveryOrders() {
       const sortedOrders = response.data.sort(
         (a: Order, b: Order) => new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime()
       );
+      
+      // Check for new orders
+      if (previousOrdersRef.current.length > 0) {
+        const newOrders = sortedOrders.filter(
+          (newOrder: Order) => !previousOrdersRef.current.some(
+            prevOrder => prevOrder.orderId === newOrder.orderId
+          )
+        );
+        if (newOrders.length > 0 && statusFilter !== 'WAITING') {
+          setNewOrdersCount(prev => prev + newOrders.length);
+        }
+      }
+      
+      previousOrdersRef.current = sortedOrders;
       setOrders(sortedOrders);
+      lastOrderCountRef.current = sortedOrders.length;
     } catch (error: any) {
       if (error.code === 'ECONNABORTED') {
         console.error("Request timed out");
@@ -62,7 +106,40 @@ export default function DeliveryOrders() {
     }
   };
 
+  // Initial fetch
   useEffect(() => {
+    fetchOrders();
+  }, [statusFilter]);
+
+  // Check for new orders when on waiting orders tab
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (statusFilter === 'WAITING') {
+      // Check immediately when switching to waiting orders
+      checkForNewOrders();
+      
+      // Then check every 5 seconds
+      intervalId = setInterval(checkForNewOrders, 5000);
+    }
+
+    // Cleanup interval on unmount or when switching tabs
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [statusFilter]);
+
+  // Reset new orders count when changing tabs
+  useEffect(() => {
+    if (statusFilter === 'WAITING') {
+      setNewOrdersCount(0);
+    }
+  }, [statusFilter]);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
     fetchOrders();
   }, []);
 
@@ -120,28 +197,39 @@ export default function DeliveryOrders() {
   };
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-        order.orderId.toString().includes(searchQuery);
+    return orders
+      .filter(order => {
+        const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+          order.orderId.toString().includes(searchQuery);
 
-      const matchesPayment = paymentFilter === 'ALL' ||
-        (paymentFilter === 'PAID' && order.paymentRecived === true) ||
-        (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
+        const matchesPayment = paymentFilter === 'ALL' ||
+          (paymentFilter === 'PAID' && order.paymentRecived === true) ||
+          (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
 
-      const matchesStatus = 
-        (statusFilter === 'WAITING' && !order.deliveryStatus) ||
-        (statusFilter === 'CONFIRMED' && order.deliveryStatus === 'OrderReceived') ||
-        (statusFilter === 'OutForDelivery' && order.deliveryStatus === 'OutForDelivery') ||
-        (statusFilter === 'Cancelled' && order.deliveryStatus === 'Cancelled') ||
-        (statusFilter === 'Delivered' && order.deliveryStatus === 'Delivered');
+        const matchesStatus = 
+          (statusFilter === 'WAITING' && !order.deliveryStatus) ||
+          (statusFilter === 'CONFIRMED' && order.deliveryStatus === 'OrderReceived') ||
+          (statusFilter === 'OutForDelivery' && order.deliveryStatus === 'OutForDelivery') ||
+          (statusFilter === 'Cancelled' && order.deliveryStatus === 'Cancelled') ||
+          (statusFilter === 'Delivered' && order.deliveryStatus === 'Delivered');
 
-      const matchesRole = roleFilter === 'ALL' ||
-        (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
-        (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
+        const matchesRole = roleFilter === 'ALL' ||
+          (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
+          (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
+          
+        return matchesSearch && matchesPayment && matchesStatus && matchesRole;
+      })
+      .sort((a, b) => {
+        // First sort by orderDateTime
+        const dateComparison = new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime();
+        if (dateComparison !== 0) {
+          return sortDirection === 'desc' ? dateComparison : -dateComparison;
+        }
         
-      return matchesSearch && matchesPayment && matchesStatus && matchesRole;
-    });
-  }, [orders, searchQuery, paymentFilter, statusFilter, roleFilter]);
+        // If dates are equal, sort by orderId
+        return sortDirection === 'desc' ? b.orderId - a.orderId : a.orderId - b.orderId;
+      });
+  }, [orders, searchQuery, paymentFilter, statusFilter, roleFilter, sortDirection]);
 
   const FilterButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
     <TouchableOpacity
@@ -156,7 +244,7 @@ export default function DeliveryOrders() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.fullScrollView} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchOrders} />}>
+      <ScrollView style={styles.fullScrollView} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <TouchableOpacity 
@@ -180,12 +268,22 @@ export default function DeliveryOrders() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity 
-            style={styles.filterToggle}
-            onPress={() => setShowFilters(!showFilters)}
-          >
-            <Filter size={20} color={showFilters ? "#2196F3" : "#666"} />
-          </TouchableOpacity>
+          <View style={styles.filterButtonsContainer}>
+            <TouchableOpacity 
+              style={styles.sortButton}
+              onPress={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
+            >
+              <Text style={styles.sortButtonText}>
+                {sortDirection === 'desc' ? '↓ Newest' : '↑ Oldest'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.filterToggle}
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <Filter size={20} color={showFilters ? "#2196F3" : "#666"} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {showFilters && (
@@ -217,11 +315,19 @@ export default function DeliveryOrders() {
               onPress={() => {
                 setStatusFilter('WAITING');
                 setShowPrioritySlots(false);
+                setNewOrdersCount(0);
               }}
             >
-              <Text style={[styles.tabText, statusFilter === 'WAITING' && styles.activeTabText]}>
-                Waiting Orders
-              </Text>
+              <View style={styles.tabContent}>
+                <Text style={[styles.tabText, statusFilter === 'WAITING' && styles.activeTabText]}>
+                  Waiting Orders
+                </Text>
+                {newOrdersCount > 0 && statusFilter !== 'WAITING' && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>+{newOrdersCount}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, statusFilter === 'CONFIRMED' && styles.activeTab]}
@@ -439,6 +545,24 @@ const styles = StyleSheet.create({
   searchInputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 8, paddingHorizontal: 12 },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, height: 40, fontSize: 16, color: '#333' },
+  filterButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sortButton: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  sortButtonText: {
+    color: '#2196F3',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   filterToggle: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 8 },
   filtersContainer: {
     backgroundColor: '#fff',
@@ -684,5 +808,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#666',
+  },
+  tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    backgroundColor: '#FF9800',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

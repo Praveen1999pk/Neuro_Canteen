@@ -8,9 +8,11 @@ import {
   Modal, 
   TextInput,
   ActivityIndicator,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
-import { Plus, CreditCard as Edit2, Trash2 } from 'lucide-react-native';
+import { Plus, CreditCard as Edit2, Trash2, ArrowLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
 // import { axiosInstance } from '../../services/axiosInstance';
 
@@ -26,6 +28,7 @@ type Staff = {
 };
 
 export default function StaffManagement() {
+  const router = useRouter();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -152,6 +155,10 @@ export default function StaffManagement() {
     );
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   const renderItem = ({ item }: { item: Staff }) => (
     <View style={styles.staffCard}>
       <View style={styles.staffInfo}>
@@ -179,9 +186,14 @@ export default function StaffManagement() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        {/* <Text style={styles.headerTitle}>Staff Management</Text> */}
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Staff Management</Text>
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Plus size={24} color="#fff" />
+          <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
 
@@ -213,56 +225,58 @@ export default function StaffManagement() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Staff' : 'Add New Staff'}</Text>
             
-            <TextInput
-              style={styles.input}
-              placeholder="Name"
-              value={formData.name}
-              onChangeText={(text) => handleInputChange('name', text)}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Employee ID"
-              value={formData.employeeId}
-              onChangeText={(text) => handleInputChange('employeeId', text)}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Department"
-              value={formData.department}
-              onChangeText={(text) => handleInputChange('department', text)}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Role"
-              value={formData.role}
-              onChangeText={(text) => handleInputChange('role', text)}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Mobile Number"
-              value={formData.mobileNumber}
-              onChangeText={(text) => handleInputChange('mobileNumber', text)}
-              keyboardType="phone-pad"
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={formData.password}
-              onChangeText={(text) => handleInputChange('password', text)}
-              secureTextEntry
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Payment Details"
-              value={formData.paymentDetails}
-              onChangeText={(text) => handleInputChange('paymentDetails', text)}
-            />
+            <ScrollView style={styles.modalScrollView}>
+              <TextInput
+                style={styles.input}
+                placeholder="Name"
+                value={formData.name}
+                onChangeText={(text) => handleInputChange('name', text)}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Employee ID"
+                value={formData.employeeId}
+                onChangeText={(text) => handleInputChange('employeeId', text)}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Department"
+                value={formData.department}
+                onChangeText={(text) => handleInputChange('department', text)}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Role"
+                value={formData.role}
+                onChangeText={(text) => handleInputChange('role', text)}
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Mobile Number"
+                value={formData.mobileNumber}
+                onChangeText={(text) => handleInputChange('mobileNumber', text)}
+                keyboardType="phone-pad"
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={formData.password}
+                onChangeText={(text) => handleInputChange('password', text)}
+                secureTextEntry
+              />
+              
+              <TextInput
+                style={styles.input}
+                placeholder="Payment Details"
+                value={formData.paymentDetails}
+                onChangeText={(text) => handleInputChange('paymentDetails', text)}
+              />
+            </ScrollView>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
@@ -292,21 +306,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
     backgroundColor: '#2E7D32',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
   addButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 30,
     padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 8,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -373,37 +409,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 20,
     width: '90%',
     maxHeight: '80%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalScrollView: {
+    maxHeight: '70%',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: 'center',
     color: '#2E7D32',
   },
   input: {
     backgroundColor: '#F5F5F5',
-    borderRadius: 4,
+    borderRadius: 8,
     padding: 12,
     marginBottom: 12,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
   },
   modalButton: {
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 4,
+    borderRadius: 8,
     flex: 1,
     marginHorizontal: 4,
     alignItems: 'center',

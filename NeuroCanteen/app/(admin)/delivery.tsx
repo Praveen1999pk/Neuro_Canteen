@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { Plus, CreditCard as Edit2, Trash2 } from 'lucide-react-native';
+import { Plus, CreditCard as Edit2, Trash2, ArrowLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
 
 type DeliveryUser = {
@@ -22,6 +23,7 @@ type DeliveryUser = {
 };
 
 export default function DeliveryManagement() {
+  const router = useRouter();
   const [deliveryUsers, setDeliveryUsers] = useState<DeliveryUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -139,6 +141,10 @@ export default function DeliveryManagement() {
     );
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   const renderItem = ({ item }: { item: DeliveryUser }) => (
     <View style={styles.userCard}>
       <View style={styles.userInfo}>
@@ -166,9 +172,14 @@ export default function DeliveryManagement() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Delivery Management</Text>
         <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
           <Plus size={24} color="#fff" />
+          <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
 
@@ -258,21 +269,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
     backgroundColor: '#2E7D32',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  backButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
   addButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 30,
     padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 8,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
   },
   loadingContainer: {
     flex: 1,
