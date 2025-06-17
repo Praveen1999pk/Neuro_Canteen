@@ -151,26 +151,26 @@ export default function UpdateOrderScreen() {
                 (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
 
               return (
-                <TouchableOpacity
-                  key={status}
-                  style={[
-                    styles.button,
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.button,
                     deliveryStatus === status && styles.activeButton,
                     isDisabled && styles.disabledButton
-                  ]}
-                  onPress={() => setDeliveryStatus(status)}
+                ]}
+                onPress={() => setDeliveryStatus(status)}
                   disabled={isDisabled}
-                >
-                  <Text style={[
-                    styles.buttonText,
+              >
+                <Text style={[
+                  styles.buttonText,
                     deliveryStatus === status && styles.activeButtonText,
                     isDisabled && styles.disabledButtonText
-                  ]}>
-                    {status === 'RECEIVED' ? 'Confirm' :
-                     status === 'PREPARED' ? 'Prepared' :
-                     'Send for Delivery'}
-                  </Text>
-                </TouchableOpacity>
+                ]}>
+                  {status === 'RECEIVED' ? 'Confirm' :
+                   status === 'PREPARED' ? 'Prepared' :
+                   'Send for Delivery'}
+                </Text>
+              </TouchableOpacity>
               );
             })}
           </View>

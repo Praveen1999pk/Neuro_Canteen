@@ -390,7 +390,7 @@ const handleSubmit = async () => {
 
   const handleBack = () => {
     router.back();
-  };
+};
 
   return (
     <View style={styles.container}>

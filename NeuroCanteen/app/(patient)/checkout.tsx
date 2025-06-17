@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
 import { Link } from 'expo-router';
-import { Package, ShoppingCart, Wallet, ArrowLeft } from 'lucide-react-native';
+import { Package, ShoppingCart, Wallet, ArrowLeft, Phone } from 'lucide-react-native';
 
 type MenuItem = {
   id: number;
@@ -94,28 +94,12 @@ export default function patientOrderCheckout() {
       return;
     }
     
-    const fullAddress = address.trim() 
-      ? `ph: ${phoneNumber}, address:${address}`
-      : `ph: ${phoneNumber}`;
-      
-    setSubmittedAddress(fullAddress);
+    setSubmittedAddress(address);
     setIsEditing(false);
   };
 
   const handleAddressEdit = () => {
-    if (submittedAddress.startsWith('ph:') && submittedAddress.includes(', address:')) {
-      const parts = submittedAddress.split(', address:');
-      const phonePart = parts[0].replace('ph:', '');
-      const addressPart = parts[1];
-      
-      setPhoneNumber(phonePart);
-      setAddress(addressPart);
-    } else {
-      const phonePart = submittedAddress.replace('ph:', '');
-      setPhoneNumber(phonePart);
-      setAddress('');
-    }
-    
+    setAddress(submittedAddress);
     setIsEditing(true);
   };
 
@@ -221,7 +205,7 @@ export default function patientOrderCheckout() {
     const paymentData = {
       orderId: response.razorpay_order_id,
       paymentId: response.razorpay_payment_id,
-      paymentSignature: response.razorpay_signature, // Add this line
+      paymentSignature: response.razorpay_signature,
       paymentStatus: response.razorpay_payment_status || "captured",
       paymentMethod: response.method || "upi",
       amount: orderTotal,
@@ -250,58 +234,49 @@ export default function patientOrderCheckout() {
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
       price: orderTotal,
-      orderStatus: null as string | null,
+      orderStatus: null,
       paymentType: "UPI",
-      paymentStatus: null as string | null,
+      paymentStatus: null,
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
+      phoneNo: phoneNumber,
+      paymentRecived: false
     };
 
-try {
-  const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
-  if (result.data) { 
-    orderDetails.paymentStatus = "COMPLETED";
-    await axiosInstance.post("/orders", orderDetails);
-    await AsyncStorage.removeItem('patient_cart');
-    router.push('/(patient)/order-success');
-  } else {
-    Alert.alert("Error", "Payment verification failed!");
-  }
-} catch (error) {
-  console.error("Verification error:", error);
-  if (typeof error === "object" && error !== null && "response" in error) {
-    // TypeScript now knows error has a 'response' property
-    // @ts-expect-error: We have checked for 'response' property
-    console.error("Server response:", error.response.data);
-  }
-  Alert.alert("Error", "There was an issue verifying your payment.");
-}
+    try {
+      const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
+      if (result.data) {
+        orderDetails.paymentRecived = true;
+        orderDetails.paymentStatus = "COMPLETED";
+        await axiosInstance.post("/orders", orderDetails);
+        await AsyncStorage.removeItem('patient_cart');
+        router.push({
+          pathname: '/(patient)/order-success',
+          params: {
+            orderHistoryRedirect: '/(patient)/order-history',
+            orderedUserId: usernameToUse,
+            orderedRole: 'patient'
+          }
+        });
+      } else {
+        Alert.alert("Error", "Payment verification failed!");
+      }
+    } catch (error) {
+      console.error("Error verifying payment:", error);
+      Alert.alert("Error", "There was an issue verifying your payment.");
+    }
   };
 
   const handleCOD = async () => {
     if (!submittedAddress) {
-      Alert.alert("Error", "Please enter the delivery address first");
+      Alert.alert("Error", "Please enter the mobile number and delivery address!");
       return;
-    }
-    let usernameToUse = username;
-    const token = await AsyncStorage.getItem("jwtToken");
-    
-    if (token) {
-      try {
-        const userpayload = JSON.parse(atob(token.split('.')[1]));
-        usernameToUse = userpayload.sub;
-      } catch (error) {
-        console.error('Error decoding token:', error);
-        usernameToUse = "Public";
-      }
-    } else {
-      usernameToUse = "Public";
     }
 
     const orderDetails = {
       orderedRole: "patient",
-      orderedName: usernameToUse,
-      orderedUserId: usernameToUse,
+      orderedName: username,
+      orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
         return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
@@ -314,12 +289,21 @@ try {
       paymentStatus: null,
       orderDateTime: new Date().toISOString(),
       address: submittedAddress,
+      phoneNo: phoneNumber,
+      paymentRecived: false
     };
 
     try {
       await axiosInstance.post("/orders", orderDetails);
       await AsyncStorage.removeItem('patient_cart');
-      router.push('/(patient)/order-success');
+      router.push({
+        pathname: '/(patient)/order-success',
+        params: {
+          orderHistoryRedirect: '/(patient)/order-history',
+          orderedUserId: username,
+          orderedRole: 'patient'
+        }
+      });
     } catch (error) {
       console.error("Order error:", error);
       Alert.alert("Error", "There was an issue submitting your order.");
@@ -363,13 +347,17 @@ try {
           })}
         </View>
 
-                {/* Delivery Details */}
+        {/* Delivery Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
           <View style={styles.divider} />
           
           {submittedAddress && !isEditing ? (
             <View style={styles.addressContainer}>
+              <View style={styles.phoneContainer}>
+                <Phone size={20} color="#666" style={styles.phoneIcon} />
+                <Text style={styles.phoneNumber}>{phoneNumber}</Text>
+              </View>
               <Text style={styles.addressText}>{submittedAddress}</Text>
               <TouchableOpacity onPress={handleAddressEdit}>
                 <Text style={styles.editButton}>Edit Details</Text>
@@ -751,5 +739,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginTop: 20,
   },
-  
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  phoneIcon: {
+    marginRight: 8,
+  },
+  phoneNumber: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
 });

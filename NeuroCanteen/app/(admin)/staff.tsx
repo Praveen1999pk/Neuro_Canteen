@@ -226,56 +226,56 @@ export default function StaffManagement() {
             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Staff' : 'Add New Staff'}</Text>
             
             <ScrollView style={styles.modalScrollView}>
-              <TextInput
-                style={styles.input}
-                placeholder="Name"
-                value={formData.name}
-                onChangeText={(text) => handleInputChange('name', text)}
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Employee ID"
-                value={formData.employeeId}
-                onChangeText={(text) => handleInputChange('employeeId', text)}
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Department"
-                value={formData.department}
-                onChangeText={(text) => handleInputChange('department', text)}
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Role"
-                value={formData.role}
-                onChangeText={(text) => handleInputChange('role', text)}
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Mobile Number"
-                value={formData.mobileNumber}
-                onChangeText={(text) => handleInputChange('mobileNumber', text)}
-                keyboardType="phone-pad"
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={formData.password}
-                onChangeText={(text) => handleInputChange('password', text)}
-                secureTextEntry
-              />
-              
-              <TextInput
-                style={styles.input}
-                placeholder="Payment Details"
-                value={formData.paymentDetails}
-                onChangeText={(text) => handleInputChange('paymentDetails', text)}
-              />
+            <TextInput
+              style={styles.input}
+              placeholder="Name"
+              value={formData.name}
+              onChangeText={(text) => handleInputChange('name', text)}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Employee ID"
+              value={formData.employeeId}
+              onChangeText={(text) => handleInputChange('employeeId', text)}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Department"
+              value={formData.department}
+              onChangeText={(text) => handleInputChange('department', text)}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Role"
+              value={formData.role}
+              onChangeText={(text) => handleInputChange('role', text)}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Mobile Number"
+              value={formData.mobileNumber}
+              onChangeText={(text) => handleInputChange('mobileNumber', text)}
+              keyboardType="phone-pad"
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={formData.password}
+              onChangeText={(text) => handleInputChange('password', text)}
+              secureTextEntry
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Payment Details"
+              value={formData.paymentDetails}
+              onChangeText={(text) => handleInputChange('paymentDetails', text)}
+            />
             </ScrollView>
             
             <View style={styles.modalButtons}>
