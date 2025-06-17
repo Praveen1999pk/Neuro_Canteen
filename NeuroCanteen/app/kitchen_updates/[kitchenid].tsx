@@ -53,6 +53,12 @@ export default function UpdateOrderScreen() {
         params: { orderStatus: deliveryStatus },
       });
 
+      // Fetch the updated order to ensure we have the latest data
+      const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
+      const updatedOrder = response.data;
+      setOrder(updatedOrder);
+
+      // Navigate back to the kitchen dashboard
       router.back();
     } catch (error) {
       console.error('Error updating order:', error);
@@ -151,26 +157,26 @@ export default function UpdateOrderScreen() {
                 (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
 
               return (
-                <TouchableOpacity
-                  key={status}
-                  style={[
-                    styles.button,
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.button,
                     deliveryStatus === status && styles.activeButton,
                     isDisabled && styles.disabledButton
-                  ]}
-                  onPress={() => setDeliveryStatus(status)}
+                ]}
+                onPress={() => setDeliveryStatus(status)}
                   disabled={isDisabled}
-                >
-                  <Text style={[
-                    styles.buttonText,
+              >
+                <Text style={[
+                  styles.buttonText,
                     deliveryStatus === status && styles.activeButtonText,
                     isDisabled && styles.disabledButtonText
-                  ]}>
-                    {status === 'RECEIVED' ? 'Confirm' :
-                     status === 'PREPARED' ? 'Prepared' :
-                     'Send for Delivery'}
-                  </Text>
-                </TouchableOpacity>
+                ]}>
+                  {status === 'RECEIVED' ? 'Confirm' :
+                   status === 'PREPARED' ? 'Prepared' :
+                   'Send for Delivery'}
+                </Text>
+              </TouchableOpacity>
               );
             })}
           </View>

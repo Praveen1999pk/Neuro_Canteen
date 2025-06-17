@@ -1,127 +1,143 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { usePathname } from 'expo-router';
+import { Home, User } from 'lucide-react-native';
+
+function FooterNavigation() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const isActive = (path: string) => pathname === path;
+
+  return (
+    <View style={styles.footer}>
+      <TouchableOpacity 
+        style={styles.footerItem} 
+        onPress={() => router.push('/dietitian_routes')}
+      >
+        <Home size={24} color={isActive('/dietitian_routes') ? '#166534' : '#64748b'} />
+        <Text style={[styles.footerText, isActive('/dietitian_routes') && styles.footerTextActive]}>
+          Home
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.footerItem} 
+        onPress={() => router.push('/dietitian_routes/profile')}
+      >
+        <User size={24} color={isActive('/dietitian_routes/profile') ? '#166534' : '#64748b'} />
+        <Text style={[styles.footerText, isActive('/dietitian_routes/profile') && styles.footerTextActive]}>
+          Profile
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function DietitianLayout() {
   useFrameworkReady();
 
   return (
-    <Stack>
-<Stack.Screen 
-  name="index" 
-  options={{ 
-    title: "Dietitian Dashboard",
-    headerShown: true,
-    headerStyle: {
-      backgroundColor: '#ffffff', // ✅ White background
-    },
-    headerTintColor: '#000000', // ✅ Black text & icons (back arrow, etc.)
-    headerTitleStyle: {
-      fontSize: 20, // ✅ Smaller font size
-      fontWeight: '600',
-    },
-    headerTitleAlign: 'center',
-  }} 
-/>
-
-      <Stack.Screen 
-        name="floor" 
-        options={{ 
-          title: "Wards",
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#ffffff',
-          },
-          headerTintColor: '#000000',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: '600',
-          },
-          headerTitleAlign: 'center',
-          headerBackTitle: "Dashboard",
-        }} 
-      />
-      <Stack.Screen 
-        name="rooms" 
-        options={{ 
-          title: "Rooms",
-          headerShown: true,
-          headerBackTitle: "Wards",
-        }} 
-      />
-      <Stack.Screen 
-        name="beds" 
-        options={{ 
-          title: "Beds",
-          headerShown: true,
-          headerBackTitle: "Rooms",
-        }} 
-      />
-      <Stack.Screen 
-        name="patient" 
-        options={{ 
-          title: "Patient Profile",
-          headerShown: true,
-          headerBackTitle: "Beds",
-        }} 
-      />
-      <Stack.Screen 
-        name="create-diet" 
-        options={{ 
-          title: "Select Diet Plans",
-          headerShown: true,
-          headerBackTitle: "Patient",
-        }} 
-      />
-       <Stack.Screen 
-        name="food" 
-        options={{ 
-          title: "Food Menu",
-          headerShown: true,
-          headerBackTitle: "Diet Plans",
-        }} 
-      />
-       <Stack.Screen 
-        name="order-success" 
-        options={{ 
-          title: "Order Status",
-          headerShown: true,
-          headerBackTitle: "Re-Order",
-        }} 
-      />
-      <Stack.Screen 
-        name="diet-history" 
-        options={{ 
-          title: "Diet History",
-          headerShown: true,
-          headerBackTitle: "Patient Profile",
-        }} 
-      />
-      <Stack.Screen 
-        name="checkout" 
-        options={{ 
-          title: "Checkout",
-          headerShown: true,
-          headerBackTitle: "Food Menu",
-        }} 
-      />
-  
-    </Stack>
+    <View style={styles.container}>
+      <Stack>
+        <Stack.Screen 
+          name="index" 
+          options={{ 
+            title: "Dietitian Dashboard",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#ffffff',
+            },
+            headerTintColor: '#000000',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: '600',
+            },
+            headerTitleAlign: 'center',
+          }} 
+        />
+        <Stack.Screen 
+          name="patient" 
+          options={{ 
+            title: "Patient Details",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#ffffff',
+            },
+            headerTintColor: '#000000',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: '600',
+            },
+            headerTitleAlign: 'center',
+          }} 
+        />
+        <Stack.Screen 
+          name="checkout" 
+          options={{ 
+            title: "Checkout",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#ffffff',
+            },
+            headerTintColor: '#000000',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: '600',
+            },
+            headerTitleAlign: 'center',
+          }} 
+        />
+        <Stack.Screen 
+          name="profile" 
+          options={{ 
+            title: "Profile",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#ffffff',
+            },
+            headerTintColor: '#000000',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: '600',
+            },
+            headerTitleAlign: 'center',
+          }} 
+        />
+      </Stack>
+      <FooterNavigation />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#EAEAEA',
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 8,
+    borderTopColor: '#e5e7eb',
+    paddingVertical: 8,
+    paddingBottom: 20,
   },
-  header: {
-    backgroundColor: '#1B5E20',
+  footerItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
-  headerTitle: {
-    color: 'white',
+  footerText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  footerTextActive: {
+    color: '#166534',
     fontWeight: '600',
   },
 });

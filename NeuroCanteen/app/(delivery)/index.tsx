@@ -1,8 +1,8 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { Package, ShoppingCart, Wallet, Search, Filter, ArrowLeft, ListOrdered } from 'lucide-react-native';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 import OrderSelectionModal from '../../components/OrderSelectionModal';
@@ -12,22 +12,22 @@ type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'WAITING' | 'CONFIRMED' | 'OutForDelivery' | 'Cancelled' | 'Delivered';
 type RoleFilter = 'ALL' | 'Staff' | 'Patient';
 
-type Order = {
-  orderId: number;
-  orderedRole: string;
-  orderedName: string;
-  itemName: string;
-  quantity: number;
-  price: number;
-  orderStatus: string;
-  paymentType: string;
-  paymentRecived: boolean;
-  address: string;
-  deliveryStatus: string;
-  orderDateTime: string;
-  phoneNo?: string;
-  deliveryPriority?: number;
-};
+  type Order = {
+    orderId: number;
+    orderedRole: string;
+    orderedName: string;
+    itemName: string;
+    quantity: number;
+    price: number;
+    orderStatus: string;
+    paymentType: string;
+    paymentRecived: boolean;
+    address: string;
+    deliveryStatus: string;
+    orderDateTime: string;
+    phoneNo?: string;
+    deliveryPriority?: number;
+  };
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +47,7 @@ export default function DeliveryOrders() {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const lastOrderCountRef = useRef<number>(0);
+  const isWaitingTabRef = useRef(false);
 
   const checkForNewOrders = async () => {
     try {
@@ -55,15 +56,16 @@ export default function DeliveryOrders() {
         params: { status: 'WAITING' }
       });
       
-      const currentOrderCount = response.data.length;
+      const currentOrders = response.data;
+      const currentOrderCount = currentOrders.length;
+      
       if (currentOrderCount > lastOrderCountRef.current) {
-        // New orders detected, fetch all orders
-        fetchOrders();
-        // Update new orders count
+        // New orders detected
         const newCount = currentOrderCount - lastOrderCountRef.current;
-        if (newCount > 0 && statusFilter !== 'WAITING') {
-          setNewOrdersCount(prev => prev + newCount);
+        if (newCount > 0 && !isWaitingTabRef.current) {
+          setNewOrdersCount(newCount);
         }
+        fetchOrders();
       }
       lastOrderCountRef.current = currentOrderCount;
     } catch (error) {
@@ -79,15 +81,15 @@ export default function DeliveryOrders() {
         (a: Order, b: Order) => new Date(b.orderDateTime).getTime() - new Date(a.orderDateTime).getTime()
       );
       
-      // Check for new orders
+      // Check for new orders by comparing with previous orders
       if (previousOrdersRef.current.length > 0) {
         const newOrders = sortedOrders.filter(
           (newOrder: Order) => !previousOrdersRef.current.some(
             prevOrder => prevOrder.orderId === newOrder.orderId
           )
         );
-        if (newOrders.length > 0 && statusFilter !== 'WAITING') {
-          setNewOrdersCount(prev => prev + newOrders.length);
+        if (newOrders.length > 0 && !isWaitingTabRef.current) {
+          setNewOrdersCount(newOrders.length);
         }
       }
       
@@ -105,6 +107,14 @@ export default function DeliveryOrders() {
       setRefreshing(false);
     }
   };
+
+  // Update isWaitingTabRef when statusFilter changes
+  useEffect(() => {
+    isWaitingTabRef.current = statusFilter === 'WAITING';
+    if (isWaitingTabRef.current) {
+      setNewOrdersCount(0);
+    }
+  }, [statusFilter]);
 
   // Initial fetch
   useEffect(() => {
@@ -131,13 +141,6 @@ export default function DeliveryOrders() {
     };
   }, [statusFilter]);
 
-  // Reset new orders count when changing tabs
-  useEffect(() => {
-    if (statusFilter === 'WAITING') {
-      setNewOrdersCount(0);
-    }
-  }, [statusFilter]);
-
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     fetchOrders();
@@ -148,6 +151,15 @@ export default function DeliveryOrders() {
       await axiosInstance.patch(`/orders/${orderId}/delivery-status`, null, {
         params: { deliveryStatus }
       });
+      
+      // If order is marked as delivered, remove it from priority slots
+      if (deliveryStatus === 'Delivered') {
+        const newPrioritySlots = prioritySlots.map(slot => 
+          slot?.orderId === orderId ? null : slot
+        );
+        setPrioritySlots(newPrioritySlots);
+      }
+      
       fetchOrders();
     } catch (error) {
       console.error("Error updating delivery status:", error);
@@ -199,25 +211,25 @@ export default function DeliveryOrders() {
   const filteredOrders = useMemo(() => {
     return orders
       .filter(order => {
-        const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-          order.orderId.toString().includes(searchQuery);
+      const matchesSearch = (order.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        order.orderId.toString().includes(searchQuery);
 
-        const matchesPayment = paymentFilter === 'ALL' ||
-          (paymentFilter === 'PAID' && order.paymentRecived === true) ||
-          (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
+      const matchesPayment = paymentFilter === 'ALL' ||
+        (paymentFilter === 'PAID' && order.paymentRecived === true) ||
+        (paymentFilter === 'NOT_PAID' && !order.paymentRecived);
 
-        const matchesStatus = 
-          (statusFilter === 'WAITING' && !order.deliveryStatus) ||
-          (statusFilter === 'CONFIRMED' && order.deliveryStatus === 'OrderReceived') ||
-          (statusFilter === 'OutForDelivery' && order.deliveryStatus === 'OutForDelivery') ||
-          (statusFilter === 'Cancelled' && order.deliveryStatus === 'Cancelled') ||
-          (statusFilter === 'Delivered' && order.deliveryStatus === 'Delivered');
+      const matchesStatus = 
+        (statusFilter === 'WAITING' && !order.deliveryStatus) ||
+        (statusFilter === 'CONFIRMED' && order.deliveryStatus === 'OrderReceived') ||
+        (statusFilter === 'OutForDelivery' && order.deliveryStatus === 'OutForDelivery') ||
+        (statusFilter === 'Cancelled' && order.deliveryStatus === 'Cancelled') ||
+        (statusFilter === 'Delivered' && order.deliveryStatus === 'Delivered');
 
-        const matchesRole = roleFilter === 'ALL' ||
-          (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
-          (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
-          
-        return matchesSearch && matchesPayment && matchesStatus && matchesRole;
+      const matchesRole = roleFilter === 'ALL' ||
+        (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
+        (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
+        
+      return matchesSearch && matchesPayment && matchesStatus && matchesRole;
       })
       .sort((a, b) => {
         // First sort by orderDateTime
@@ -228,7 +240,7 @@ export default function DeliveryOrders() {
         
         // If dates are equal, sort by orderId
         return sortDirection === 'desc' ? b.orderId - a.orderId : a.orderId - b.orderId;
-      });
+    });
   }, [orders, searchQuery, paymentFilter, statusFilter, roleFilter, sortDirection]);
 
   const FilterButton = ({ title, isActive, onPress }: { title: string; isActive: boolean; onPress: () => void }) => (
@@ -241,6 +253,38 @@ export default function DeliveryOrders() {
       </Text>
     </TouchableOpacity>
   );
+
+  // Add focus effect to refresh orders when returning to the screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders();
+    }, [])
+  );
+
+  // Add a function to check and clean up priority slots
+  const cleanupPrioritySlots = useCallback(() => {
+    const hasDeliveredOrders = prioritySlots.some(slot => {
+      if (!slot) return false;
+      const order = orders.find(o => o.orderId === slot.orderId);
+      return order?.deliveryStatus === 'Delivered';
+    });
+
+    if (hasDeliveredOrders) {
+      const newPrioritySlots = prioritySlots.map(slot => {
+        if (!slot) return null;
+        const order = orders.find(o => o.orderId === slot.orderId);
+        return order?.deliveryStatus === 'Delivered' ? null : slot;
+      });
+      setPrioritySlots(newPrioritySlots);
+    }
+  }, [orders]);
+
+  // Add effect to clean up priority slots when orders change
+  useEffect(() => {
+    if (orders.length > 0) {
+      cleanupPrioritySlots();
+    }
+  }, [orders]);
 
   return (
     <View style={styles.container}>
@@ -277,12 +321,12 @@ export default function DeliveryOrders() {
                 {sortDirection === 'desc' ? '↓ Newest' : '↑ Oldest'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.filterToggle}
-              onPress={() => setShowFilters(!showFilters)}
-            >
-              <Filter size={20} color={showFilters ? "#2196F3" : "#666"} />
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.filterToggle}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={20} color={showFilters ? "#2196F3" : "#666"} />
+          </TouchableOpacity>
           </View>
         </View>
 
@@ -319,9 +363,9 @@ export default function DeliveryOrders() {
               }}
             >
               <View style={styles.tabContent}>
-                <Text style={[styles.tabText, statusFilter === 'WAITING' && styles.activeTabText]}>
-                  Waiting Orders
-                </Text>
+              <Text style={[styles.tabText, statusFilter === 'WAITING' && styles.activeTabText]}>
+                Waiting Orders
+              </Text>
                 {newOrdersCount > 0 && statusFilter !== 'WAITING' && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>+{newOrdersCount}</Text>

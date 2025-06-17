@@ -16,7 +16,7 @@ import axiosInstance from '../api/axiosInstance';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useEffect } from 'react';
 import { Link } from 'expo-router';
-import { Package, ShoppingCart, Wallet, ArrowLeft } from 'lucide-react-native';
+import { Package, ShoppingCart, Wallet, ArrowLeft, Phone } from 'lucide-react-native';
 
 type MenuItem = {
   id: number;
@@ -54,33 +54,39 @@ export default function StaffOrderCheckout() {
   const [submittedAddress, setSubmittedAddress] = useState('');
   const [isEditing, setIsEditing] = useState(true);
   const [username, setUsername] = useState('');
-  const [creditBalance, setCreditBalance] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    const fetchUsername = async () => {
+    const fetchUserData = async () => {
       const token = await AsyncStorage.getItem("jwtToken");
       if (token) {
         try {
           const { sub } = JSON.parse(atob(token.split('.')[1]));
           console.log("Decoded user:", sub);
           setUsername(sub);
+          
+          // Fetch staff profile data using employeeId
+          const response = await axiosInstance.get(`/staff/employee/${sub}`);
+          console.log("Staff profile response:", response.data);
+          if (response.data && response.data.mobileNumber) {
+            setPhoneNumber(response.data.mobileNumber);
+          } else {
+            console.log("No mobile number found in staff profile");
+          }
         } catch (error) {
-          console.error("Error decoding JWT token:", error);
+          console.error("Error fetching user data:", error);
+          // Set loading to false even if there's an error
+          setIsLoading(false);
         }
+      } else {
+        console.error("No JWT token found");
+        setIsLoading(false);
       }
     };
-    fetchUsername();
 
-  const fetchCreditBalance = async () => {
-  try {
-    const response = await axiosInstance.get(`/users/credit-balance?userId=${username}`);
-    setCreditBalance(response.data.balance);
-  } catch (error) {
-    console.error("Error fetching credit balance:", error);
-  }
-};
+    fetchUserData();
   }, []);
-  
 
   const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
   const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
@@ -112,32 +118,12 @@ export default function StaffOrderCheckout() {
       return;
     }
     
-    if (phoneNumber && !/^\d{10}$/.test(phoneNumber)) {
-      Alert.alert("Error", "Please enter a valid 10-digit phone number or leave it empty");
-      return;
-    }
-    
-    const fullAddress = phoneNumber.trim() 
-      ? `ph: ${phoneNumber}, address:${address}`
-      : address;
-      
-    setSubmittedAddress(fullAddress);
+    setSubmittedAddress(address);
     setIsEditing(false);
   };
 
   const handleAddressEdit = () => {
-    if (submittedAddress.startsWith('ph:') && submittedAddress.includes(', address:')) {
-      const parts = submittedAddress.split(', address:');
-      const phonePart = parts[0].replace('ph:', '');
-      const addressPart = parts[1];
-      
-      setPhoneNumber(phonePart);
-      setAddress(addressPart);
-    } else {
-      setPhoneNumber('');
-      setAddress(submittedAddress);
-    }
-    
+    setAddress(submittedAddress);
     setIsEditing(true);
   };
 
@@ -336,10 +322,11 @@ export default function StaffOrderCheckout() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#2E7D32" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#fff" />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerText}>Checkout</Text>
+        <Text style={styles.headerTitle}>Checkout</Text>
       </View>
       <ScrollView 
         style={styles.scrollView}
@@ -365,44 +352,43 @@ export default function StaffOrderCheckout() {
 
         {/* Delivery Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Delivery Details</Text>
-          <View style={styles.divider} />
+          <View style={styles.sectionHeader}>
+            <Package size={20} color="#2E7D32" />
+            <Text style={styles.sectionTitle}>Delivery Details</Text>
+          </View>
           
-          {/* Only show phone number field when editing */}
-          {isEditing && (
-            <View style={styles.phoneNumberContainer}>
+          {isEditing ? (
+            <View style={styles.inputContainer}>
+              <View style={styles.phoneContainer}>
+                <Phone size={20} color="#666" style={styles.phoneIcon} />
+                <Text style={styles.phoneNumber}>{phoneNumber}</Text>
+              </View>
               <TextInput
-                style={styles.phoneNumberInput}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="Mobile Number (Optional)"
-                keyboardType="phone-pad"
-              />
-            </View>
-          )}
-          
-          {submittedAddress && !isEditing ? (
-            <View style={styles.addressContainer}>
-              <Text style={styles.addressText}>{submittedAddress}</Text>
-              <TouchableOpacity onPress={handleAddressEdit}>
-                <Text style={styles.editButton}>Edit Address</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.addressInputContainer}>
-              <TextInput
-                style={styles.addressInput}
+                style={styles.input}
+                placeholder="Enter delivery address"
                 value={address}
                 onChangeText={setAddress}
-                placeholder="Enter your delivery address"
                 multiline
-                numberOfLines={3}
               />
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={styles.submitButton}
                 onPress={handleAddressSubmit}
               >
                 <Text style={styles.submitButtonText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.addressContainer}>
+              <View style={styles.phoneContainer}>
+                <Phone size={20} color="#666" style={styles.phoneIcon} />
+                <Text style={styles.phoneNumber}>{phoneNumber}</Text>
+              </View>
+              <Text style={styles.addressText}>{address}</Text>
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={handleAddressEdit}
+              >
+                <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -521,36 +507,24 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontWeight: 'bold',
   },
-  phoneNumberContainer: {
+  inputContainer: {
     marginBottom: 16,
   },
-  phoneNumberInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 10,
   },
-  addressContainer: {
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 4,
-    marginBottom: 12,
+  phoneIcon: {
+    marginRight: 8,
   },
-  addressText: {
+  phoneNumber: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
   },
-  editButton: {
-    color: '#2E7D32',
-    marginTop: 8,
-    fontWeight: 'bold',
-  },
-  addressInputContainer: {
-    marginBottom: 16,
-  },
-  addressInput: {
+  input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 4,
@@ -567,6 +541,25 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: 'white',
+    fontWeight: 'bold',
+  },
+  addressContainer: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  addressText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  editButton: {
+    color: '#2E7D32',
+    marginTop: 8,
+    fontWeight: 'bold',
+  },
+  editButtonText: {
+    color: '#2E7D32',
     fontWeight: 'bold',
   },
   summaryRow: {
@@ -651,10 +644,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  headerText: {
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2E7D32',
+    marginLeft: 16,
   },
   scrollViewContent: {
     flexGrow: 1,
