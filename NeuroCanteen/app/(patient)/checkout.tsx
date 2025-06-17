@@ -260,13 +260,13 @@ export default function patientOrderCheckout() {
       paymentRecived: false
     };
 
-    try {
-      const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
-      if (result.data) {
+try {
+  const result = await axiosInstance.post("/payment/verifyPayment", paymentData);
+  if (result.data) { 
         orderDetails.paymentRecived = true;
-        orderDetails.paymentStatus = "COMPLETED";
-        await axiosInstance.post("/orders", orderDetails);
-        await AsyncStorage.removeItem('patient_cart');
+    orderDetails.paymentStatus = "COMPLETED";
+    await axiosInstance.post("/orders", orderDetails);
+    await AsyncStorage.removeItem('patient_cart');
         router.push({
           pathname: '/(patient)/order-success',
           params: {
@@ -275,13 +275,13 @@ export default function patientOrderCheckout() {
             orderedRole: 'out_patient'
           }
         });
-      } else {
-        Alert.alert("Error", "Payment verification failed!");
-      }
-    } catch (error) {
+  } else {
+    Alert.alert("Error", "Payment verification failed!");
+  }
+} catch (error) {
       console.error("Error verifying payment:", error);
-      Alert.alert("Error", "There was an issue verifying your payment.");
-    }
+  Alert.alert("Error", "There was an issue verifying your payment.");
+}
   };
 
   const handleCOD = async () => {
@@ -364,7 +364,7 @@ export default function patientOrderCheckout() {
           })}
         </View>
 
-        {/* Delivery Details */}
+                {/* Delivery Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
           <View style={styles.divider} />

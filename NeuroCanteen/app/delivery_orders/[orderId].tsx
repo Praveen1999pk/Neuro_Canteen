@@ -55,9 +55,9 @@ export default function UpdateOrderScreen() {
   const handleUpdateOrder = async () => {
     try {
       await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
-        params: { deliveryStatus: pendingDeliveryStatus },
-      });
-
+            params: { deliveryStatus: pendingDeliveryStatus },
+          });
+          
       // Fetch the updated order to ensure we have the latest data
       const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
       const updatedOrder = response.data;
@@ -65,7 +65,7 @@ export default function UpdateOrderScreen() {
       setCurrentDeliveryStatus(updatedOrder.deliveryStatus);
 
       // Navigate back to the delivery dashboard
-      router.back();
+        router.back();
     } catch (error) {
       console.error('Error updating order:', error);
     }

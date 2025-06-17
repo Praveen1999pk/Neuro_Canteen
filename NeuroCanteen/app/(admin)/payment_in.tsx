@@ -134,14 +134,14 @@ const PaymentIn = () => {
               return payment.role.toUpperCase() === roleFilter.toUpperCase();
             })
             .map((payment: CreditPayment) => ({
-              orderedUserId: String(payment.userId),
+            orderedUserId: String(payment.userId),
               orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
-              totalPrice: payment.amount,
-              paymentType: payment.paymentType,
-              allPaid: payment.paid,
+            totalPrice: payment.amount,
+            paymentType: payment.paymentType,
+            allPaid: payment.paid,
               orderIds: payment.orders.split(',').map((id: string) => id.trim()),
               createdAt: payment.createdAt
-            }));
+          }));
 
           setSummaries((prev) => [...prev, ...transformed]);
         }
@@ -170,16 +170,16 @@ const PaymentIn = () => {
     }
   };
 
-  const fetchCompletedPayments = async () => {
-    try {
-      const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.status === 200) {
+const fetchCompletedPayments = async () => {
+  try {
+    const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+      }
+    });
+    
+    if (response.status === 200) {
         const transformed = response.data
           .filter(payment => {
             if (roleFilter === 'Patient') {
@@ -199,9 +199,9 @@ const PaymentIn = () => {
         
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        setCompletedPayments(transformed);
-      }
-    } catch (error) {
+      setCompletedPayments(transformed);
+    }
+  } catch (error) {
       console.error('Error fetching completed payments:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         Alert.alert(
