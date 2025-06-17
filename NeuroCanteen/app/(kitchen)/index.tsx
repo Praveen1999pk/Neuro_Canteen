@@ -9,7 +9,7 @@ import React from 'react';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'CONFIRMED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
-type RoleFilter = 'ALL' | 'Staff' | 'Patient';
+type RoleFilter = 'ALL' | 'Staff' | 'Patient' | 'Out Patient';
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,7 +144,8 @@ export default function DeliveryOrders() {
 
         const matchesRole = roleFilter === 'ALL' ||
           (roleFilter === 'Staff' && order.orderedRole === 'Staff') ||
-          (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient');
+          (roleFilter === 'Patient' && order.orderedRole.toLowerCase() === 'patient') ||
+          (roleFilter === 'Out Patient' && order.orderedRole.toLowerCase() === 'out_patient');
           
         return matchesSearch && matchesStatus && matchesRole;
       })
@@ -229,6 +230,7 @@ export default function DeliveryOrders() {
               <FilterButton title="All" isActive={roleFilter === 'ALL'} onPress={() => setRoleFilter('ALL')} />
               <FilterButton title="Staff" isActive={roleFilter === 'Staff'} onPress={() => setRoleFilter('Staff')} />
               <FilterButton title="Patient" isActive={roleFilter === 'Patient'} onPress={() => setRoleFilter('Patient')} />
+              <FilterButton title="Out Patient" isActive={roleFilter === 'Out Patient'} onPress={() => setRoleFilter('Out Patient')} />
             </ScrollView>
           </View>
         </View>
