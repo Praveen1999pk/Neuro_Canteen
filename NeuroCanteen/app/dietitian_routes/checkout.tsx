@@ -172,11 +172,11 @@ function DeliveryDetails() {
             <Text style={styles.addressText}>Ward: {patientDetails.ward}</Text>
             <Text style={styles.addressText}>Room: {patientDetails.roomNo}</Text>
             <Text style={styles.addressText}>Bed: {patientDetails.bedNo}</Text>
-          </View>
-        ) : (
+        </View>
+      ) : (
           <Text style={styles.noAddressText}>Loading patient details...</Text>
-        )}
-      </View>
+          )}
+        </View>
     </View>
   );
 }

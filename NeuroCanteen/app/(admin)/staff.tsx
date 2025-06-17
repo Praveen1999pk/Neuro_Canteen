@@ -108,6 +108,17 @@ export default function StaffManagement() {
       return;
     }
 
+    // Check for duplicate employee ID
+    const isDuplicate = staffList.some(
+      staff => staff.employeeId === formData.employeeId && 
+      (!isEditMode || (isEditMode && staff.id !== currentStaff?.id))
+    );
+
+    if (isDuplicate) {
+      Alert.alert('Error', 'Employee ID already exists. Please use a different ID.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && currentStaff) {

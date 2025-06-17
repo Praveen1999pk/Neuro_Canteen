@@ -94,6 +94,17 @@ export default function DietitianManagement() {
       return;
     }
 
+    // Check for duplicate username
+    const isDuplicate = dietitians.some(
+      dietitian => dietitian.username === formData.username && 
+      (!isEditMode || (isEditMode && dietitian.id !== currentDietitian?.id))
+    );
+
+    if (isDuplicate) {
+      Alert.alert('Error', 'Username already exists. Please use a different username.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && currentDietitian) {

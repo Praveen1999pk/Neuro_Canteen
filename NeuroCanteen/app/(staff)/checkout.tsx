@@ -82,8 +82,8 @@ export default function StaffOrderCheckout() {
       } else {
         console.error("No JWT token found");
         setIsLoading(false);
-      }
-    };
+  }
+};
 
     fetchUserData();
   }, []);
@@ -123,7 +123,7 @@ export default function StaffOrderCheckout() {
   };
 
   const handleAddressEdit = () => {
-    setAddress(submittedAddress);
+      setAddress(submittedAddress);
     setIsEditing(true);
   };
 
@@ -354,15 +354,15 @@ export default function StaffOrderCheckout() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Package size={20} color="#2E7D32" />
-            <Text style={styles.sectionTitle}>Delivery Details</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Delivery Details</Text>
+            </View>
           
           {isEditing ? (
             <View style={styles.inputContainer}>
               <View style={styles.phoneContainer}>
                 <Phone size={20} color="#666" style={styles.phoneIcon} />
                 <Text style={styles.phoneNumber}>{phoneNumber}</Text>
-              </View>
+            </View>
               <TextInput
                 style={styles.input}
                 placeholder="Enter delivery address"
@@ -370,7 +370,7 @@ export default function StaffOrderCheckout() {
                 onChangeText={setAddress}
                 multiline
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.submitButton}
                 onPress={handleAddressSubmit}
               >

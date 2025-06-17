@@ -94,6 +94,17 @@ export default function DeliveryManagement() {
       return;
     }
 
+    // Check for duplicate username
+    const isDuplicate = deliveryUsers.some(
+      user => user.username === formData.username && 
+      (!isEditMode || (isEditMode && user.id !== currentUser?.id))
+    );
+
+    if (isDuplicate) {
+      Alert.alert('Error', 'Username already exists. Please use a different username.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && currentUser) {

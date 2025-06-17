@@ -86,6 +86,17 @@ export default function KitchenManagement() {
       return;
     }
 
+    // Check for duplicate user ID
+    const isDuplicate = kitchenUsers.some(
+      user => user.userId === formData.userId && 
+      (!isEditMode || (isEditMode && user.id !== currentUser?.id))
+    );
+
+    if (isDuplicate) {
+      Alert.alert('Error', 'User ID already exists. Please use a different ID.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && currentUser) {

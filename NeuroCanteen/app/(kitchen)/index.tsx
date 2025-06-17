@@ -241,9 +241,9 @@ export default function DeliveryOrders() {
             onPress={() => setStatusFilter('RECEIVED')}
           >
             <View style={styles.tabContent}>
-              <Text style={[styles.tabText, statusFilter === 'RECEIVED' && styles.activeTabText]}>
-                Waiting Orders
-              </Text>
+            <Text style={[styles.tabText, statusFilter === 'RECEIVED' && styles.activeTabText]}>
+              Waiting Orders
+            </Text>
               {newOrdersCount > 0 && statusFilter !== 'RECEIVED' && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>+{newOrdersCount}</Text>
@@ -292,61 +292,61 @@ export default function DeliveryOrders() {
         {loading && !refreshing ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Loading orders...</Text>
-          </View>
-        ) : filteredOrders.length === 0 ? (
+        </View>
+      ) : filteredOrders.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No orders match your filters.</Text>
-          </View>
-        ) : (
+        </View>
+      ) : (
           filteredOrders.map((order) => (
             <Link
-              key={order.orderId}
-              href={{ pathname: "/kitchen_updates/[kitchenid]", params: { kitchenid: order.orderId } }}
-              asChild
-            >
-              <TouchableOpacity style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <View style={styles.orderInfo}>
-                    <Text style={styles.orderId}>#{order.orderId}</Text>
-                    <View style={styles.statusBadge}>
-                      <Package size={16} color={!order.orderStatus ? "#FF9800" : "#4CAF50"} />
-                      <Text style={[
-                        styles.statusText,
-                        (!order.orderStatus || order.orderStatus === 'RECEIVED') && styles.waitingStatusText
-                      ]}>
-                        {!order.orderStatus ? "Waiting for confirmation" : 
-                         order.orderStatus === 'RECEIVED' ? "Confirmed" :
-                         order.orderStatus === 'PREPARED' ? "Prepared" :
-                         order.orderStatus === 'OUT_FOR_DELIVERY' ? "Sent for Delivery" :
-                         order.orderStatus}
-                      </Text>
-                    </View>
+            key={order.orderId}
+            href={{ pathname: "/kitchen_updates/[kitchenid]", params: { kitchenid: order.orderId } }}
+            asChild
+          >
+            <TouchableOpacity style={styles.orderCard}>
+              <View style={styles.orderHeader}>
+                <View style={styles.orderInfo}>
+                  <Text style={styles.orderId}>#{order.orderId}</Text>
+                  <View style={styles.statusBadge}>
+                    <Package size={16} color={!order.orderStatus ? "#FF9800" : "#4CAF50"} />
+                    <Text style={[
+                      styles.statusText,
+                      (!order.orderStatus || order.orderStatus === 'RECEIVED') && styles.waitingStatusText
+                    ]}>
+                      {!order.orderStatus ? "Waiting for confirmation" : 
+                       order.orderStatus === 'RECEIVED' ? "Confirmed" :
+                       order.orderStatus === 'PREPARED' ? "Prepared" :
+                       order.orderStatus === 'OUT_FOR_DELIVERY' ? "Sent for Delivery" :
+                       order.orderStatus}
+                    </Text>
                   </View>
-                  <Text style={styles.price}>₹{order.price}</Text>
                 </View>
-            
-                <View style={styles.itemsContainer}>
-                  <Text style={styles.itemsText} numberOfLines={2}>
-                    {order.itemName}
-                  </Text>
-                </View>
+                <Text style={styles.price}>₹{order.price}</Text>
+              </View>
+          
+              <View style={styles.itemsContainer}>
+                <Text style={styles.itemsText} numberOfLines={2}>
+                  {order.itemName}
+                </Text>
+              </View>
 
-                <View style={styles.orderFooter}>
-                  <View style={styles.footerInfo}>
-                    <ShoppingCart size={16} color="#666" />
-                    <Text style={styles.footerText}>{order.quantity} items</Text>
-                  </View>
-                  <Text style={[styles.roleTag, {
-                    backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
-                  }]}>
-                    {order.orderedRole}
-                  </Text>
+              <View style={styles.orderFooter}>
+                <View style={styles.footerInfo}>
+                  <ShoppingCart size={16} color="#666" />
+                  <Text style={styles.footerText}>{order.quantity} items</Text>
                 </View>
-              </TouchableOpacity>
-            </Link>
+                <Text style={[styles.roleTag, {
+                  backgroundColor: order.orderedRole === "Staff" ? "#E3F2FD" : "#FFF3E0"
+                }]}>
+                  {order.orderedRole}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Link>
           ))
         )}
-      </ScrollView>
+        </ScrollView>
     </View>
   );
 }

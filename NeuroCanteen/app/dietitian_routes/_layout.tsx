@@ -24,10 +24,10 @@ function FooterNavigation() {
 
       <TouchableOpacity 
         style={styles.footerItem} 
-        onPress={() => router.push('/dietitian_routes/profile')}
+        onPress={() => router.push('/(dietitians)/profile')}
       >
-        <User size={24} color={isActive('/dietitian_routes/profile') ? '#166534' : '#64748b'} />
-        <Text style={[styles.footerText, isActive('/dietitian_routes/profile') && styles.footerTextActive]}>
+        <User size={24} color={isActive('/(dietitians)/profile') ? '#166534' : '#64748b'} />
+        <Text style={[styles.footerText, isActive('/(dietitians)/profile') && styles.footerTextActive]}>
           Profile
         </Text>
       </TouchableOpacity>
@@ -40,44 +40,44 @@ export default function DietitianLayout() {
 
   return (
     <View style={styles.container}>
-      <Stack>
-        <Stack.Screen 
-          name="index" 
-          options={{ 
-            title: "Dietitian Dashboard",
-            headerShown: true,
-            headerStyle: {
+    <Stack>
+<Stack.Screen 
+  name="index" 
+  options={{ 
+    title: "Dietitian Dashboard",
+    headerShown: true,
+    headerStyle: {
               backgroundColor: '#ffffff',
-            },
+    },
             headerTintColor: '#000000',
-            headerTitleStyle: {
+    headerTitleStyle: {
               fontSize: 20,
-              fontWeight: '600',
-            },
-            headerTitleAlign: 'center',
-          }} 
-        />
-        <Stack.Screen 
+      fontWeight: '600',
+    },
+    headerTitleAlign: 'center',
+  }} 
+/>
+      <Stack.Screen 
           name="patient" 
-          options={{ 
+        options={{ 
             title: "Patient Details",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: '#ffffff',
-            },
-            headerTintColor: '#000000',
-            headerTitleStyle: {
-              fontSize: 20,
-              fontWeight: '600',
-            },
-            headerTitleAlign: 'center',
-          }} 
-        />
-        <Stack.Screen 
-          name="checkout" 
-          options={{ 
-            title: "Checkout",
-            headerShown: true,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTintColor: '#000000',
+          headerTitleStyle: {
+            fontSize: 20,
+            fontWeight: '600',
+          },
+          headerTitleAlign: 'center',
+        }} 
+      />
+      <Stack.Screen 
+        name="checkout" 
+        options={{ 
+          title: "Checkout",
+          headerShown: true,
             headerStyle: {
               backgroundColor: '#ffffff',
             },
@@ -103,9 +103,9 @@ export default function DietitianLayout() {
               fontWeight: '600',
             },
             headerTitleAlign: 'center',
-          }} 
-        />
-      </Stack>
+        }} 
+      />
+    </Stack>
       <FooterNavigation />
     </View>
   );
