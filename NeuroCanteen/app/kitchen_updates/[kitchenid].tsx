@@ -53,6 +53,12 @@ export default function UpdateOrderScreen() {
         params: { orderStatus: deliveryStatus },
       });
 
+      // Fetch the updated order to ensure we have the latest data
+      const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
+      const updatedOrder = response.data;
+      setOrder(updatedOrder);
+
+      // Navigate back to the kitchen dashboard
       router.back();
     } catch (error) {
       console.error('Error updating order:', error);

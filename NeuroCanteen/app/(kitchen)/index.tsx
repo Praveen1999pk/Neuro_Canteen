@@ -1,8 +1,8 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { Package, ShoppingCart, Rss, Search, Filter, ArrowLeft, ArrowDown, ArrowUp } from 'lucide-react-native';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -169,6 +169,13 @@ export default function DeliveryOrders() {
         {title}
       </Text>
     </TouchableOpacity>
+  );
+
+  // Add focus effect to refresh orders when returning to the screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders();
+    }, [])
   );
 
   return (

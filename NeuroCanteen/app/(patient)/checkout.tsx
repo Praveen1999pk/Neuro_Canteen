@@ -28,6 +28,23 @@ type CartItems = {
   [key: number]: number;
 };
 
+type OrderDetails = {
+  orderedRole: string;
+  orderedName: string;
+  orderedUserId: string;
+  itemName: string;
+  quantity: number;
+  category: string;
+  price: number;
+  orderStatus: string | null;
+  paymentType: string;
+  paymentStatus: string | null;
+  orderDateTime: string;
+  address: string;
+  phoneNo: string;
+  paymentRecived: boolean;
+};
+
 export default function patientOrderCheckout() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const params = useLocalSearchParams();
@@ -223,8 +240,8 @@ export default function patientOrderCheckout() {
       }
     }
 
-    const orderDetails = {
-      orderedRole: "patient",
+    const orderDetails: OrderDetails = {
+      orderedRole: "out_patient",
       orderedName: usernameToUse,
       orderedUserId: usernameToUse,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -255,7 +272,7 @@ export default function patientOrderCheckout() {
           params: {
             orderHistoryRedirect: '/(patient)/order-history',
             orderedUserId: usernameToUse,
-            orderedRole: 'patient'
+            orderedRole: 'out_patient'
           }
         });
       } else {
@@ -274,7 +291,7 @@ export default function patientOrderCheckout() {
     }
 
     const orderDetails = {
-      orderedRole: "patient",
+      orderedRole: "out_patient",
       orderedName: username,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
@@ -301,7 +318,7 @@ export default function patientOrderCheckout() {
         params: {
           orderHistoryRedirect: '/(patient)/order-history',
           orderedUserId: username,
-          orderedRole: 'patient'
+          orderedRole: 'out_patient'
         }
       });
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Image, Animated, Easing } from 'react-native';
 import { Check, CreditCard as Edit2 } from 'lucide-react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -126,42 +126,57 @@ function OrderSummary() {
 
 function DeliveryDetails() {
   const { address, setAddress, isEditingAddress, setIsEditingAddress } = useOrder();
+  const [patientDetails, setPatientDetails] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchPatientDetails = async () => {
+      try {
+        // Get the location details from AsyncStorage
+        const floor = await AsyncStorage.getItem('floor');
+        const ward = await AsyncStorage.getItem('ward');
+        const room = await AsyncStorage.getItem('room');
+        const bed = await AsyncStorage.getItem('bed');
+        
+        if (!floor || !ward || !room || !bed) {
+          console.error('Missing location details');
+          return;
+        }
+
+        const response = await axiosInstance.get(`/patient/patients/${floor}/${ward}/${room}/${bed}`);
+        const data = response.data;
+        if (data && data.length > 0) {
+          setPatientDetails(data[0]);
+          // Set the address using patient location details
+          const locationDetails = `Floor: ${data[0].floor}, Ward: ${data[0].ward}, Room: ${data[0].roomNo}, Bed: ${data[0].bedNo}`;
+          setAddress({ fullAddress: locationDetails });
+          setIsEditingAddress(false);
+        }
+      } catch (error) {
+        console.error('Error fetching patient details:', error);
+      }
+    };
+
+    fetchPatientDetails();
+  }, []);
+
   return (
     <View style={styles.section}>
       <View style={styles.headerContainer}>
         <Text style={styles.sectionTitle}>Delivery Details</Text>
-        {!isEditingAddress && (
-          <TouchableOpacity onPress={() => setIsEditingAddress(true)} style={styles.editButton}>
-            <Edit2 size={18} color="#0A5F38" />
-          </TouchableOpacity>
+      </View>
+      <View style={styles.savedAddressContainer}>
+        {patientDetails ? (
+          <View>
+            <Text style={styles.addressText}>Patient Location:</Text>
+            <Text style={styles.addressText}>Floor: {patientDetails.floor}</Text>
+            <Text style={styles.addressText}>Ward: {patientDetails.ward}</Text>
+            <Text style={styles.addressText}>Room: {patientDetails.roomNo}</Text>
+            <Text style={styles.addressText}>Bed: {patientDetails.bedNo}</Text>
+          </View>
+        ) : (
+          <Text style={styles.noAddressText}>Loading patient details...</Text>
         )}
       </View>
-      {isEditingAddress ? (
-        <View style={styles.formContainer}>
-          <TextInput
-            style={styles.textArea}
-            value={address.fullAddress}
-            onChangeText={(value) => setAddress({ fullAddress: value })}
-            placeholder="Enter your complete delivery address"
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-          <TouchableOpacity style={styles.saveButton} onPress={() => setIsEditingAddress(false)}>
-            <Check size={20} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>Save Address</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.savedAddressContainer}>
-          {address.fullAddress ? (
-            <Text style={styles.addressText}>{address.fullAddress}</Text>
-          ) : (
-            <Text style={styles.noAddressText}>No address saved yet. Tap edit to add delivery details.</Text>
-          )}
-        </View>
-      )}
     </View>
   );
 }

@@ -54,58 +54,20 @@ export default function UpdateOrderScreen() {
 
   const handleUpdateOrder = async () => {
     try {
-      // Check if there are any changes
-      if (pendingPaymentStatus !== currentPaymentStatus || pendingDeliveryStatus !== currentDeliveryStatus) {
-        // Validate delivery status before updating
-        if (pendingDeliveryStatus === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT') {
-          Alert.alert(
-            "Cannot Mark as Delivered",
-            "Payment must be completed before marking the order as delivered."
-          );
-          return;
-        }
+      await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+        params: { deliveryStatus: pendingDeliveryStatus },
+      });
 
-        // First update payment status
-        if (pendingPaymentStatus !== currentPaymentStatus) {
-          const paymentResponse = await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
-            params: { paymentReceived: pendingPaymentStatus === "COMPLETED" },
-          });
+      // Fetch the updated order to ensure we have the latest data
+      const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
+      const updatedOrder = response.data;
+      setOrder(updatedOrder);
+      setCurrentDeliveryStatus(updatedOrder.deliveryStatus);
 
-          if (paymentResponse.status === 200) {
-            setCurrentPaymentStatus(pendingPaymentStatus);
-          }
-        }
-
-        // Then update delivery status
-        if (pendingDeliveryStatus !== currentDeliveryStatus) {
-          const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
-            params: { deliveryStatus: pendingDeliveryStatus },
-          });
-          
-          if (deliveryResponse.status === 200) {
-            setCurrentDeliveryStatus(pendingDeliveryStatus);
-            // Reset pending status to allow re-confirmation
-            setPendingDeliveryStatus(pendingDeliveryStatus);
-          }
-        }
-
-        router.back();
-      } else {
-        // If no changes, still allow the update to process
-        const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
-          params: { deliveryStatus: pendingDeliveryStatus },
-        });
-        
-        if (deliveryResponse.status === 200) {
-          setCurrentDeliveryStatus(pendingDeliveryStatus);
-          // Reset pending status to allow re-confirmation
-          setPendingDeliveryStatus(pendingDeliveryStatus);
-        }
-        router.back();
-      }
+      // Navigate back to the delivery dashboard
+      router.back();
     } catch (error) {
       console.error('Error updating order:', error);
-      Alert.alert("Error", "Failed to update order status.");
     }
   };
 

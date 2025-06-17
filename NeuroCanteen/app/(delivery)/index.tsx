@@ -1,8 +1,8 @@
 // app/delivery_orders/index.tsx
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { Package, ShoppingCart, Wallet, Search, Filter, ArrowLeft, ListOrdered } from 'lucide-react-native';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 import OrderSelectionModal from '../../components/OrderSelectionModal';
@@ -151,6 +151,15 @@ export default function DeliveryOrders() {
       await axiosInstance.patch(`/orders/${orderId}/delivery-status`, null, {
         params: { deliveryStatus }
       });
+      
+      // If order is marked as delivered, remove it from priority slots
+      if (deliveryStatus === 'Delivered') {
+        const newPrioritySlots = prioritySlots.map(slot => 
+          slot?.orderId === orderId ? null : slot
+        );
+        setPrioritySlots(newPrioritySlots);
+      }
+      
       fetchOrders();
     } catch (error) {
       console.error("Error updating delivery status:", error);
@@ -244,6 +253,38 @@ export default function DeliveryOrders() {
       </Text>
     </TouchableOpacity>
   );
+
+  // Add focus effect to refresh orders when returning to the screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders();
+    }, [])
+  );
+
+  // Add a function to check and clean up priority slots
+  const cleanupPrioritySlots = useCallback(() => {
+    const hasDeliveredOrders = prioritySlots.some(slot => {
+      if (!slot) return false;
+      const order = orders.find(o => o.orderId === slot.orderId);
+      return order?.deliveryStatus === 'Delivered';
+    });
+
+    if (hasDeliveredOrders) {
+      const newPrioritySlots = prioritySlots.map(slot => {
+        if (!slot) return null;
+        const order = orders.find(o => o.orderId === slot.orderId);
+        return order?.deliveryStatus === 'Delivered' ? null : slot;
+      });
+      setPrioritySlots(newPrioritySlots);
+    }
+  }, [orders]);
+
+  // Add effect to clean up priority slots when orders change
+  useEffect(() => {
+    if (orders.length > 0) {
+      cleanupPrioritySlots();
+    }
+  }, [orders]);
 
   return (
     <View style={styles.container}>

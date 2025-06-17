@@ -101,58 +101,53 @@ const PaymentIn = () => {
   };
 
   const fetchOrders = async () => {
+    setLoading(true);
+    setSummaries([]);
     try {
-      const response = await axiosInstance.get<Order[]>('/orders/filter/Credit', {
+      const response = await axiosInstance.get("/orders/filter/Credit", {
         params: {
-          orderedRole: roleFilter.toLowerCase(),
-          paymentType: 'CREDIT',
-        },
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+          orderedRole: roleFilter,
+          paymentType: "CREDIT",
+          paymentStatus: null
         }
       });
 
       if (response.status === 200) {
         const originalData = response.data;
+
         if (!Array.isArray(originalData)) {
           console.error("Unexpected response format:", originalData);
           return;
         }
 
-        const filteredData = originalData.filter(order => 
-          order.paymentType === 'CREDIT' &&
-          order.orderedUserId &&
-          order.orderedRole === roleFilter.toLowerCase()
-        );
-
-        console.log('Filtered orders:', filteredData);
-        setOrders(filteredData);
-        summarizeOrders(filteredData);
+        setOrders(originalData);
+        summarizeOrders(originalData);
 
         // Fetch credit payments
         const creditResponse = await axiosInstance.get("/api/credit-payments");
         if (creditResponse.status === 200) {
-          const transformed = creditResponse.data.map((payment: { 
-            userId: string | number;
-            role: string;
-            amount: number;
-            paymentType: string;
-            paid: boolean;
-            orders: string;
-          }) => ({
-            orderedUserId: String(payment.userId),
-            orderedRole: payment.role.toLowerCase(),
-            totalPrice: payment.amount,
-            paymentType: payment.paymentType,
-            allPaid: payment.paid,
-            orderIds: payment.orders.split(',').map((id: string) => id.trim())
-          }));
+          const transformed = creditResponse.data
+            .filter((payment: CreditPayment) => {
+              if (roleFilter === 'Patient') {
+                return payment.role.toUpperCase() === 'PATIENT' || payment.role.toUpperCase() === 'OUT_PATIENT';
+              }
+              return payment.role.toUpperCase() === roleFilter.toUpperCase();
+            })
+            .map((payment: CreditPayment) => ({
+              orderedUserId: String(payment.userId),
+              orderedRole: payment.role.charAt(0).toUpperCase() + payment.role.slice(1).toLowerCase(),
+              totalPrice: payment.amount,
+              paymentType: payment.paymentType,
+              allPaid: payment.paid,
+              orderIds: payment.orders.split(',').map((id: string) => id.trim()),
+              createdAt: payment.createdAt
+            }));
+
           setSummaries((prev) => [...prev, ...transformed]);
         }
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error("Error fetching filtered orders or credit payments:", error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         Alert.alert(
           'Authentication Error',
@@ -170,20 +165,21 @@ const PaymentIn = () => {
       } else {
         Alert.alert('Error', 'Failed to fetch orders. Please try again.');
       }
-      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-const fetchCompletedPayments = async () => {
-  try {
-    const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
-      }
-    });
-    
-    if (response.status === 200) {
+  const fetchCompletedPayments = async () => {
+    try {
+      const response = await axiosInstance.get<CreditPayment[]>('/api/credit-payments', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.status === 200) {
         const transformed = response.data
           .filter(payment => {
             if (roleFilter === 'Patient') {
@@ -203,9 +199,9 @@ const fetchCompletedPayments = async () => {
         
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-      setCompletedPayments(transformed);
-    }
-  } catch (error) {
+        setCompletedPayments(transformed);
+      }
+    } catch (error) {
       console.error('Error fetching completed payments:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         Alert.alert(
@@ -575,7 +571,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingVertical: 30,
-    padding:50,
+    
     backgroundColor: '#2E7D32',
     
     flexDirection: 'row',
