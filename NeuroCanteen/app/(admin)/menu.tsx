@@ -133,6 +133,7 @@ export default function MenuManagement() {
     combination: '',
     diet_type: ''
   });
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchMenuItems();
@@ -259,25 +260,26 @@ const handleSubmit = async () => {
     return;
   }
 
-
-
   setIsLoading(true);
   try {
-    // Ensure timeSlot data is properly formatted
+    const allDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const normalizedTimeSlot: TimeSlotType = {};
-    Object.keys(formData.timeSlot).forEach(day => {
-      const lowercaseDay = day.toLowerCase();
-      normalizedTimeSlot[lowercaseDay] = formData.timeSlot[day].map((slot: string) => 
-        slot.toLowerCase()
-      );
+    
+    allDays.forEach(day => {
+      normalizedTimeSlot[day] = (formData.timeSlot[day] || [])
+        .map(slot => slot.toLowerCase())
+        .filter(slot => timeSlots.includes(slot));
     });
 
-    const payload = {
-      ...formData,
-      timeSlot: normalizedTimeSlot
-    };
-
+  const payload = {
+    ...formData,
+   
+    timeSlot: normalizedTimeSlot,
     
+    staffPrice: parseFloat(formData.staffPrice) || 0,
+    patientPrice: parseFloat(formData.patientPrice) || 0,
+    dietitianPrice: parseFloat(formData.dietitianPrice) || 0
+  };
 
     if (isEditMode && currentItem) {
       const response = await axiosInstance.put(`/menu-items/${currentItem.id}`, payload);
@@ -290,7 +292,7 @@ const handleSubmit = async () => {
     setModalVisible(false);
     resetForm();
   } catch (error) {
-    console.error('Error saving menu item:', error);
+    console.error('Error saving menu item:');
     Alert.alert('Error', `Failed to save menu item: ${(error as any).message || 'Unknown error'}`);
   } finally {
     setIsLoading(false);
@@ -361,36 +363,40 @@ const handleSubmit = async () => {
     </View>
   );
 
-  const pickImage = async () => {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    Alert.alert('Permission Denied', 'Permission to access media library is required!');
-    return;
-  }
-
-  let result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [4, 3],
-    quality: 1,
-  });
-
-  if (!result.canceled && result.assets && result.assets.length > 0) {
-    // If your backend expects base64 encoded image
-    const base64Image = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-      encoding: FileSystem.EncodingType.Base64,
+  // Modify pickImage function:
+const pickImage = async () => {
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7, // Reduced quality for smaller files
+      base64: true
     });
-    
-    setFormData({
-      ...formData,
-      picture: `data:image/jpeg;base64,${base64Image}`,
-    });
+
+    if (!result.canceled && result.assets?.[0]?.base64) {
+      setFormData({
+        ...formData,
+        picture: `data:image/jpeg;base64,${result.assets[0].base64}`
+      });
+    }
+  } catch (error) {
+    console.error('Image picker error:', error);
+    Alert.alert('Error', 'Failed to select image');
   }
 };
-
   const handleBack = () => {
     router.back();
 };
+
+  const filteredMenuItems = menuItems
+    .slice()
+    .sort((a, b) => b.id - a.id)
+    .filter(item =>
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.category.toLowerCase().includes(search.toLowerCase()) ||
+      (item.combination || '').toLowerCase().includes(search.toLowerCase())
+    );
 
   return (
     <View style={styles.container}>
@@ -406,13 +412,30 @@ const handleSubmit = async () => {
         </TouchableOpacity>
       </View>
 
+      <TextInput
+        style={[
+          styles.input,
+          {
+            marginHorizontal: 16,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: '#2E7D32',
+            borderRadius: 8,
+            backgroundColor: '#fff',
+          },
+        ]}
+        placeholder="Search food items..."
+        value={search}
+        onChangeText={setSearch}
+      />
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2E7D32" />
         </View>
       ) : (
         <FlatList
-          data={menuItems}
+          data={filteredMenuItems}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
@@ -507,7 +530,7 @@ const handleSubmit = async () => {
                 style={styles.input}
                 placeholder="Staff Price"
                 value={formData.staffPrice}
-                onChangeText={(text) => handleInputChange('staffPrice', text)}
+                onChangeText={(text) => handleInputChange('staffPrice', text.replace(/[^0-9.]/g, ''))}
                 keyboardType="numeric"
               />
               
