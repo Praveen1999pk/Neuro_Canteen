@@ -153,30 +153,30 @@ export default function UpdateOrderScreen() {
             {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => {
               const isDisabled = 
                 (status === 'RECEIVED' && order.orderStatus !== null) ||
-                (status === 'PREPARED' && !order.orderStatus) ||
+                (status === 'PREPARED' && (!order.orderStatus || order.orderStatus === 'OUT_FOR_DELIVERY')) ||
                 (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
 
               return (
-              <TouchableOpacity
-                key={status}
-                style={[
-                  styles.button,
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.button,
                     deliveryStatus === status && styles.activeButton,
                     isDisabled && styles.disabledButton
-                ]}
-                onPress={() => setDeliveryStatus(status)}
+                  ]}
+                  onPress={() => setDeliveryStatus(status)}
                   disabled={isDisabled}
-              >
-                <Text style={[
-                  styles.buttonText,
+                >
+                  <Text style={[
+                    styles.buttonText,
                     deliveryStatus === status && styles.activeButtonText,
                     isDisabled && styles.disabledButtonText
-                ]}>
-                  {status === 'RECEIVED' ? 'Confirm' :
-                   status === 'PREPARED' ? 'Prepared' :
-                   'Send for Delivery'}
-                </Text>
-              </TouchableOpacity>
+                  ]}>
+                    {status === 'RECEIVED' ? 'Confirm' :
+                     status === 'PREPARED' ? 'Prepared' :
+                     'Send for Delivery'}
+                  </Text>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -189,11 +189,17 @@ export default function UpdateOrderScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.updateButton, !deliveryStatus && styles.disabledButton]}
+          style={[
+            styles.updateButton, 
+            (!deliveryStatus || deliveryStatus === order.orderStatus || order.orderStatus === 'OUT_FOR_DELIVERY') && styles.disabledButton
+          ]}
           onPress={handleUpdateOrder}
-          disabled={!deliveryStatus}
+          disabled={!deliveryStatus || deliveryStatus === order.orderStatus || order.orderStatus === 'OUT_FOR_DELIVERY'}
         >
-          <Text style={[styles.updateButtonText, !deliveryStatus && styles.disabledButtonText]}>
+          <Text style={[
+            styles.updateButtonText, 
+            (!deliveryStatus || deliveryStatus === order.orderStatus || order.orderStatus === 'OUT_FOR_DELIVERY') && styles.disabledButtonText
+          ]}>
             Update Status
           </Text>
         </TouchableOpacity>

@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { Plus, CreditCard as Edit2, Trash2, ArrowLeft } from 'lucide-react-native';
+import { Plus, CreditCard as Edit2, Trash2, ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
 
@@ -31,6 +31,7 @@ export default function KitchenManagement() {
     userId: '',
     password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchKitchenUsers();
@@ -212,6 +213,7 @@ export default function KitchenManagement() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Kitchen User' : 'Add Kitchen User'}</Text>
             
+            <Text style={styles.label}>User ID <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="User ID"
@@ -219,13 +221,22 @@ export default function KitchenManagement() {
               onChangeText={(text) => handleInputChange('userId', text)}
             />
             
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={formData.password}
-              onChangeText={(text) => handleInputChange('password', text)}
-              secureTextEntry
-            />
+            <Text style={styles.label}>Password <Text style={{color: 'red'}}>*</Text></Text>
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={formData.password}
+                onChangeText={(text) => handleInputChange('password', text)}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                style={{ position: 'absolute', right: 16, top: 22 }}
+                onPress={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <EyeOff size={20} color="#2E7D32" /> : <Eye size={20} color="#2E7D32" />}
+              </TouchableOpacity>
+            </View>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
@@ -397,5 +408,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  label: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
 });

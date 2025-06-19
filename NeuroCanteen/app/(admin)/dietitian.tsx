@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { Plus, CreditCard as Edit2, Trash2, ArrowLeft } from 'lucide-react-native';
+import { Plus, CreditCard as Edit2, Trash2, ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
 
@@ -35,6 +35,7 @@ export default function DietitianManagement() {
     password: '',
     specialization: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchDietitians();
@@ -222,6 +223,7 @@ export default function DietitianManagement() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Dietitian' : 'Add New Dietitian'}</Text>
             
+            <Text style={styles.label}>Name <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Name"
@@ -229,6 +231,7 @@ export default function DietitianManagement() {
               onChangeText={(text) => handleInputChange('name', text)}
             />
             
+            <Text style={styles.label}>Username <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Username"
@@ -236,14 +239,24 @@ export default function DietitianManagement() {
               onChangeText={(text) => handleInputChange('username', text)}
             />
             
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={formData.password}
-              onChangeText={(text) => handleInputChange('password', text)}
-              secureTextEntry
-            />
+            <Text style={styles.label}>Password <Text style={{color: 'red'}}>*</Text></Text>
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={formData.password}
+                onChangeText={(text) => handleInputChange('password', text)}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                style={{ position: 'absolute', right: 16, top: 22 }}
+                onPress={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <EyeOff size={20} color="#2E7D32" /> : <Eye size={20} color="#2E7D32" />}
+              </TouchableOpacity>
+            </View>
             
+            <Text style={styles.label}>Specialization <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Specialization"
@@ -427,5 +440,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
   },
 });
