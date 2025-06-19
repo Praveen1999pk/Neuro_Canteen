@@ -11,7 +11,7 @@ import {
   Alert,
   ScrollView
 } from 'react-native';
-import { Plus, CreditCard as Edit2, Trash2, ArrowLeft } from 'lucide-react-native';
+import { Plus, CreditCard as Edit2, Trash2, ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
 // import { axiosInstance } from '../../services/axiosInstance';
@@ -43,6 +43,7 @@ export default function StaffManagement() {
     password: '',
     paymentDetails: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchStaffList();
@@ -89,6 +90,7 @@ export default function StaffManagement() {
 
   const openEditModal = (staff: Staff) => {
     setIsEditMode(true);
+    setShowPassword(true);
     setCurrentStaff(staff);
     setFormData({
       name: staff.name,
@@ -237,6 +239,7 @@ export default function StaffManagement() {
             <Text style={styles.modalTitle}>{isEditMode ? 'Edit Staff' : 'Add New Staff'}</Text>
             
             <ScrollView style={styles.modalScrollView}>
+            <Text style={styles.label}>Name <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Name"
@@ -244,6 +247,7 @@ export default function StaffManagement() {
               onChangeText={(text) => handleInputChange('name', text)}
             />
             
+            <Text style={styles.label}>Employee ID <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Employee ID"
@@ -251,6 +255,7 @@ export default function StaffManagement() {
               onChangeText={(text) => handleInputChange('employeeId', text)}
             />
             
+            <Text style={styles.label}>Department <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Department"
@@ -258,6 +263,7 @@ export default function StaffManagement() {
               onChangeText={(text) => handleInputChange('department', text)}
             />
             
+            <Text style={styles.label}>Role <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Role"
@@ -265,6 +271,7 @@ export default function StaffManagement() {
               onChangeText={(text) => handleInputChange('role', text)}
             />
             
+            <Text style={styles.label}>Mobile Number <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Mobile Number"
@@ -273,14 +280,24 @@ export default function StaffManagement() {
               keyboardType="phone-pad"
             />
             
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={formData.password}
-              onChangeText={(text) => handleInputChange('password', text)}
-              secureTextEntry
-            />
+            <Text style={styles.label}>Password <Text style={{color: 'red'}}>*</Text></Text>
+            <View style={{ position: 'relative' }}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  value={formData.password}
+                  onChangeText={(text) => handleInputChange('password', text)}
+                  secureTextEntry={!showPassword}
+                />
+              <TouchableOpacity
+                style={{ position: 'absolute', right: 16, top: 22 }}
+                onPress={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <EyeOff size={20} color="#2E7D32" /> : <Eye size={20} color="#2E7D32" />}
+              </TouchableOpacity>
+            </View>
             
+            <Text style={styles.label}>Payment Details</Text>
             <TextInput
               style={styles.input}
               placeholder="Payment Details"
@@ -479,5 +496,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
   },
 });

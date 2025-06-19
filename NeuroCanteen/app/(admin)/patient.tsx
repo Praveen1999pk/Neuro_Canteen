@@ -14,6 +14,7 @@ import {
 import { Plus, CreditCard as Edit2, Trash2, ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import axiosInstance from '../api/axiosInstance';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 type Patient = {
   id: number;
@@ -60,6 +61,10 @@ export default function PatientManagement() {
     patientMobileNo: '',
     attendantContact: '',
   });
+  const [showAdmissionPicker, setShowAdmissionPicker] = useState(false);
+  const [showDischargePicker, setShowDischargePicker] = useState(false);
+  const [showAdmissionTimePicker, setShowAdmissionTimePicker] = useState(false);
+  const [showDischargeTimePicker, setShowDischargeTimePicker] = useState(false);
 
   useEffect(() => {
     fetchPatients();
@@ -269,7 +274,7 @@ export default function PatientManagement() {
               <Text style={styles.modalTitle}>{isEditMode ? 'Edit Patient' : 'Add New Patient'}</Text>
               
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Basic Information</Text>
+                <Text style={styles.formLabel}>Patient Name <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Patient Name"
@@ -331,19 +336,86 @@ export default function PatientManagement() {
                   onChangeText={(text) => handleInputChange('patientStatus', text)}
                 />
                 
-                <TextInput
+                <TouchableOpacity
                   style={styles.input}
-                  placeholder="Admission Date Time (YYYY-MM-DDTHH:MM)"
-                  value={formData.admissionDateTime}
-                  onChangeText={(text) => handleInputChange('admissionDateTime', text)}
-                />
-                
-                <TextInput
+                  onPress={() => setShowAdmissionPicker(true)}
+                >
+                  <Text style={{ color: formData.admissionDateTime ? '#000' : '#888' }}>
+                    {formData.admissionDateTime ? formData.admissionDateTime.replace('T', ' ') : 'Select Admission Date'}
+                  </Text>
+                </TouchableOpacity>
+                {showAdmissionPicker && (
+                  <DateTimePicker
+                    value={formData.admissionDateTime ? new Date(formData.admissionDateTime) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowAdmissionPicker(false);
+                      if (selectedDate) {
+                        let current = formData.admissionDateTime ? new Date(formData.admissionDateTime) : new Date();
+                        const newDate = new Date(selectedDate);
+                        newDate.setHours(current.getHours(), current.getMinutes());
+                        handleInputChange('admissionDateTime', newDate.toISOString().slice(0, 16));
+                        setShowAdmissionTimePicker(true);
+                      }
+                    }}
+                  />
+                )}
+                {showAdmissionTimePicker && (
+                  <DateTimePicker
+                    value={formData.admissionDateTime ? new Date(formData.admissionDateTime) : new Date()}
+                    mode="time"
+                    display="default"
+                    onChange={(event, selectedTime) => {
+                      setShowAdmissionTimePicker(false);
+                      if (selectedTime) {
+                        let current = formData.admissionDateTime ? new Date(formData.admissionDateTime) : new Date();
+                        current.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+                        handleInputChange('admissionDateTime', current.toISOString().slice(0, 16));
+                      }
+                    }}
+                  />
+                )}
+                <TouchableOpacity
                   style={styles.input}
-                  placeholder="Discharge Date Time (YYYY-MM-DDTHH:MM)"
-                  value={formData.dischargeDateTime}
-                  onChangeText={(text) => handleInputChange('dischargeDateTime', text)}
-                />
+                  onPress={() => setShowDischargePicker(true)}
+                >
+                  <Text style={{ color: formData.dischargeDateTime ? '#000' : '#888' }}>
+                    {formData.dischargeDateTime ? formData.dischargeDateTime.replace('T', ' ') : 'Select Discharge Date (optional)'}
+                  </Text>
+                </TouchableOpacity>
+                {showDischargePicker && (
+                  <DateTimePicker
+                    value={formData.dischargeDateTime ? new Date(formData.dischargeDateTime) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowDischargePicker(false);
+                      if (selectedDate) {
+                        let current = formData.dischargeDateTime ? new Date(formData.dischargeDateTime) : new Date();
+                        const newDate = new Date(selectedDate);
+                        newDate.setHours(current.getHours(), current.getMinutes());
+                        handleInputChange('dischargeDateTime', newDate.toISOString().slice(0, 16));
+                        setShowDischargeTimePicker(true);
+                      }
+                    }}
+                  />
+                )}
+                {showDischargeTimePicker && (
+                  <DateTimePicker
+                    value={formData.dischargeDateTime ? new Date(formData.dischargeDateTime) : new Date()}
+                    mode="time"
+                    display="default"
+                    onChange={(event, selectedTime) => {
+                      setShowDischargeTimePicker(false);
+                      if (selectedTime) {
+                        let current = formData.dischargeDateTime ? new Date(formData.dischargeDateTime) : new Date();
+                        current.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+                        handleInputChange('dischargeDateTime', current.toISOString().slice(0, 16));
+                      }
+                    }}
+                  />
+                )}
               </View>
               
               <View style={styles.formGroup}>
