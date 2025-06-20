@@ -3,30 +3,26 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { useLocalSearchParams, router } from 'expo-router';
 import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
-import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-type Order = {
-  orderId: number;
-  orderedRole: string;
-  orderedName: string | null;
-  orderedUserId: string;
-  itemName: string;
-  quantity: number;
-  category: string;
-  price: number;
-  orderStatus: string;
-  paymentType: string;
-  paymentRecived: boolean;
-  paymentStatus: string | null;
-  orderDateTime: string;
-  deliveryStatus: string | null;
-  address: string;
-  phoneNo: string | null;
-};
 
 export default function UpdateOrderScreen() {
-
+  type Order = {
+    orderId: number;
+    orderedRole: string;
+    orderedName: string | null;
+    orderedUserId: string;
+    itemName: string;
+    quantity: number;
+    category: string;
+    price: number;
+    orderStatus: string;
+    paymentType: string;
+    paymentRecived: boolean;
+    paymentStatus: string | null;
+    orderDateTime: string;
+    deliveryStatus: string | null;
+    address: string;
+    phoneNo: string | null;
+  };
 
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
@@ -35,72 +31,12 @@ export default function UpdateOrderScreen() {
   const [currentDeliveryStatus, setCurrentDeliveryStatus] = useState<string | null>(null);
   const [pendingPaymentStatus, setPendingPaymentStatus] = useState('PENDING');
   const [pendingDeliveryStatus, setPendingDeliveryStatus] = useState<string | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [notifiedOrderIds, setNotifiedOrderIds] = useState<number[]>([]);
-  // Load notified orders from storage on initial render
-useEffect(() => {
-  const loadNotifiedOrders = async () => {
-    try {
-      const storedIds = await AsyncStorage.getItem('notifiedOrderIds');
-      if (storedIds) {
-        setNotifiedOrderIds(JSON.parse(storedIds));
-      }
-    } catch (error) {
-      console.error('Error loading notified orders:', error);
-    }
-  };
-  loadNotifiedOrders();
-}, []);
-
-// Update AsyncStorage when notifiedOrderIds changes
-useEffect(() => {
-  const saveNotifiedOrders = async () => {
-    try {
-      await AsyncStorage.setItem('notifiedOrderIds', JSON.stringify(notifiedOrderIds));
-    } catch (error) {
-      console.error('Error saving notified orders:', error);
-    }
-  };
-  saveNotifiedOrders();
-}, [notifiedOrderIds]);
-
-
-
 
   useEffect(() => {
-    let previousDeliveryStatus = currentDeliveryStatus;
-    
     const fetchOrder = async () => {
       try {
         const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
         const orderData: Order = response.data;
-        
-        // Check if status changed to SentForDelivery from another status
-        if (orderData.deliveryStatus === 'OUT_FOR_DELIVERY' && 
-            previousDeliveryStatus !== 'OUT_FOR_DELIVERY' &&
-            !notifiedOrderIds.includes(orderData.orderId)) {
-          
-          // Show alert
-          Alert.alert(
-            'New Delivery Assignment',
-            `Order #${orderData.orderId}\n\n` +
-            `Items: ${orderData.itemName}\n` +
-            `Address: ${orderData.address}\n` +
-            `Customer: ${orderData.orderedName || 'No name provided'}\n` +
-            `Phone: ${orderData.phoneNo || 'No phone provided'}`,
-            [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
-          );
-          
-          // Add vibration feedback
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          
-          // Remember we've notified for this order
-          setNotifiedOrderIds(prev => [...prev, orderData.orderId]);
-        }
-        
-        // Update previous status for next check
-        previousDeliveryStatus = orderData.deliveryStatus ?? null;
-        
         setOrder(orderData);
         setCurrentPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
         setPendingPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
@@ -112,28 +48,64 @@ useEffect(() => {
         setLoading(false);
       }
     };
-  
+
     if (orderId) fetchOrder();
-    const interval = setInterval(fetchOrder, 5000);
-    return () => clearInterval(interval);
-  }, [orderId, notifiedOrderIds]);
+  }, [orderId]);
 
   const handleUpdateOrder = async () => {
     try {
-      await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+      // Check if there are any changes
+      if (pendingPaymentStatus !== currentPaymentStatus || pendingDeliveryStatus !== currentDeliveryStatus) {
+        // Validate delivery status before updating
+        if (pendingDeliveryStatus === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT') {
+          Alert.alert(
+            "Cannot Mark as Delivered",
+            "Payment must be completed before marking the order as delivered."
+          );
+          return;
+        }
+
+        // First update payment status
+        if (pendingPaymentStatus !== currentPaymentStatus) {
+          const paymentResponse = await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
+            params: { paymentReceived: pendingPaymentStatus === "COMPLETED" },
+          });
+
+          if (paymentResponse.status === 200) {
+            setCurrentPaymentStatus(pendingPaymentStatus);
+          }
+        }
+
+        // Then update delivery status
+        if (pendingDeliveryStatus !== currentDeliveryStatus) {
+          const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
             params: { deliveryStatus: pendingDeliveryStatus },
           });
           
-      // Fetch the updated order to ensure we have the latest data
-      const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
-      const updatedOrder = response.data;
-      setOrder(updatedOrder);
-      setCurrentDeliveryStatus(updatedOrder.deliveryStatus);
+          if (deliveryResponse.status === 200) {
+            setCurrentDeliveryStatus(pendingDeliveryStatus);
+            // Reset pending status to allow re-confirmation
+            setPendingDeliveryStatus(pendingDeliveryStatus);
+          }
+        }
 
-      // Navigate back to the delivery dashboard
         router.back();
+      } else {
+        // If no changes, still allow the update to process
+        const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+          params: { deliveryStatus: pendingDeliveryStatus },
+        });
+        
+        if (deliveryResponse.status === 200) {
+          setCurrentDeliveryStatus(pendingDeliveryStatus);
+          // Reset pending status to allow re-confirmation
+          setPendingDeliveryStatus(pendingDeliveryStatus);
+        }
+        router.back();
+      }
     } catch (error) {
       console.error('Error updating order:', error);
+      Alert.alert("Error", "Failed to update order status.");
     }
   };
 
@@ -169,12 +141,12 @@ useEffect(() => {
               <Package size={25} color="#03A791" />
               <Text style={styles.statusLabel}>Delivery</Text>
               <Text style={styles.statusValue}>
-                {!order?.orderStatus ? "Waiting for confirmation" : 
-                order.orderStatus === 'OUT_FOR_DELIVERY' ? "Out for Delivery" :
-                order.deliveryStatus === 'OrderReceived' ? "Order Received" :
-                order.deliveryStatus === 'Delivered' ? "Delivered" :
-                order.deliveryStatus === 'Cancelled' ? "Cancelled" :
-                "Pending"}
+                {!currentDeliveryStatus ? "Waiting for confirmation" : 
+                 currentDeliveryStatus === 'OrderReceived' ? "Confirmed" :
+                 currentDeliveryStatus === 'OutForDelivery' ? "Out for Delivery" :
+                 currentDeliveryStatus === 'Delivered' ? "Delivered" :
+                 currentDeliveryStatus === 'Cancelled' ? "Cancelled" :
+                 currentDeliveryStatus}
               </Text>
             </View>
             <View style={styles.statusItem}>
@@ -464,3 +436,4 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
 });
+
