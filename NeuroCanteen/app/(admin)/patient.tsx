@@ -147,14 +147,14 @@ export default function PatientManagement() {
       Alert.alert('Error', 'Name and UHID are required');
       return;
     }
-
+  
     const patientData = {
       ...formData,
       age: parseInt(formData.age) || 0,
       admissionDateTime: formData.admissionDateTime ? `${formData.admissionDateTime}:00` : null,
       dischargeDateTime: formData.dischargeDateTime ? `${formData.dischargeDateTime}:00` : null,
     };
-
+  
     setIsLoading(true);
     try {
       if (isEditMode && currentPatient) {
@@ -167,14 +167,30 @@ export default function PatientManagement() {
       fetchPatients();
       setModalVisible(false);
       resetForm();
-    } catch (error) {
-      console.error('Error saving patient:', error);
-      Alert.alert('Error', 'Failed to save patient information');
+    } catch (error: any) {
+      // Enhanced error handling for duplicate UHID
+      if (error.response) {
+        // Check for HTTP 409 status
+        if (error.response.status === 500) {
+          Alert.alert('Duplicate UHID', 'A patient with this UHID already exists.');
+          return;
+        }
+        
+        // Check for error message in different response formats
+        const errorMessage = error.response.data?.message || 
+                           error.response.data?.error || 
+                           error.response.data;
+        
+        if (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('uhid')) {
+          Alert.alert('Duplicate UHID', errorMessage);
+          return;
+        }
+      }
+      
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleDelete = (id: number) => {
     Alert.alert(
       'Confirm Delete',
