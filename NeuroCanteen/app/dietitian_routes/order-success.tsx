@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CircleCheck, ShoppingBag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 
 export default function OrderSuccess() {
   const router = useRouter();
@@ -11,21 +12,38 @@ export default function OrderSuccess() {
   const [uhid, setUhid] = useState<string>('');
 
   useEffect(() => {
+    let sound: Audio.Sound;
     const getUhid = async () => {
       const id = await AsyncStorage.getItem('patientUHID');
       if (id) {
         setUhid(id);
       }
     };
+    const playSoundAndAnimate = async () => {
+      // Load and play sound
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/success.mp3') // sound path
+      );
+      sound = newSound;
+      await sound.playAsync();
+      // Animate after playing sound
+      animatedValue.setValue(0);
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
     getUhid();
-
-    Animated.sequence([
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    playSoundAndAnimate();
+    // Clean up the sound when component unmounts
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
   }, []);
 
   const iconScale = animatedValue.interpolate({
