@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
+import { triggerDeliveryNotification } from '@/services/notifications'
 
 export default function UpdateOrderScreen() {
   type Order = {
@@ -52,7 +53,14 @@ export default function UpdateOrderScreen() {
       await axiosInstance.patch(`orders/${kitchenid}/status`, null, {
         params: { orderStatus: deliveryStatus },
       });
-
+      //for notification
+      if (deliveryStatus === 'OUT_FOR_DELIVERY' && order) {
+        await triggerDeliveryNotification({
+          orderId: order.orderId,
+          itemName: order.itemName,
+          address: order.address
+        });
+      }
       // Fetch the updated order to ensure we have the latest data
       const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
       const updatedOrder = response.data;

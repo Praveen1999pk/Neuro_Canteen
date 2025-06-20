@@ -3,19 +3,41 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CircleCheck, ShoppingBag } from 'lucide-react-native';
+import { Audio } from 'expo-av';
 
 export default function OrderSuccess() {
   const router = useRouter();
   const animatedValue = new Animated.Value(0);
-  
+
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      })
-    ]).start();
+    let sound: Audio.Sound;
+
+    const playSoundAndAnimate = async () => {
+      // Load and play sound
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/success.mp3') // sound path
+      );
+      sound = newSound;
+      await sound.playAsync();
+
+      // Animate after playing sound
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
+
+    playSoundAndAnimate();
+
+    // Clean up the sound when component unmounts
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
   }, []);
 
   const iconScale = animatedValue.interpolate({
@@ -47,23 +69,23 @@ export default function OrderSuccess() {
         >
           <CircleCheck size={80} color="#4A8F47" />
         </Animated.View>
-        
+
         <Animated.Text style={[styles.title, { opacity: textOpacity }]}>
           Order Successfully Placed!
         </Animated.Text>
-        
+
         <Animated.Text style={[styles.message, { opacity: textOpacity }]}>
           Your order has successfully placed and is being processed. Thank you for choosing us!
         </Animated.Text>
-        
+
         <Animated.View style={[styles.buttonsContainer, { opacity: textOpacity }]}>
           <TouchableOpacity style={styles.button} onPress={handleViewOrders}>
             <ShoppingBag size={20} color="white" />
             <Text style={styles.buttonText}>View My Orders</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.secondaryButton]} 
+
+          <TouchableOpacity
+            style={[styles.button, styles.secondaryButton]}
             onPress={handleBackToMenu}
           >
             <Text style={styles.secondaryButtonText}>Back to Menu</Text>
