@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Image, Animated, Easing } from 'react-native';
-import { Check, CreditCard as Edit2 } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Image, Animated, Easing, Alert } from 'react-native';
+import { Check, CreditCard as Edit2, Edit3, MapPin } from 'lucide-react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 // Types
@@ -227,7 +228,7 @@ function CheckoutButton() {
   const [isLoading, setIsLoading] = useState(false);
   const route = useRoute();
   const { order_detailes } = route.params as { order_detailes: any };
-  const navigation = useNavigation<any>();
+  const router = useRouter();
   const scaleAnim = new Animated.Value(1);
 
   const handlePress = async () => {
@@ -270,7 +271,7 @@ function CheckoutButton() {
 
         if (response.status === 200 || response.status === 201) {
           console.log()
-          navigation.navigate('order-success', { status: true });
+          router.replace('/dietitian_routes/order-success');
         }
       } catch (err) {
         console.log('Error submitting order:', err);

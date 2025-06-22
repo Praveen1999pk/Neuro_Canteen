@@ -267,7 +267,7 @@ try {
     orderDetails.paymentStatus = "COMPLETED";
     await axiosInstance.post("/orders", orderDetails);
     await AsyncStorage.removeItem('patient_cart');
-        router.push({
+        router.replace({
           pathname: '/(patient)/order-success',
           params: {
             orderHistoryRedirect: '/(patient)/order-history',
@@ -313,7 +313,7 @@ try {
     try {
       await axiosInstance.post("/orders", orderDetails);
       await AsyncStorage.removeItem('patient_cart');
-      router.push({
+      router.replace({
         pathname: '/(patient)/order-success',
         params: {
           orderHistoryRedirect: '/(patient)/order-history',

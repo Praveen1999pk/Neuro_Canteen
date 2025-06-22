@@ -118,12 +118,13 @@ export default function StaffOrderCheckout() {
       return;
     }
     
-    setSubmittedAddress(address);
+    setSubmittedAddress(address.trim());
     setIsEditing(false);
+    console.log("Address submitted:", address.trim());
   };
 
   const handleAddressEdit = () => {
-      setAddress(submittedAddress);
+    setAddress(submittedAddress);
     setIsEditing(true);
   };
 
@@ -164,14 +165,11 @@ export default function StaffOrderCheckout() {
         orderDetails.paymentStatus = "COMPLETED";
         await axiosInstance.post("/orders", orderDetails);
         await AsyncStorage.removeItem('staff_cart');
-        router.push({
-          pathname: '/(staff)/order-success',
-          params: {
-            orderHistoryRedirect: '/(staff)/order-history',
-            orderedUserId: username,
-            orderedRole: 'Staff'
-          }
-        });
+        console.log("Navigating to order success page...");
+        
+        // Use replace to force fresh navigation and avoid stack issues
+        router.replace('/(staff)/order-success');
+        console.log("Navigation command executed");
       } else {
         Alert.alert("Error", "Payment verification failed!");
       }
@@ -182,8 +180,13 @@ export default function StaffOrderCheckout() {
   };
 
   const handleUPI = async () => {
-    if (!submittedAddress) {
-      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+    if (!submittedAddress || !submittedAddress.trim()) {
+      Alert.alert("Error", "Please enter the delivery address!");
+      return;
+    }
+
+    if (!username) {
+      Alert.alert("Error", "User information not loaded. Please try again.");
       return;
     }
 
@@ -204,7 +207,7 @@ export default function StaffOrderCheckout() {
           contact: "1234567890",
         },
         notes: {
-          address: submittedAddress,
+          address: submittedAddress.trim(),
         },
       };
 
@@ -224,8 +227,13 @@ export default function StaffOrderCheckout() {
   };
 
   const handleCOD = async () => {
-    if (!submittedAddress) {
-      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+    if (!submittedAddress || !submittedAddress.trim()) {
+      Alert.alert("Error", "Please enter the delivery address!");
+      return;
+    }
+
+    if (!username) {
+      Alert.alert("Error", "User information not loaded. Please try again.");
       return;
     }
 
@@ -244,30 +252,49 @@ export default function StaffOrderCheckout() {
       paymentType: "COD",
       paymentStatus: null,
       orderDateTime: new Date().toISOString(),
-      address: submittedAddress,
+      address: submittedAddress.trim(),
       phoneNo: phoneNumber
     };
 
     try {
-      await axiosInstance.post("/orders", orderDetails);
+      console.log("=== Starting COD Order Submission ===");
+      console.log("Order details:", orderDetails);
+      console.log("Submitted address:", submittedAddress);
+      console.log("Username:", username);
+      
+      const response = await axiosInstance.post("/orders", orderDetails);
+      console.log("Order submitted successfully:", response.data);
+      
+      // Clear cart
       await AsyncStorage.removeItem('staff_cart');
-      router.push({
-        pathname: '/(staff)/order-success',
-        params: {
-          orderHistoryRedirect: '/(staff)/order-history',
-          orderedUserId: username,
-          orderedRole: 'Staff'
-        }
-      });
-    } catch (error) {
-      console.error("Order error:", error);
-      Alert.alert("Error", "There was an issue submitting your order.");
+      console.log("Cart cleared successfully");
+      
+      // Add a small delay to ensure everything is processed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log("Navigating to order success page...");
+      
+      // Use replace to force fresh navigation and avoid stack issues
+      router.replace('/(staff)/order-success');
+      console.log("Navigation command executed");
+      
+    } catch (error: any) {
+      console.error("=== COD Order Error ===");
+      console.error("Error details:", error);
+      console.error("Error message:", error.message);
+      console.error("Error response:", error.response?.data);
+      Alert.alert("Error", "There was an issue submitting your order. Please try again.");
     }
   };
 
   const handleCredit = async () => {
-    if (!submittedAddress) {
+    if (!submittedAddress || !submittedAddress.trim()) {
       Alert.alert("Error", "Please enter the delivery address first");
+      return;
+    }
+
+    if (!username) {
+      Alert.alert("Error", "User information not loaded. Please try again.");
       return;
     }
 
@@ -294,24 +321,26 @@ export default function StaffOrderCheckout() {
               paymentType: "CREDIT",
               paymentStatus: null,
               orderDateTime: new Date().toISOString(),
-              address: submittedAddress,
+              address: submittedAddress.trim(),
               phoneNo: phoneNumber
             };
 
             try {
-              await axiosInstance.post("/orders", orderDetails);
+              console.log("Submitting credit order with details:", orderDetails);
+              const response = await axiosInstance.post("/orders", orderDetails);
+              console.log("Credit order submitted successfully:", response.data);
+              
               await AsyncStorage.removeItem('staff_cart');
-              router.push({
-                pathname: '/(staff)/order-success',
-                params: {
-                  orderHistoryRedirect: '/(staff)/order-history',
-                  orderedUserId: username,
-                  orderedRole: 'Staff'
-                }
-              });
+              
+              // Navigate to order success page
+              console.log("Navigating to order success page...");
+              
+              // Use replace to force fresh navigation and avoid stack issues
+              router.replace('/(staff)/order-success');
+              console.log("Navigation command executed");
             } catch (error) {
               console.error("Order error:", error);
-              Alert.alert("Error", "There was an issue submitting your order.");
+              Alert.alert("Error", "There was an issue submitting your order. Please try again.");
             }
           }
         }

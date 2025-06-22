@@ -171,7 +171,7 @@ export default function PatientManagement() {
       // Enhanced error handling for duplicate UHID
       if (error.response) {
         // Check for HTTP 409 status
-        if (error.response.status === 500) {
+        if (error.response.status === 409) {
           Alert.alert('Duplicate UHID', 'A patient with this UHID already exists.');
           return;
         }

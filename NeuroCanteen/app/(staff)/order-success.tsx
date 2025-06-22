@@ -8,26 +8,37 @@ import { Audio } from 'expo-av';
 export default function OrderSuccess() {
   const router = useRouter();
   const animatedValue = new Animated.Value(0);
+  const pageKey = Date.now(); // Force re-mount on each navigation
 
   useEffect(() => {
+    console.log("=== Order Success Page Loaded ===");
+    console.log("Page key:", pageKey);
+    
     let sound: Audio.Sound;
 
     const playSoundAndAnimate = async () => {
-      // Load and play sound
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/success.mp3') // sound path
-      );
-      sound = newSound;
-      await sound.playAsync();
+      try {
+        console.log("Loading and playing success sound...");
+        // Load and play sound
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/success.mp3') // sound path
+        );
+        sound = newSound;
+        await sound.playAsync();
+        console.log("Success sound played successfully");
 
-      // Animate after playing sound
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start();
+        // Animate after playing sound
+        Animated.sequence([
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]).start();
+        console.log("Animation started");
+      } catch (error) {
+        console.error("Error in playSoundAndAnimate:", error);
+      }
     };
 
     playSoundAndAnimate();
@@ -38,7 +49,7 @@ export default function OrderSuccess() {
         sound.unloadAsync();
       }
     };
-  }, []);
+  }, [pageKey]);
 
   const iconScale = animatedValue.interpolate({
     inputRange: [0, 0.5, 1],

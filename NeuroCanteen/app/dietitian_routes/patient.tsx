@@ -65,9 +65,6 @@ export default function PatientScreen() {
               await AsyncStorage.setItem('room', room.toString());
               await AsyncStorage.setItem('bed', bed.toString());
               setuhid(uhid)
-              console.log('Patient details saved:', { uhid, floor, ward, room, bed });
-            }else{
-              console.log("Fetching UHID is Error");
             }
 
         } catch (error) {
@@ -223,32 +220,6 @@ export default function PatientScreen() {
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Attendant Contact</Text>
               <Text style={styles.infoValue}>{patient.attendantContact}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Dietary Information */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Dietary Information</Text>
-          
-          <View style={styles.infoRow}>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Allergies</Text>
-              <Text style={styles.infoValue}>{patient.allergies || 'No known allergies'}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Dislikes</Text>
-              <Text style={styles.infoValue}>{patient.dislikes || 'None specified'}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Diet Combination</Text>
-              <Text style={styles.infoValue}>{patient.combo || 'Not specified'}</Text>
             </View>
           </View>
         </View>

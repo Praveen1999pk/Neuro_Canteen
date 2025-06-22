@@ -8,25 +8,37 @@ import { Audio } from 'expo-av';
 export default function OrderSuccess() {
   const router = useRouter();
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const pageKey = Date.now(); // Force re-mount on each navigation
   
   useEffect(() => {
+    console.log("=== Patient Order Success Page Loaded ===");
+    console.log("Page key:", pageKey);
+    
     let sound: Audio.Sound;
     const playSoundAndAnimate = async () => {
-      // Load and play sound
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/success.mp3') // sound path
-      );
-      sound = newSound;
-      await sound.playAsync();
-      // Animate after playing sound
-      animatedValue.setValue(0);
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        })
-      ]).start();
+      try {
+        console.log("Loading and playing success sound...");
+        // Load and play sound
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/success.mp3') // sound path
+        );
+        sound = newSound;
+        await sound.playAsync();
+        console.log("Success sound played successfully");
+        
+        // Animate after playing sound
+        animatedValue.setValue(0);
+        Animated.sequence([
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          })
+        ]).start();
+        console.log("Animation started");
+      } catch (error) {
+        console.error("Error in playSoundAndAnimate:", error);
+      }
     };
     playSoundAndAnimate();
     // Clean up the sound when component unmounts
@@ -35,7 +47,7 @@ export default function OrderSuccess() {
         sound.unloadAsync();
       }
     };
-  }, []);
+  }, [pageKey]);
 
   const iconScale = animatedValue.interpolate({
     inputRange: [0, 0.5, 1],

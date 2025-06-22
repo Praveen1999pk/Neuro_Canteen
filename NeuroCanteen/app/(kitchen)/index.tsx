@@ -1,15 +1,25 @@
 // app/delivery_orders/index.tsx
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, RefreshControl, Modal, FlatList } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
-import { Package, ShoppingCart, Rss, Search, Filter, ArrowLeft, ArrowDown, ArrowUp } from 'lucide-react-native';
+import { Package, ShoppingCart, Rss, Search, Filter, ArrowLeft, ArrowDown, ArrowUp, Bell } from 'lucide-react-native';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { useRouter } from 'expo-router';
 import React from 'react';
+import SockJS from 'sockjs-client';
+import { Audio } from 'expo-av';
 
 // type PaymentFilter = 'ALL' | 'PAID' | 'NOT_PAID';
 type OrderStatusFilter = 'ALL' | 'RECEIVED' | 'CONFIRMED' | 'PREPARED' | 'OUT_FOR_DELIVERY';
 type RoleFilter = 'ALL' | 'Staff' | 'Patient' | 'Out Patient';
+
+type Notification = {
+  id: number;
+  orderId: number;
+  orderedName: string;
+  itemName: string;
+  quantity: number;
+};
 
 export default function DeliveryOrders() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +30,15 @@ export default function DeliveryOrders() {
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const previousOrdersRef = useRef<Order[]>([]);
+  
+  // Notification states
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Audio state
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  
   type Order = {
     orderId: number;
     orderedRole: string;
@@ -39,6 +58,92 @@ export default function DeliveryOrders() {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const lastOrderCountRef = useRef<number>(0);
+
+  // Load notification sound
+  useEffect(() => {
+    const loadSound = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/inapp_notifying.wav')
+        );
+        setSound(sound);
+        soundRef.current = sound;
+      } catch (error) {
+        console.error('Error loading notification sound:', error);
+      }
+    };
+
+    loadSound();
+
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, []);
+
+  // Play notification sound
+  const playNotificationSound = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.replayAsync();
+      }
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+    }
+  };
+
+  // Socket connection for real-time notifications
+  useEffect(() => {
+    const initSocket = () => {
+      try {
+        const socket = new SockJS('http://170.187.200.195:8142/order-updates');
+
+        socket.onmessage = (event: any) => {
+          const message = JSON.parse(event.data);
+          const newOrder = message.payload;
+
+          if (message.type === 'ORDER_CREATED') {
+            const newNotification: Notification = {
+              id: Date.now(),
+              orderId: newOrder.orderId,
+              orderedName: newOrder.orderedName,
+              itemName: newOrder.itemName,
+              quantity: newOrder.quantity,
+            };
+            
+            setNotifications((prev) => [newNotification, ...prev]);
+            
+            // Play notification sound
+            playNotificationSound();
+            
+            // Update orders list
+            setOrders((prevOrders) => [newOrder, ...prevOrders]);
+          } else if (message.type === 'ORDER_UPDATED') {
+            setOrders((prevOrders) =>
+              prevOrders.map((order) =>
+                order.orderId === newOrder.orderId ? newOrder : order
+              )
+            );
+          }
+        };
+
+        socket.onerror = (error: any) => {
+          console.error('Socket connection error:', error);
+        };
+
+        return () => socket.close();
+      } catch (error) {
+        console.error('Error initializing socket:', error);
+      }
+    };
+
+    initSocket();
+  }, []);
+
+  const dismissNotification = (notificationId: number) => {
+    setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
+  };
 
   const checkForNewOrders = async () => {
     try {
@@ -190,9 +295,64 @@ export default function DeliveryOrders() {
             <ArrowLeft size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Kitchen Dashboard</Text>
+          <TouchableOpacity 
+            style={styles.notificationBell}
+            onPress={() => setShowNotifications(!showNotifications)}
+          >
+            <Bell size={24} color="#fff" />
+            {notifications.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{notifications.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
         <Text style={styles.headerSubtitle}>{filteredOrders.length} Active Orders</Text>
       </View>
+
+      {/* Notification Modal */}
+      <Modal
+        visible={showNotifications}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.notificationsPanel}>
+            <View style={styles.notificationsHeader}>
+              <Text style={styles.notificationsTitle}>Notifications</Text>
+              <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                <Text style={styles.closeButton}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {notifications.length === 0 ? (
+              <Text style={styles.noNotificationsText}>No notifications</Text>
+            ) : (
+              <FlatList
+                data={notifications}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.notificationItem}>
+                    <View style={styles.notificationContent}>
+                      <Text style={styles.notificationOrderId}>Order #{item.orderId}</Text>
+                      <Text style={styles.notificationName}>Name: {item.orderedName}</Text>
+                      <Text style={styles.notificationItemName}>Item: {item.itemName}</Text>
+                      <Text style={styles.notificationQuantity}>Quantity: {item.quantity}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.dismissButton}
+                      onPress={() => dismissNotification(item.id)}
+                    >
+                      <Text style={styles.dismissButtonText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -539,5 +699,124 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#888',
+  },
+  notificationBell: {
+    marginLeft: 'auto',
+    marginRight: 10,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FF4757',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationsPanel: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 16,
+    width: '85%',
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  notificationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  notificationsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  closeButton: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#E74C3C',
+    padding: 5,
+  },
+  noNotificationsText: {
+    fontSize: 16,
+    color: '#95A5A6',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3498DB',
+  },
+  notificationContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  notificationOrderId: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  notificationName: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 2,
+  },
+  notificationItemName: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 2,
+  },
+  notificationQuantity: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    fontWeight: '500',
+  },
+  dismissButton: {
+    padding: 8,
+    backgroundColor: '#E74C3C',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dismissButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 });
