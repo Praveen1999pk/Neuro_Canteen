@@ -67,6 +67,7 @@ export default function PatientManagement() {
   const [showDischargePicker, setShowDischargePicker] = useState(false);
   const [showAdmissionTimePicker, setShowAdmissionTimePicker] = useState(false);
   const [showDischargeTimePicker, setShowDischargeTimePicker] = useState(false);
+  const [filterType, setFilterType] = useState<'All' | 'OPD' | 'In-Patient'>('All');
 
   useEffect(() => {
     fetchPatients();
@@ -147,9 +148,56 @@ export default function PatientManagement() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.uhid) {
-      Alert.alert('Error', 'Name and UHID are required');
+    // Validation for required fields
+    if (!formData.name) {
+      Alert.alert('Error', 'Patient Name is required');
       return;
+    }
+    if (!formData.uhid) {
+      Alert.alert('Error', 'OPD UHID is required');
+      return;
+    }
+    if (!formData.gender) {
+      Alert.alert('Error', 'Gender is required');
+      return;
+    }
+    if (!formData.patientMobileNo) {
+      Alert.alert('Error', 'Contact Number is required');
+      return;
+    }
+    if (formData.type === 'In-Patient') {
+      if (!formData.primaryConsultant) {
+        Alert.alert('Error', 'Primary Consultant is required');
+        return;
+      }
+      if (!formData.diagnosisDescription) {
+        Alert.alert('Error', 'Diagnosis Description is required');
+        return;
+      }
+      if (!formData.patientStatus) {
+        Alert.alert('Error', 'Patient Status is required');
+        return;
+      }
+      if (!formData.admissionDateTime) {
+        Alert.alert('Error', 'Admission Date is required');
+        return;
+      }
+      if (!formData.roomNo) {
+        Alert.alert('Error', 'Room No is required');
+        return;
+      }
+      if (!formData.bedNo) {
+        Alert.alert('Error', 'Bed No is required');
+        return;
+      }
+      if (!formData.floor) {
+        Alert.alert('Error', 'Floor is required');
+        return;
+      }
+      if (!formData.ward) {
+        Alert.alert('Error', 'Ward is required');
+        return;
+      }
     }
 
     // Prepare payload based on type
@@ -278,12 +326,37 @@ export default function PatientManagement() {
           <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
-
+      {/* Filter Buttons */}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, filterType === 'All' && styles.selectedFilterButton]}
+          onPress={() => setFilterType('All')}
+        >
+          <Text style={[styles.filterButtonText, filterType === 'All' && styles.selectedFilterButtonText]}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filterType === 'OPD' && styles.selectedFilterButton]}
+          onPress={() => setFilterType('OPD')}
+        >
+          <Text style={[styles.filterButtonText, filterType === 'OPD' && styles.selectedFilterButtonText]}>OPD</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filterType === 'In-Patient' && styles.selectedFilterButton]}
+          onPress={() => setFilterType('In-Patient')}
+        >
+          <Text style={[styles.filterButtonText, filterType === 'In-Patient' && styles.selectedFilterButtonText]}>In-Patient</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Filtered List */}
       {isLoading ? (
-        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
+        <ActivityIndicator size="large" color="#2E7D32" style={styles.loader} />
       ) : (
         <FlatList
-          data={patients}
+          data={
+            filterType === 'All'
+              ? patients
+              : patients.filter((p) => p.type === filterType)
+          }
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
@@ -301,6 +374,9 @@ export default function PatientManagement() {
       >
         <View style={styles.modalContainer}>
           <ScrollView style={styles.modalContent}>
+            <TouchableOpacity onPress={() => { setModalVisible(false); resetForm(); }} style={styles.modalBackButton}>
+              <ArrowLeft size={24} color="#2E7D32" />
+            </TouchableOpacity>
             <Text style={styles.modalTitle}>
               {isEditMode ? 'Edit Patient' : 'Add Patient'}
             </Text>
@@ -337,24 +413,28 @@ export default function PatientManagement() {
             </View>
 
             {/* Common Fields */}
+            <Text style={styles.label}>Patient Name <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Patient Name"
               value={formData.name}
               onChangeText={(value) => handleInputChange('name', value)}
             />
+            <Text style={styles.label}>UHID</Text>
             <TextInput
               style={styles.input}
               placeholder="UHID"
               value={formData.uhid}
               onChangeText={(value) => handleInputChange('uhid', value)}
             />
+            <Text style={styles.label}>Gender <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Gender"
               value={formData.gender}
               onChangeText={(value) => handleInputChange('gender', value)}
             />
+            <Text style={styles.label}>Contact Number <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Contact Number"
@@ -362,6 +442,7 @@ export default function PatientManagement() {
               onChangeText={(value) => handleInputChange('patientMobileNo', value)}
               keyboardType="phone-pad"
             />
+            <Text style={styles.label}>Alternative Contact</Text>
             <TextInput
               style={styles.input}
               placeholder="Alternative Contact"
@@ -373,12 +454,14 @@ export default function PatientManagement() {
             {/* In-Patient Specific Fields */}
             {formData.type === 'In-Patient' && (
               <>
+                <Text style={styles.label}>In-Patient ID</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="In-Patient ID"
                   value={formData.ipId}
                   onChangeText={(value) => handleInputChange('ipId', value)}
                 />
+                <Text style={styles.label}>Age <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Age"
@@ -386,12 +469,14 @@ export default function PatientManagement() {
                   onChangeText={(value) => handleInputChange('age', value)}
                   keyboardType="numeric"
                 />
+                <Text style={styles.label}>Primary Consultant <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Primary Consultant"
                   value={formData.primaryConsultant}
                   onChangeText={(value) => handleInputChange('primaryConsultant', value)}
                 />
+                <Text style={styles.label}>Diagnosis Description <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Diagnosis Description"
@@ -399,12 +484,14 @@ export default function PatientManagement() {
                   onChangeText={(value) => handleInputChange('diagnosisDescription', value)}
                   multiline
                 />
+                <Text style={styles.label}>Patient Status <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Patient Status"
                   value={formData.patientStatus}
                   onChangeText={(value) => handleInputChange('patientStatus', value)}
                 />
+                <Text style={styles.label}>Admission Date & Time <Text style={{color: 'red'}}>*</Text></Text>
                 <TouchableOpacity
                   style={styles.input}
                   onPress={() => setShowAdmissionPicker(true)}
@@ -425,24 +512,28 @@ export default function PatientManagement() {
                       : 'Set Discharge Date & Time'}
                   </Text>
                 </TouchableOpacity>
+                <Text style={styles.label}>Room No <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Room No"
                   value={formData.roomNo}
                   onChangeText={(value) => handleInputChange('roomNo', value)}
                 />
+                <Text style={styles.label}>Bed No <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Bed No"
                   value={formData.bedNo}
                   onChangeText={(value) => handleInputChange('bedNo', value)}
                 />
+                <Text style={styles.label}>Floor <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Floor"
                   value={formData.floor}
                   onChangeText={(value) => handleInputChange('floor', value)}
                 />
+                <Text style={styles.label}>Ward <Text style={{color: 'red'}}>*</Text></Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Ward"
@@ -717,5 +808,36 @@ const styles = StyleSheet.create({
   },
   selectedTypeButtonText: {
     color: '#fff',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  filterButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    marginHorizontal: 6,
+    backgroundColor: '#fff',
+  },
+  selectedFilterButton: {
+    backgroundColor: '#2E7D32',
+  },
+  filterButtonText: {
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  selectedFilterButtonText: {
+    color: '#fff',
+  },
+  modalBackButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
 });
