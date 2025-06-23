@@ -161,9 +161,16 @@ export default function UpdateOrderScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
-          {items.map((item, index) => (
-            <Text key={index} style={styles.itemText}>• {item}</Text>
-          ))}
+          {items.map((item, index) => {
+            // Try to parse name, category, and quantity if possible
+            const match = item.match(/^(.*) \((.*)\) X(\d+)$/);
+            if (match) {
+              return (
+                <Text key={index} style={styles.itemText}>• {match[1]} ({match[2]}) x{match[3]}</Text>
+              );
+            }
+            return <Text key={index} style={styles.itemText}>• {item}</Text>;
+          })}
         </View>
 
         <View style={styles.section}>
@@ -173,6 +180,11 @@ export default function UpdateOrderScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
+          {order.orderedName && (
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailText, {fontWeight: 'bold'}]}>Name: {order.orderedName}</Text>
+            </View>
+          )}
           <View style={styles.detailItem}>
             <MapPin size={20} color="#666" />
             <Text style={styles.detailText}>{order.address || 'No address provided'}</Text>

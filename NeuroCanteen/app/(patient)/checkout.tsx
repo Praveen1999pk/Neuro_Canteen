@@ -22,6 +22,7 @@ type MenuItem = {
   id: number;
   name: string;
   patientPrice: number;
+  category?: string;
 };
 
 type CartItems = {
@@ -47,6 +48,7 @@ type OrderDetails = {
 
 export default function patientOrderCheckout() {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const params = useLocalSearchParams();
   const router = useRouter();
   const [tip, setTip] = useState(0);
@@ -101,16 +103,18 @@ export default function patientOrderCheckout() {
   const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
 
   const handleAddressSubmit = () => {
+    if (!customerName.trim()) {
+      Alert.alert("Error", "Please enter your name");
+      return;
+    }
     if (!phoneNumber.trim()) {
       Alert.alert("Error", "Please enter your mobile number");
       return;
     }
-    
     if (!/^\d{10}$/.test(phoneNumber)) {
       Alert.alert("Error", "Please enter a valid 10-digit phone number");
       return;
     }
-    
     setSubmittedAddress(address);
     setIsEditing(false);
   };
@@ -190,13 +194,13 @@ export default function patientOrderCheckout() {
         key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
         currency: "INR",
-        name: "Your Company Name",
+        name: customerName,
         description: "Payment for Order",
         order_id: orderId,
         prefill: {
-          name: usernameToUse,
+          name: customerName,
           email: "user@example.com",
-          contact: "1234567890",
+          contact: phoneNumber,
         },
         notes: {
           address: submittedAddress,
@@ -241,12 +245,12 @@ export default function patientOrderCheckout() {
     }
 
     const orderDetails: OrderDetails = {
-      orderedRole: "out_patient",
-      orderedName: usernameToUse,
+      orderedRole: "Out_Patient",
+      orderedName: customerName,
       orderedUserId: usernameToUse,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -272,7 +276,7 @@ try {
           params: {
             orderHistoryRedirect: '/(patient)/order-history',
             orderedUserId: usernameToUse,
-            orderedRole: 'out_patient'
+            orderedRole: 'Out_Patient'
           }
         });
   } else {
@@ -291,12 +295,12 @@ try {
     }
 
     const orderDetails = {
-      orderedRole: "out_patient",
-      orderedName: username,
+      orderedRole: "Out_Patient",
+      orderedName: customerName,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -318,7 +322,7 @@ try {
         params: {
           orderHistoryRedirect: '/(patient)/order-history',
           orderedUserId: username,
-          orderedRole: 'out_patient'
+          orderedRole: 'Out_Patient'
         }
       });
     } catch (error) {
@@ -353,11 +357,11 @@ try {
           {Object.keys(cartItems).map(itemId => {
             const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
             if (!item) return null;
-            
             return (
               <View key={itemId} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{item.name}</Text>
-                <Text style={styles.tableCell}>{cartItems[parseInt(itemId)]}</Text>
+                <Text style={styles.tableCell}>
+                  {item.name} ({item.category}) x{cartItems[parseInt(itemId)]}
+                </Text>
                 <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
               </View>
             );
@@ -371,6 +375,9 @@ try {
           
           {submittedAddress && !isEditing ? (
             <View style={styles.addressContainer}>
+              <View style={styles.nameContainer}>
+                <Text style={styles.nameLabel}>{customerName}</Text>
+              </View>
               <View style={styles.phoneContainer}>
                 <Phone size={20} color="#666" style={styles.phoneIcon} />
                 <Text style={styles.phoneNumber}>{phoneNumber}</Text>
@@ -382,6 +389,15 @@ try {
             </View>
           ) : (
             <View style={styles.addressInputContainer}>
+              <View style={styles.nameInputContainer}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={customerName}
+                  onChangeText={setCustomerName}
+                  placeholder="Name *"
+                />
+                <Text style={styles.requiredText}>* Required</Text>
+              </View>
               <View style={styles.phoneNumberContainer}>
                 <TextInput
                   style={styles.phoneNumberInput}
@@ -392,7 +408,6 @@ try {
                 />
                 <Text style={styles.requiredText}>* Required</Text>
               </View>
-              
               <TextInput
                 style={styles.addressInput}
                 value={address}
@@ -769,5 +784,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  nameContainer: {
+    marginBottom: 16,
+  },
+  nameLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  nameInputContainer: {
+    marginBottom: 16,
+  },
+  nameInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 8,
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
 });

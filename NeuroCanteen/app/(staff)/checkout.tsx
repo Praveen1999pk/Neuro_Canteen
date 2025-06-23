@@ -22,6 +22,7 @@ type MenuItem = {
   id: number;
   name: string;
   staffPrice: number;
+  category?: string;
 };
 
 type CartItems = {
@@ -144,7 +145,7 @@ export default function StaffOrderCheckout() {
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -243,7 +244,7 @@ export default function StaffOrderCheckout() {
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -312,7 +313,7 @@ export default function StaffOrderCheckout() {
               orderedUserId: username,
               itemName: Object.keys(cartItems).map(itemId => {
                 const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-                return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+                return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
               }).join(", "),
               quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
               category: "South",
@@ -367,13 +368,23 @@ export default function StaffOrderCheckout() {
             <ShoppingCart size={20} color="#2E7D32" />
             <Text style={styles.sectionTitle}>Order Summary</Text>
           </View>
-          {Object.entries(cartItems).map(([itemId, quantity]) => {
+          <View style={styles.divider} />
+          
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderText}>Item</Text>
+            <Text style={styles.tableHeaderText}>Qty</Text>
+            <Text style={styles.tableHeaderText}>Price</Text>
+          </View>
+          
+          {Object.keys(cartItems).map(itemId => {
             const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
             if (!item) return null;
             return (
-              <View key={itemId} style={styles.orderItem}>
-                <Text style={styles.itemName}>{item.name} x{quantity}</Text>
-                <Text style={styles.itemPrice}>₹{calculateItemTotal(item, quantity)}</Text>
+              <View key={itemId} style={styles.tableRow}>
+                <Text style={styles.tableCell}>
+                  {item.name} ({item.category}) x{cartItems[parseInt(itemId)]}
+                </Text>
+                <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
               </View>
             );
           })}
@@ -697,5 +708,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     marginTop: 20,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  tableHeaderText: {
+    fontWeight: 'bold',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  tableCell: {
+    flex: 1,
   },
 });

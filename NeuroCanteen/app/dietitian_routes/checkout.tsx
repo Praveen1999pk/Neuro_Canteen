@@ -106,8 +106,7 @@ function OrderSummary() {
         <View key={orderItem.item.id} style={styles.itemContainer}>
           <Image source={{ uri: orderItem.item.picture }} style={styles.itemImage} />
           <View style={styles.itemDetails}>
-            <Text style={styles.itemName}>{orderItem.item.name}</Text>
-            <Text style={styles.itemCategory}>{orderItem.item.category}</Text>
+            <Text style={styles.itemName}>{orderItem.item.name} ({orderItem.item.category}) x{orderItem.quantity}</Text>
             <Text style={styles.itemDescription}>{orderItem.item.description}</Text>
             {orderItem.scheduledTime && (
               <Text style={styles.scheduledTime}>
@@ -117,7 +116,6 @@ function OrderSummary() {
           </View>
           <View style={styles.priceContainer}>
             <Text style={styles.itemPrice}>₹{orderItem.item.dietitianPrice}</Text>
-            <Text style={styles.itemQuantity}>x{orderItem.quantity}</Text>
           </View>
         </View>
       ))}
@@ -159,6 +157,12 @@ function DeliveryDetails() {
 
     fetchPatientDetails();
   }, []);
+
+  useEffect(() => {
+    if (patientDetails && patientDetails.name) {
+      global.selectedPatientName = patientDetails.name;
+    }
+  }, [patientDetails]);
 
   return (
     <View style={styles.section}>
@@ -231,6 +235,9 @@ function CheckoutButton() {
   const router = useRouter();
   const scaleAnim = new Animated.Value(1);
 
+  // Get the selected patient name from global (set in DeliveryDetails)
+  const orderedName = typeof global !== 'undefined' && global.selectedPatientName ? global.selectedPatientName : undefined;
+
   const handlePress = async () => {
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, easing: Easing.ease, useNativeDriver: true }),
@@ -247,8 +254,9 @@ function CheckoutButton() {
 
         const order = {
           orderedRole: 'patient',
+          orderedName: global.selectedPatientName,
           orderedUserId: id,
-          itemName: order_detailes.items.map((i: OrderItem) => i.item.name + " x" + i.quantity).join(', '),
+          itemName: order_detailes.items.map((i: OrderItem) => i.item.name + " (" + i.item.category + ") X " + i.quantity).join(', '),
           quantity: order_detailes.items.reduce((sum:any, i:any) => sum + i.quantity, 0),
           category: order_detailes.items[0]?.item.category || 'General',
           price: toPay,
@@ -408,3 +416,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+declare global {
+  var selectedPatientName: string | undefined;
+}
