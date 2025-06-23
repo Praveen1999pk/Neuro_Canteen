@@ -37,11 +37,7 @@ interface FoodItem {
 
 interface DietFilter {
   allergies: string[] | null;
-  consistencies: {
-    liquid: boolean;
-    semiSolid: boolean;
-    solid: boolean;
-  };
+  consistencies: Record<string, boolean>;
   dislikes: string[];
 }
 
@@ -85,11 +81,10 @@ export default function FoodScreen() {
 
 
 function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
-  const allowedConsistencies: Record<FoodItem["category"], boolean> = {
-    Liquid: filters.consistencies.liquid,
-    "Semi Solid": filters.consistencies.semiSolid,
-    Solid: filters.consistencies.solid
-  };
+  // Get all selected consistencies (categories) from the diet plan
+  const selectedCategories = Object.keys(filters.consistencies).filter(
+    (cat) => filters.consistencies[cat]
+  );
 
   const preferredDiets = filters.allergies?.map(d => d.toLowerCase()) || null;
   const dislikedTerms = filters.dislikes.map(term => term.toLowerCase());
@@ -101,7 +96,8 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
       if (!hasPreferredDiet) return false;
     }
 
-    if (!allowedConsistencies[item.category]) return false;
+    // Only show food items whose category is in the selected consistencies
+    if (!selectedCategories.includes(item.category)) return false;
 
     const nameLower = item.name.toLowerCase();
     const hasDislike = dislikedTerms.some(dislike => nameLower.includes(dislike));

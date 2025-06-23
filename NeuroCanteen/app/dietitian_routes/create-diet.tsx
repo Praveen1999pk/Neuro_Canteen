@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -13,15 +13,15 @@ import { useRouter } from 'expo-router';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Plus, X, Check } from 'lucide-react-native';
+import { fetchMenuItems, getUniqueCategories } from '../services/menuService';
 
 export default function CreateDietScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>();
   
-  // Diet combination states
-  const [solidSelected, setSolidSelected] = useState(false);
-  const [semiSolidSelected, setSemiSolidSelected] = useState(false);
-  const [liquidSelected, setLiquidSelected] = useState(false);
+  // Dynamic diet consistency categories
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   
   // Allergies and dislikes
   const [allergies, setAllergies] = useState<string[]>([]);
@@ -34,6 +34,20 @@ export default function CreateDietScreen() {
   const [lowSalt, setLowSalt] = useState(false);
   const [diabeticDiet, setDiabeticDiet] = useState(false);
   const [vegetarian, setVegetarian] = useState(false);
+  
+  // Fetch categories from menu
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const menuItems = await fetchMenuItems();
+        const uniqueCategories = getUniqueCategories(menuItems);
+        setCategories(uniqueCategories);
+      } catch (error) {
+        setCategories(['Solid', 'Semi Solid', 'Liquid']); // fallback
+      }
+    };
+    fetchCategories();
+  }, []);
   
   // Add allergy
   const addAllergy = () => {
@@ -67,21 +81,19 @@ export default function CreateDietScreen() {
   
   // Handle submit
   const handleSubmit = () => {
-    // Validate that at least one diet consistency is selected
-    if (!solidSelected && !semiSolidSelected && !liquidSelected) {
+    if (selectedCategories.length === 0) {
       Alert.alert(
         "Missing Information", 
         "Please select at least one diet consistency type."
       );
       return;
     }
-    
+    const consistencies: { [key: string]: boolean } = {};
+    categories.forEach(cat => {
+      consistencies[cat] = selectedCategories.includes(cat);
+    });
     const dietPlan = {
-      consistencies: {
-        solid: solidSelected,
-        semiSolid: semiSolidSelected,
-        liquid: liquidSelected
-      },
+      consistencies,
       allergies,
       dislikes,
       preferences: {
@@ -90,16 +102,10 @@ export default function CreateDietScreen() {
         vegetarian
       }
     };
-    
-    // console.log('Diet plan created:', dietPlan);
-    // router.push('/food');
     const navigateToFood = (diet: object) => {
-        navigation.navigate('food', { diet }); // pass as an object with a key
-      };
-      
-      navigateToFood(dietPlan);
-
-
+      navigation.navigate('food', { diet });
+    };
+    navigateToFood(dietPlan);
   };
   
   // Handle cancel
@@ -125,71 +131,34 @@ export default function CreateDietScreen() {
           </Text>
           
           <View style={styles.consistencyOptions}>
-            <TouchableOpacity 
-              style={[
-                styles.consistencyOption, 
-                solidSelected && styles.consistencyOptionSelected
-              ]}
-              onPress={() => setSolidSelected(!solidSelected)}
-            >
-              <View style={styles.checkboxContainer}>
-                {solidSelected ? (
-                  <View style={styles.checkboxSelected}>
-                    <Check size={16} color="#fff" />
+            {categories.map((cat, idx) => {
+              const selected = selectedCategories.includes(cat);
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.consistencyOption,
+                    selected && styles.consistencyOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedCategories(selected
+                      ? selectedCategories.filter(c => c !== cat)
+                      : [...selectedCategories, cat]);
+                  }}
+                >
+                  <View style={styles.checkboxContainer}>
+                    {selected ? (
+                      <View style={styles.checkboxSelected}>
+                        <Check size={16} color="#fff" />
+                      </View>
+                    ) : (
+                      <View style={styles.checkbox} />
+                    )}
                   </View>
-                ) : (
-                  <View style={styles.checkbox} />
-                )}
-              </View>
-              <Text style={styles.consistencyLabel}>Solid</Text>
-              <Text style={styles.consistencyDescription}>
-                Regular diet with normal food textures
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.consistencyOption, 
-                semiSolidSelected && styles.consistencyOptionSelected
-              ]}
-              onPress={() => setSemiSolidSelected(!semiSolidSelected)}
-            >
-              <View style={styles.checkboxContainer}>
-                {semiSolidSelected ? (
-                  <View style={styles.checkboxSelected}>
-                    <Check size={16} color="#fff" />
-                  </View>
-                ) : (
-                  <View style={styles.checkbox} />
-                )}
-              </View>
-              <Text style={styles.consistencyLabel}>Semi Solid</Text>
-              <Text style={styles.consistencyDescription}>
-                Soft, mashed or minced food for easier chewing
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.consistencyOption, 
-                liquidSelected && styles.consistencyOptionSelected
-              ]}
-              onPress={() => setLiquidSelected(!liquidSelected)}
-            >
-              <View style={styles.checkboxContainer}>
-                {liquidSelected ? (
-                  <View style={styles.checkboxSelected}>
-                    <Check size={16} color="#fff" />
-                  </View>
-                ) : (
-                  <View style={styles.checkbox} />
-                )}
-              </View>
-              <Text style={styles.consistencyLabel}>Liquid</Text>
-              <Text style={styles.consistencyDescription}>
-                Clear or full liquids for patients with swallowing difficulties
-              </Text>
-            </TouchableOpacity>
+                  <Text style={styles.consistencyLabel}>{cat}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
         
