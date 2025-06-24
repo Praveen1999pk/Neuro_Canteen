@@ -132,8 +132,8 @@ export default function UpdateOrderScreen() {
   const itemTotal = order.price;
   
   // Calculate grand total
-  const gstAmount = (itemTotal * GST_PERCENT) / 100;
-  const grandTotal = itemTotal + DELIVERY_FEE + PLATFORM_FEE + gstAmount;
+  // const gstAmount = (itemTotal * GST_PERCENT) / 100;
+  const grandTotal = itemTotal + DELIVERY_FEE + PLATFORM_FEE;
 
   // Determine payment status
   const paymentStatus = order.paymentType === 'UPI' ? 'COMPLETED' : (order.paymentRecived ? 'COMPLETED' : 'PENDING');

@@ -34,7 +34,7 @@ type Patient = {
   ward: string;
   patientMobileNo: string;
   attendantContact: string;
-  type: 'OPD' | 'In-Patient';
+  type: 'In-Patient';
 };
 
 export default function PatientManagement() {
@@ -61,13 +61,12 @@ export default function PatientManagement() {
     ward: '',
     patientMobileNo: '',
     attendantContact: '',
-    type: 'OPD' as 'OPD' | 'In-Patient',
+    type: 'In-Patient',
   });
   const [showAdmissionPicker, setShowAdmissionPicker] = useState(false);
   const [showDischargePicker, setShowDischargePicker] = useState(false);
   const [showAdmissionTimePicker, setShowAdmissionTimePicker] = useState(false);
   const [showDischargeTimePicker, setShowDischargeTimePicker] = useState(false);
-  const [filterType, setFilterType] = useState<'All' | 'OPD' | 'In-Patient'>('All');
 
   useEffect(() => {
     fetchPatients();
@@ -111,7 +110,7 @@ export default function PatientManagement() {
       ward: '',
       patientMobileNo: '',
       attendantContact: '',
-      type: 'OPD',
+      type: 'In-Patient',
     });
     setCurrentPatient(null);
     setIsEditMode(false);
@@ -142,7 +141,7 @@ export default function PatientManagement() {
       ward: patient.ward || '',
       patientMobileNo: patient.patientMobileNo || '',
       attendantContact: patient.attendantContact || '',
-      type: patient.type,
+      type: 'In-Patient',
     });
     setModalVisible(true);
   };
@@ -207,24 +206,19 @@ export default function PatientManagement() {
       gender: formData.gender,
       patientMobileNo: formData.patientMobileNo,
       attendantContact: formData.attendantContact,
-      type: formData.type,
+      type: 'In-Patient',
+      ipId: formData.ipId,
+      age: parseInt(formData.age) || 0,
+      primaryConsultant: formData.primaryConsultant,
+      diagnosisDescription: formData.diagnosisDescription,
+      admissionDateTime: formData.admissionDateTime || null,
+      dischargeDateTime: formData.dischargeDateTime || null,
+      patientStatus: formData.patientStatus,
+      roomNo: formData.roomNo,
+      bedNo: formData.bedNo,
+      floor: formData.floor,
+      ward: formData.ward,
     };
-    if (formData.type === 'In-Patient') {
-      patientData = {
-        ...patientData,
-        ipId: formData.ipId,
-        age: parseInt(formData.age) || 0,
-        primaryConsultant: formData.primaryConsultant,
-        diagnosisDescription: formData.diagnosisDescription,
-        admissionDateTime: formData.admissionDateTime || null,
-        dischargeDateTime: formData.dischargeDateTime || null,
-        patientStatus: formData.patientStatus,
-        roomNo: formData.roomNo,
-        bedNo: formData.bedNo,
-        floor: formData.floor,
-        ward: formData.ward,
-      };
-    }
 
     console.log('Submitting patientData:', patientData);
 
@@ -333,37 +327,11 @@ export default function PatientManagement() {
           <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
-      {/* Filter Buttons */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, filterType === 'All' && styles.selectedFilterButton]}
-          onPress={() => setFilterType('All')}
-        >
-          <Text style={[styles.filterButtonText, filterType === 'All' && styles.selectedFilterButtonText]}>All</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, filterType === 'OPD' && styles.selectedFilterButton]}
-          onPress={() => setFilterType('OPD')}
-        >
-          <Text style={[styles.filterButtonText, filterType === 'OPD' && styles.selectedFilterButtonText]}>OPD</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, filterType === 'In-Patient' && styles.selectedFilterButton]}
-          onPress={() => setFilterType('In-Patient')}
-        >
-          <Text style={[styles.filterButtonText, filterType === 'In-Patient' && styles.selectedFilterButtonText]}>In-Patient</Text>
-        </TouchableOpacity>
-      </View>
-      {/* Filtered List */}
       {isLoading ? (
         <ActivityIndicator size="large" color="#2E7D32" style={styles.loader} />
       ) : (
         <FlatList
-          data={
-            filterType === 'All'
-              ? patients
-              : patients.filter((p) => p.type === filterType)
-          }
+          data={patients}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
@@ -388,37 +356,6 @@ export default function PatientManagement() {
               {isEditMode ? 'Edit Patient' : 'Add Patient'}
             </Text>
 
-            {/* Patient Type Selection */}
-            <View style={styles.typeSelection}>
-              <Text style={styles.label}>Patient Type</Text>
-              <View style={styles.typeButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.typeButton,
-                    formData.type === 'OPD' && styles.selectedTypeButton,
-                  ]}
-                  onPress={() => handleInputChange('type', 'OPD')}
-                >
-                  <Text style={[
-                    styles.typeButtonText,
-                    formData.type === 'OPD' && styles.selectedTypeButtonText,
-                  ]}>OPD</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.typeButton,
-                    formData.type === 'In-Patient' && styles.selectedTypeButton,
-                  ]}
-                  onPress={() => handleInputChange('type', 'In-Patient')}
-                >
-                  <Text style={[
-                    styles.typeButtonText,
-                    formData.type === 'In-Patient' && styles.selectedTypeButtonText,
-                  ]}>In-Patient</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             {/* Common Fields */}
             <Text style={styles.label}>Patient Name <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
@@ -435,120 +372,149 @@ export default function PatientManagement() {
               onChangeText={(value) => handleInputChange('uhid', value)}
             />
             <Text style={styles.label}>Gender <Text style={{color: 'red'}}>*</Text></Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Gender"
-              value={formData.gender}
-              onChangeText={(value) => handleInputChange('gender', value)}
-            />
+            <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+              {['Male', 'Female', 'Others'].map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: 16,
+                  }}
+                  onPress={() => handleInputChange('gender', option)}
+                >
+                  <View style={{
+                    height: 20,
+                    width: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: '#2E7D32',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 6,
+                  }}>
+                    {formData.gender === option && (
+                      <View style={{
+                        height: 10,
+                        width: 10,
+                        borderRadius: 5,
+                        backgroundColor: '#2E7D32',
+                      }} />
+                    )}
+                  </View>
+                  <Text>{option}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <Text style={styles.label}>Contact Number <Text style={{color: 'red'}}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Contact Number"
               value={formData.patientMobileNo}
-              onChangeText={(value) => handleInputChange('patientMobileNo', value)}
+              onChangeText={(value) => handleInputChange('patientMobileNo', value.replace(/[^0-9]/g, ''))}
               keyboardType="phone-pad"
+              maxLength={15}
             />
             <Text style={styles.label}>Alternative Contact</Text>
             <TextInput
               style={styles.input}
               placeholder="Alternative Contact"
               value={formData.attendantContact}
-              onChangeText={(value) => handleInputChange('attendantContact', value)}
+              onChangeText={(value) => handleInputChange('attendantContact', value.replace(/[^0-9]/g, ''))}
               keyboardType="phone-pad"
+              maxLength={15}
             />
 
             {/* In-Patient Specific Fields */}
-            {formData.type === 'In-Patient' && (
-              <>
-                <Text style={styles.label}>In-Patient ID</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="In-Patient ID"
-                  value={formData.ipId}
-                  onChangeText={(value) => handleInputChange('ipId', value)}
-                />
-                <Text style={styles.label}>Age <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Age"
-                  value={formData.age}
-                  onChangeText={(value) => handleInputChange('age', value)}
-                  keyboardType="numeric"
-                />
-                <Text style={styles.label}>Primary Consultant <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Primary Consultant"
-                  value={formData.primaryConsultant}
-                  onChangeText={(value) => handleInputChange('primaryConsultant', value)}
-                />
-                <Text style={styles.label}>Diagnosis Description <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Diagnosis Description"
-                  value={formData.diagnosisDescription}
-                  onChangeText={(value) => handleInputChange('diagnosisDescription', value)}
-                  multiline
-                />
-                <Text style={styles.label}>Patient Status <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Patient Status"
-                  value={formData.patientStatus}
-                  onChangeText={(value) => handleInputChange('patientStatus', value)}
-                />
-                <Text style={styles.label}>Admission Date & Time <Text style={{color: 'red'}}>*</Text></Text>
-                <TouchableOpacity
-                  style={styles.input}
-                  onPress={() => setShowAdmissionPicker(true)}
-                >
-                  <Text>
-                    {formData.admissionDateTime
-                      ? `Admission: ${formData.admissionDateTime}`
-                      : 'Set Admission Date & Time'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.input}
-                  onPress={() => setShowDischargePicker(true)}
-                >
-                  <Text>
-                    {formData.dischargeDateTime
-                      ? `Discharge: ${formData.dischargeDateTime}`
-                      : 'Set Discharge Date & Time'}
-                  </Text>
-                </TouchableOpacity>
-                <Text style={styles.label}>Room No <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Room No"
-                  value={formData.roomNo}
-                  onChangeText={(value) => handleInputChange('roomNo', value)}
-                />
-                <Text style={styles.label}>Bed No <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Bed No"
-                  value={formData.bedNo}
-                  onChangeText={(value) => handleInputChange('bedNo', value)}
-                />
-                <Text style={styles.label}>Floor <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Floor"
-                  value={formData.floor}
-                  onChangeText={(value) => handleInputChange('floor', value)}
-                />
-                <Text style={styles.label}>Ward <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ward"
-                  value={formData.ward}
-                  onChangeText={(value) => handleInputChange('ward', value)}
-                />
-              </>
-            )}
+            <>
+              <Text style={styles.label}>In-Patient ID</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="In-Patient ID"
+                value={formData.ipId}
+                onChangeText={(value) => handleInputChange('ipId', value)}
+              />
+              <Text style={styles.label}>Age <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Age"
+                value={formData.age}
+                onChangeText={(value) => handleInputChange('age', value.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+              <Text style={styles.label}>Primary Consultant <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Primary Consultant"
+                value={formData.primaryConsultant}
+                onChangeText={(value) => handleInputChange('primaryConsultant', value)}
+              />
+              <Text style={styles.label}>Diagnosis Description <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Diagnosis Description"
+                value={formData.diagnosisDescription}
+                onChangeText={(value) => handleInputChange('diagnosisDescription', value)}
+                multiline
+              />
+              <Text style={styles.label}>Patient Status <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Patient Status"
+                value={formData.patientStatus}
+                onChangeText={(value) => handleInputChange('patientStatus', value)}
+              />
+              <Text style={styles.label}>Admission Date & Time <Text style={{color: 'red'}}>*</Text></Text>
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowAdmissionPicker(true)}
+              >
+                <Text>
+                  {formData.admissionDateTime
+                    ? `Admission: ${formData.admissionDateTime}`
+                    : 'Set Admission Date & Time'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowDischargePicker(true)}
+              >
+                <Text>
+                  {formData.dischargeDateTime
+                    ? `Discharge: ${formData.dischargeDateTime}`
+                    : 'Set Discharge Date & Time'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.label}>Room No <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Room No"
+                value={formData.roomNo}
+                onChangeText={(value) => handleInputChange('roomNo', value)}
+              />
+              <Text style={styles.label}>Bed No <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Bed No"
+                value={formData.bedNo}
+                onChangeText={(value) => handleInputChange('bedNo', value)}
+              />
+              <Text style={styles.label}>Floor <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Floor"
+                value={formData.floor}
+                onChangeText={(value) => handleInputChange('floor', value)}
+              />
+              <Text style={styles.label}>Ward <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ward"
+                value={formData.ward}
+                onChangeText={(value) => handleInputChange('ward', value)}
+              />
+            </>
 
             <View style={styles.buttonContainer}>
               <TouchableOpacity
@@ -579,11 +545,19 @@ export default function PatientManagement() {
           mode="date"
           onChange={(event, date) => {
             setShowAdmissionPicker(false);
-            if (date) {
-              setShowAdmissionTimePicker(true);
-              handleInputChange(
-                'admissionDateTime',
-                date.toISOString().split('T')[0]
+            try {
+              if (event.type === 'set' && date) {
+                setShowAdmissionTimePicker(true);
+                handleInputChange(
+                  'admissionDateTime',
+                  date.toISOString().split('T')[0]
+                );
+              }
+            } catch (error) {
+              console.error('Error setting admission date:', error);
+              Alert.alert(
+                'Error',
+                'There was a problem setting the admission date. Please try again.'
               );
             }
           }}
@@ -596,12 +570,27 @@ export default function PatientManagement() {
           mode="time"
           onChange={(event, date) => {
             setShowAdmissionTimePicker(false);
-            if (date) {
-              const currentDate = formData.admissionDateTime;
-              const time = date.toTimeString().split(' ')[0];
-              handleInputChange(
-                'admissionDateTime',
-                `${currentDate}T${time}`
+            try {
+              if (event.type === 'set' && date) {
+                if (!formData.admissionDateTime) {
+                  Alert.alert(
+                    'Error',
+                    'Please select a date first before setting the time.'
+                  );
+                  return;
+                }
+                const currentDate = formData.admissionDateTime;
+                const time = date.toTimeString().split(' ')[0];
+                handleInputChange(
+                  'admissionDateTime',
+                  `${currentDate}T${time}`
+                );
+              }
+            } catch (error) {
+              console.error('Error setting admission time:', error);
+              Alert.alert(
+                'Error',
+                'There was a problem setting the admission time. Please try again.'
               );
             }
           }}
@@ -614,11 +603,19 @@ export default function PatientManagement() {
           mode="date"
           onChange={(event, date) => {
             setShowDischargePicker(false);
-            if (date) {
-              setShowDischargeTimePicker(true);
-              handleInputChange(
-                'dischargeDateTime',
-                date.toISOString().split('T')[0]
+            try {
+              if (event.type === 'set' && date) {
+                setShowDischargeTimePicker(true);
+                handleInputChange(
+                  'dischargeDateTime',
+                  date.toISOString().split('T')[0]
+                );
+              }
+            } catch (error) {
+              console.error('Error setting discharge date:', error);
+              Alert.alert(
+                'Error',
+                'There was a problem setting the discharge date. Please try again.'
               );
             }
           }}
@@ -631,12 +628,27 @@ export default function PatientManagement() {
           mode="time"
           onChange={(event, date) => {
             setShowDischargeTimePicker(false);
-            if (date) {
-              const currentDate = formData.dischargeDateTime;
-              const time = date.toTimeString().split(' ')[0];
-              handleInputChange(
-                'dischargeDateTime',
-                `${currentDate}T${time}`
+            try {
+              if (event.type === 'set' && date) {
+                if (!formData.dischargeDateTime) {
+                  Alert.alert(
+                    'Error',
+                    'Please select a date first before setting the time.'
+                  );
+                  return;
+                }
+                const currentDate = formData.dischargeDateTime;
+                const time = date.toTimeString().split(' ')[0];
+                handleInputChange(
+                  'dischargeDateTime',
+                  `${currentDate}T${time}`
+                );
+              }
+            } catch (error) {
+              console.error('Error setting discharge time:', error);
+              Alert.alert(
+                'Error',
+                'There was a problem setting the discharge time. Please try again.'
               );
             }
           }}
@@ -814,33 +826,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   selectedTypeButtonText: {
-    color: '#fff',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  filterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2E7D32',
-    marginHorizontal: 6,
-    backgroundColor: '#fff',
-  },
-  selectedFilterButton: {
-    backgroundColor: '#2E7D32',
-  },
-  filterButtonText: {
-    color: '#2E7D32',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  selectedFilterButtonText: {
     color: '#fff',
   },
   modalBackButton: {

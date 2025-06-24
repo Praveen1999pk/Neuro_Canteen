@@ -133,11 +133,11 @@ export default function StaffOrderCheckout() {
   };
   
   const orderTotal = calculateOrderTotal();
-  const deliveryFee = 30;
-  const platformFee = 5;
-  const GST_PERCENT = 12;
+  const deliveryFee = 0;
+  const platformFee = 0;
+  const GST_PERCENT = 0;
   const gstAmount = (orderTotal * GST_PERCENT) / 100;
-  const grandTotal = orderTotal + deliveryFee + platformFee + gstAmount + tip;
+  const grandTotal = orderTotal + deliveryFee + platformFee +  + tip;
 
   const handleAddressSubmit = () => {
     if (!address.trim()) {

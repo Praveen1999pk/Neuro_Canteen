@@ -352,7 +352,7 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
   };
   
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 32}}>
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color="#64748b" style={styles.searchIcon} />
@@ -363,7 +363,6 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
             onChangeText={setSearchQuery}
           />
         </View>
-        
         <TouchableOpacity 
           style={styles.cartButton}
           onPress={() => setShowCart(!showCart)}
@@ -378,7 +377,6 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           )}
         </TouchableOpacity>
       </View>
-      
       {/* Filter Indicators */}
       {((diet.dietTypes && diet.dietTypes.length > 0) || (diet.dislikes && diet.dislikes.length > 0)) && (
         <View style={styles.filterIndicatorContainer}>
@@ -400,7 +398,6 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           </Text>
         </View>
       )}
-      
       <View style={styles.categoryContainer}>
         <ScrollView 
           horizontal 
@@ -421,7 +418,6 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
               All
             </Text>
           </TouchableOpacity>
-          
           {categories.map((category, index) => (
             <TouchableOpacity 
               key={index}
@@ -441,23 +437,26 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           ))}
         </ScrollView>
       </View>
-      
-      <FlatList
-        data={filteredFoodItems}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderFoodItem}
-        numColumns={2}
-        contentContainerStyle={styles.foodGrid}
-        columnWrapperStyle={styles.foodRow}
-        ListEmptyComponent={
+      <View style={styles.foodGrid}>
+        {filteredFoodItems.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <Text style={styles.emptyStateTitle}>No foods found</Text>
             <Text style={styles.emptyStateDescription}>
               No foods match your current filters. Try adjusting your diet types or categories.
             </Text>
           </View>
-        }
-      />
+        ) : (
+          filteredFoodItems.reduce((rows: any[], item, idx) => {
+            if (idx % 2 === 0) rows.push([item]);
+            else rows[rows.length - 1].push(item);
+            return rows;
+          }, []).map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.foodRow}>
+              {row.map((item: FoodItem) => renderFoodItem({ item }))}
+            </View>
+          ))
+        )}
+      </View>
       
       {showDatePicker && (
         <DateTimePicker
@@ -566,7 +565,7 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           )}
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
