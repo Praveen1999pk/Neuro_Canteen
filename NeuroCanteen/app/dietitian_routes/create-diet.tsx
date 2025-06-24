@@ -23,9 +23,9 @@ export default function CreateDietScreen() {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   
-  // Allergies and dislikes
-  const [allergies, setAllergies] = useState<string[]>([]);
-  const [allergyInput, setAllergyInput] = useState('');
+  // Diet types and dislikes
+  const [dietTypes, setDietTypes] = useState<string[]>([]);
+  const [dietTypeInput, setDietTypeInput] = useState('');
   
   const [dislikes, setDislikes] = useState<string[]>([]);
   const [dislikeInput, setDislikeInput] = useState('');
@@ -49,19 +49,25 @@ export default function CreateDietScreen() {
     fetchCategories();
   }, []);
   
-  // Add allergy
-  const addAllergy = () => {
-    if (allergyInput.trim()) {
-      setAllergies([...allergies, allergyInput.trim()]);
-      setAllergyInput('');
+  // Add diet type
+  const addDietType = () => {
+    if (dietTypeInput.trim()) {
+      const dietType = dietTypeInput.trim();
+      // Check if already exists
+      if (dietTypes.includes(dietType)) {
+        Alert.alert("Duplicate", "This diet type is already added.");
+        return;
+      }
+      setDietTypes([...dietTypes, dietType]);
+      setDietTypeInput('');
     }
   };
   
-  // Remove allergy
-  const removeAllergy = (index: number) => {
-    const updatedAllergies = [...allergies];
-    updatedAllergies.splice(index, 1);
-    setAllergies(updatedAllergies);
+  // Remove diet type
+  const removeDietType = (index: number) => {
+    const updatedDietTypes = [...dietTypes];
+    updatedDietTypes.splice(index, 1);
+    setDietTypes(updatedDietTypes);
   };
   
   // Add dislike
@@ -94,7 +100,7 @@ export default function CreateDietScreen() {
     });
     const dietPlan = {
       consistencies,
-      allergies,
+      dietTypes,
       dislikes,
       preferences: {
         lowSalt,
@@ -211,33 +217,33 @@ export default function CreateDietScreen() {
           </View>
         </View> */}
         
-        {/* Allergies Section */}
+        {/* Diet Types Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Allergies</Text>
+          <Text style={styles.sectionTitle}>Diet Types</Text>
           <Text style={styles.sectionDescription}>
-            Add food items the patient is allergic to
+            Add diet types, Only foods matching these diet types will be shown.
           </Text>
           
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Add allergy"
-              value={allergyInput}
-              onChangeText={setAllergyInput}
+              placeholder="Add diet type"
+              value={dietTypeInput}
+              onChangeText={setDietTypeInput}
             />
-            <TouchableOpacity style={styles.addButton} onPress={addAllergy}>
+            <TouchableOpacity style={styles.addButton} onPress={addDietType}>
               <Plus size={20} color="#fff" />
             </TouchableOpacity>
           </View>
           
-          {allergies.length > 0 && (
+          {dietTypes.length > 0 && (
             <View style={styles.tagsContainer}>
-              {allergies.map((allergy, index) => (
-                <View key={`allergy-${index}`} style={styles.tag}>
-                  <Text style={styles.tagText}>{allergy}</Text>
+              {dietTypes.map((dietType, index) => (
+                <View key={`dietType-${index}`} style={styles.tag}>
+                  <Text style={styles.tagText}>{dietType}</Text>
                   <TouchableOpacity 
                     style={styles.tagRemoveButton} 
-                    onPress={() => removeAllergy(index)}
+                    onPress={() => removeDietType(index)}
                   >
                     <X size={14} color="#64748b" />
                   </TouchableOpacity>
@@ -246,8 +252,8 @@ export default function CreateDietScreen() {
             </View>
           )}
           
-          {allergies.length === 0 && (
-            <Text style={styles.emptyStateText}>No allergies added</Text>
+          {dietTypes.length === 0 && (
+            <Text style={styles.emptyStateText}>No diet types added</Text>
           )}
         </View>
         
