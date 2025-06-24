@@ -17,6 +17,17 @@ export default function OrderSuccess() {
     let sound: Audio.Sound;
 
     const playSoundAndAnimate = async () => {
+      // Start animation immediately, don't wait for sound
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      console.log("Animation started");
+      
+      // Try to play sound, but don't let it block the page
       try {
         console.log("Loading and playing success sound...");
         // Load and play sound
@@ -26,18 +37,10 @@ export default function OrderSuccess() {
         sound = newSound;
         await sound.playAsync();
         console.log("Success sound played successfully");
-
-        // Animate after playing sound
-        Animated.sequence([
-          Animated.timing(animatedValue, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        console.log("Animation started");
       } catch (error) {
         console.error("Error in playSoundAndAnimate:", error);
+        // Sound failed, but page should still work
+        console.log("Sound failed to play, but animation and page are working");
       }
     };
 

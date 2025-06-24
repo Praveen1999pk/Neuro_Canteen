@@ -89,8 +89,33 @@ export default function StaffOrderCheckout() {
     fetchUserData();
   }, []);
 
-  const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
-  const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
+  const cartItems: CartItems = params.cartItems ? (() => {
+    try {
+      // Clean the cart items data to remove control characters
+      let cleanedCartItems = params.cartItems as string;
+      if (typeof cleanedCartItems === 'string') {
+        cleanedCartItems = cleanedCartItems.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      }
+      return JSON.parse(cleanedCartItems);
+    } catch (error) {
+      console.error('Error parsing cart items:', error);
+      return {};
+    }
+  })() : {};
+  
+  const menuItems: MenuItem[] = params.menuItems ? (() => {
+    try {
+      // Clean the menu items data to remove control characters
+      let cleanedMenuItems = params.menuItems as string;
+      if (typeof cleanedMenuItems === 'string') {
+        cleanedMenuItems = cleanedMenuItems.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      }
+      return JSON.parse(cleanedMenuItems);
+    } catch (error) {
+      console.error('Error parsing menu items:', error);
+      return [];
+    }
+  })() : [];
 
   const calculateItemTotal = (item: MenuItem, quantity: number) => {
     return item.staffPrice * quantity;

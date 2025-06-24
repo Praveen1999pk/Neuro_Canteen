@@ -5,8 +5,8 @@ import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide
 import axiosInstance from '../api/axiosInstance';
 
 const GST_PERCENT = 12;
-const DELIVERY_FEE = 0; // Set to actual value if available
-const PLATFORM_FEE = 0; // Set to actual value if available
+const DELIVERY_FEE = 0;
+const PLATFORM_FEE = 0;
 
 export default function UpdateOrderScreen() {
   type Order = {
@@ -40,7 +40,41 @@ export default function UpdateOrderScreen() {
     const fetchOrder = async () => {
       try {
         const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
-        const orderData: Order = response.data;
+        
+        // Validate and clean the response data
+        let orderData: Order;
+        if (typeof response.data === 'string') {
+          // If response.data is a string, try to parse it as JSON
+          try {
+            orderData = JSON.parse(response.data);
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response data:', response.data);
+            throw new Error('Invalid JSON response from server');
+          }
+        } else {
+          orderData = response.data;
+        }
+        
+        // Validate required fields
+        if (!orderData || typeof orderData !== 'object') {
+          throw new Error('Invalid order data received');
+        }
+        
+        // Clean and validate string fields
+        if (orderData.itemName && typeof orderData.itemName === 'string') {
+          orderData.itemName = orderData.itemName.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.address && typeof orderData.address === 'string') {
+          orderData.address = orderData.address.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.orderedName && typeof orderData.orderedName === 'string') {
+          orderData.orderedName = orderData.orderedName.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.phoneNo && typeof orderData.phoneNo === 'string') {
+          orderData.phoneNo = orderData.phoneNo.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        
         setOrder(orderData);
         setCurrentPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
         setPendingPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
@@ -48,6 +82,12 @@ export default function UpdateOrderScreen() {
         setPendingDeliveryStatus(orderData.deliveryStatus ?? null);
       } catch (error) {
         console.error('Error fetching order:', error);
+        // Show user-friendly error message
+        Alert.alert(
+          "Error",
+          "Failed to load order details. Please try again.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
       } finally {
         setLoading(false);
       }
@@ -125,10 +165,11 @@ export default function UpdateOrderScreen() {
   const dateObj = new Date(order.orderDateTime);
   const formattedDate = dateObj.toLocaleDateString();
   const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const totalPrice = order.price;
-
-  const gstAmount = (totalPrice * GST_PERCENT) / 100;
-  const grandTotal = totalPrice + DELIVERY_FEE + PLATFORM_FEE + gstAmount;
+  const itemTotal = order.price;
+  
+  // Calculate grand total
+  const gstAmount = (itemTotal * GST_PERCENT) / 100;
+  const grandTotal = itemTotal + DELIVERY_FEE + PLATFORM_FEE + gstAmount;
 
   return (
     <ScrollView style={styles.container}>
@@ -181,15 +222,8 @@ export default function UpdateOrderScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Charges</Text>
-          <View style={styles.chargeRow}><Text>Item Total</Text><Text>₹{totalPrice.toFixed(2)}</Text></View>
-          <View style={styles.chargeRow}><Text>Delivery Fee</Text><Text>₹{DELIVERY_FEE.toFixed(2)}</Text></View>
-          <View style={styles.chargeRow}><Text>Platform Fee</Text><Text>₹{PLATFORM_FEE.toFixed(2)}</Text></View>
-          <View style={styles.chargeRow}><Text>GST ({GST_PERCENT}%)</Text><Text>₹{gstAmount.toFixed(2)}</Text></View>
-          <View style={styles.chargeRow}>
-            <Text style={{ fontWeight: 'bold' }}>Grand Total</Text>
-            <Text style={{ fontWeight: 'bold' }}>₹{grandTotal.toFixed(2)}</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Grand Total</Text>
+          <Text style={styles.priceText}>₹{grandTotal.toFixed(2)}</Text>
         </View>
 
         <View style={styles.section}>
@@ -461,5 +495,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
     borderColor: '#E0E0E0',
   },
-  chargeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
 });

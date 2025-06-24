@@ -81,10 +81,26 @@ export default function StaffOrder() {
     try {
       const savedCart = await AsyncStorage.getItem('staff_cart');
       if (savedCart) {
-        setCartItems(JSON.parse(savedCart));
+        // Clean the saved cart data to remove control characters
+        let cleanedCart = savedCart;
+        if (typeof cleanedCart === 'string') {
+          cleanedCart = cleanedCart.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        
+        try {
+          setCartItems(JSON.parse(cleanedCart));
+        } catch (parseError) {
+          console.error('Error parsing saved cart:', parseError);
+          console.error('Cleaned cart data:', cleanedCart);
+          // If parsing fails, clear the corrupted cart
+          await AsyncStorage.removeItem('staff_cart');
+          setCartItems({});
+        }
       }
     } catch (error) {
       console.error('Error loading cart:', error);
+      // If loading fails, clear the cart
+      setCartItems({});
     }
   };
 

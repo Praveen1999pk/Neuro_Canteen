@@ -100,31 +100,42 @@ export default function DeliveryOrders() {
         const socket = new SockJS('http://170.187.200.195:8142/order-updates');
 
         socket.onmessage = (event: any) => {
-          const message = JSON.parse(event.data);
-          const newOrder = message.payload;
+          try {
+            // Clean the event data to remove control characters
+            let cleanedData = event.data;
+            if (typeof cleanedData === 'string') {
+              cleanedData = cleanedData.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+            }
+            
+            const message = JSON.parse(cleanedData);
+            const newOrder = message.payload;
 
-          if (message.type === 'ORDER_CREATED') {
-            const newNotification: Notification = {
-              id: Date.now(),
-              orderId: newOrder.orderId,
-              orderedName: newOrder.orderedName,
-              itemName: newOrder.itemName,
-              quantity: newOrder.quantity,
-            };
-            
-            setNotifications((prev) => [newNotification, ...prev]);
-            
-            // Play notification sound
-            playNotificationSound();
-            
-            // Update orders list
-            setOrders((prevOrders) => [newOrder, ...prevOrders]);
-          } else if (message.type === 'ORDER_UPDATED') {
-            setOrders((prevOrders) =>
-              prevOrders.map((order) =>
-                order.orderId === newOrder.orderId ? newOrder : order
-              )
-            );
+            if (message.type === 'ORDER_CREATED') {
+              const newNotification: Notification = {
+                id: Date.now(),
+                orderId: newOrder.orderId,
+                orderedName: newOrder.orderedName,
+                itemName: newOrder.itemName,
+                quantity: newOrder.quantity,
+              };
+              
+              setNotifications((prev) => [newNotification, ...prev]);
+              
+              // Play notification sound
+              playNotificationSound();
+              
+              // Update orders list
+              setOrders((prevOrders) => [newOrder, ...prevOrders]);
+            } else if (message.type === 'ORDER_UPDATED') {
+              setOrders((prevOrders) =>
+                prevOrders.map((order) =>
+                  order.orderId === newOrder.orderId ? newOrder : order
+                )
+              );
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+            console.error('Raw event data:', event.data);
           }
         };
 

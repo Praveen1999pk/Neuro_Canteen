@@ -110,27 +110,38 @@ export default function DeliveryOrders() {
         const socket = new SockJS('http://170.187.200.195:8142/order-updates');
 
         socket.onmessage = (event: any) => {
-          const message = JSON.parse(event.data);
-          const orderData = message.payload;
+          try {
+            // Clean the event data to remove control characters
+            let cleanedData = event.data;
+            if (typeof cleanedData === 'string') {
+              cleanedData = cleanedData.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+            }
+            
+            const message = JSON.parse(cleanedData);
+            const orderData = message.payload;
 
-          if (message.type === "ORDER_UPDATED" && orderData.orderStatus === "OUT_FOR_DELIVERY") {
-          
-            const newNotification: Notification = {
-              id: Date.now(),
-              orderId: orderData.orderId,
-              orderedName: orderData.orderedName,
-              itemName: orderData.itemName,
-              address: orderData.address,
-              phoneNo: orderData.phoneNo || "N/A",
-            };
-          
-            setNotifications((prev) => [newNotification, ...prev]);
+            if (message.type === "ORDER_UPDATED" && orderData.orderStatus === "OUT_FOR_DELIVERY") {
             
-            // Play notification sound
-            playNotificationSound();
+              const newNotification: Notification = {
+                id: Date.now(),
+                orderId: orderData.orderId,
+                orderedName: orderData.orderedName,
+                itemName: orderData.itemName,
+                address: orderData.address,
+                phoneNo: orderData.phoneNo || "N/A",
+              };
             
-            // Refresh orders
-            fetchOrders();
+              setNotifications((prev) => [newNotification, ...prev]);
+              
+              // Play notification sound
+              playNotificationSound();
+              
+              // Refresh orders
+              fetchOrders();
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+            console.error('Raw event data:', event.data);
           }
         };
 
