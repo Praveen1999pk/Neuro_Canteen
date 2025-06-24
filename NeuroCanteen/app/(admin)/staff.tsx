@@ -56,7 +56,7 @@ export default function StaffManagement() {
       setStaffList(response.data);
     } catch (error) {
       console.error('Error fetching staff:', error);
-      Alert.alert('Error', 'Failed to load staff data');
+      Alert.alert('Error', 'Failed to fetch staff data. Please try again.');
     } finally {
       setIsLoading(false);
     }

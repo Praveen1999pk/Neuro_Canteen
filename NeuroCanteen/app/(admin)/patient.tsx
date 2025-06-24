@@ -79,7 +79,7 @@ export default function PatientManagement() {
       setPatients(response.data);
     } catch (error) {
       console.error('Error fetching patients:', error);
-      Alert.alert('Error', 'Failed to load patient data');
+      Alert.alert('Error', 'Failed to fetch patient data. Please try again.');
     } finally {
       setIsLoading(false);
     }

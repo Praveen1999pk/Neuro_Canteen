@@ -143,37 +143,10 @@ const fetchMenuItems = async () => {
   setIsLoading(true);
   try {
     const response = await axiosInstance.get('/menu-items');
-    
-    const data = response.data.map((item: any) => {
-
-      let timeSlot: { [key: string]: string[] } = {};
-      if (typeof item.timeSlot === 'string') {
-        try {
-          timeSlot = JSON.parse(item.timeSlot);
-        } catch (e) {
-          console.warn('Failed to parse timeSlot string', e);
-        }
-      } else if (item.timeSlot) {
-        timeSlot = item.timeSlot;
-      }
-
-      const normalizedTimeSlot: TimeSlotType = {};
-      Object.keys(timeSlot).forEach(day => {
-        const lowercaseDay = day.toLowerCase();
-        normalizedTimeSlot[lowercaseDay] = timeSlot[day].map((slot: string) => 
-          slot.toLowerCase()
-        );
-      });
-
-      return {
-        ...item,
-        timeSlot: normalizedTimeSlot
-      };
-    });
-    setMenuItems(data);
+    setMenuItems(response.data);
   } catch (error) {
     console.error('Error fetching menu items:', error);
-    Alert.alert('Error', 'Failed to load menu data');
+    Alert.alert('Error', 'Failed to fetch menu items. Please try again.');
   } finally {
     setIsLoading(false);
   }
