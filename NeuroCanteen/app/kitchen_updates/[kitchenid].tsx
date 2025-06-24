@@ -219,11 +219,17 @@ export default function UpdateOrderScreen() {
           <Text style={styles.sectionTitle}>Update Status</Text>
           <View style={styles.buttonGroup}>
             {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => {
-              const isDisabled = 
-                (status === 'RECEIVED' && order.orderStatus !== null) ||
-                (status === 'PREPARED' && (!order.orderStatus || order.orderStatus === 'OUT_FOR_DELIVERY')) ||
-                (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
-
+              let isDisabled = false;
+              if (status === 'RECEIVED') {
+                // Only allow confirming if not already confirmed
+                isDisabled = order.orderStatus !== null;
+              } else if (status === 'PREPARED') {
+                // Allow 'Prepared' if order is confirmed and not already prepared or sent for delivery
+                isDisabled = !(order.orderStatus === 'RECEIVED');
+              } else if (status === 'OUT_FOR_DELIVERY') {
+                // Allow 'Send for Delivery' if order is confirmed or prepared, and not already sent for delivery
+                isDisabled = !(order.orderStatus === 'RECEIVED' || order.orderStatus === 'PREPARED');
+              }
               return (
                 <TouchableOpacity
                   key={status}
@@ -251,7 +257,7 @@ export default function UpdateOrderScreen() {
           {order.orderStatus === 'OUT_FOR_DELIVERY' && (
             <Text style={styles.disabledText}>Order has been sent for delivery. Status cannot be changed.</Text>
           )}
-          {order.orderStatus !== null && (
+          {order.orderStatus !== null && order.orderStatus !== 'OUT_FOR_DELIVERY' && (
             <Text style={styles.disabledText}>Order has been confirmed. Status cannot be changed back.</Text>
           )}
         </View>

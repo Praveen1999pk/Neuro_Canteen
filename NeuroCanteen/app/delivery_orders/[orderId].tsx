@@ -260,19 +260,19 @@ export default function UpdateOrderScreen() {
                 style={[
                   styles.button, 
                   pendingPaymentStatus === status && styles.activeButton,
-                  (order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED') && styles.disabledButton
+                  ((order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED' || !currentDeliveryStatus) && styles.disabledButton)
                 ]}
                 onPress={() => {
-                  if (order?.paymentType !== 'CREDIT' && currentPaymentStatus !== 'COMPLETED') {
+                  if (order?.paymentType !== 'CREDIT' && currentPaymentStatus !== 'COMPLETED' && currentDeliveryStatus) {
                     setPendingPaymentStatus(status);
                   }
                 }}
-                disabled={order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED'}
+                disabled={order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED' || !currentDeliveryStatus}
               >
                 <Text style={[
                   styles.buttonText, 
                   pendingPaymentStatus === status && styles.activeButtonText,
-                  (order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED') && styles.disabledButtonText
+                  ((order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED' || !currentDeliveryStatus) && styles.disabledButtonText)
                 ]}>
                   {status}
                 </Text>
@@ -289,10 +289,15 @@ export default function UpdateOrderScreen() {
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
             {['OrderReceived', 'OutForDelivery', 'Delivered', 'Cancelled'].map((status) => {
-              const isDisabled = 
-                currentDeliveryStatus === 'Delivered' || 
-                (status === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT');
-
+              let isDisabled = false;
+              // Only enable 'Confirm Delivery' if in waiting state; disable all others
+              if (!currentDeliveryStatus) {
+                isDisabled = status !== 'OrderReceived';
+              } else {
+                isDisabled = 
+                  currentDeliveryStatus === 'Delivered' || 
+                  (status === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT');
+              }
               return (
                 <TouchableOpacity
                   key={status}
