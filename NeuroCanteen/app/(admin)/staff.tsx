@@ -121,6 +121,15 @@ export default function StaffManagement() {
       return;
     }
 
+    if (!formData.mobileNumber) {
+      Alert.alert('Error', 'Mobile Number is required');
+      return;
+    }
+    if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      Alert.alert('Error', 'Mobile Number must be exactly 10 digits');
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && currentStaff) {

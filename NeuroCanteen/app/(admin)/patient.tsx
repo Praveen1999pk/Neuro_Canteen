@@ -164,6 +164,14 @@ export default function PatientManagement() {
       Alert.alert('Error', 'Contact Number is required');
       return;
     }
+    if (!/^\d{10}$/.test(formData.patientMobileNo)) {
+      Alert.alert('Error', 'Contact Number must be exactly 10 digits');
+      return;
+    }
+    if (formData.attendantContact && !/^\d{10}$/.test(formData.attendantContact)) {
+      Alert.alert('Error', 'Alternative Contact must be exactly 10 digits');
+      return;
+    }
     if (formData.type === 'In-Patient') {
       if (!formData.primaryConsultant) {
         Alert.alert('Error', 'Primary Consultant is required');
