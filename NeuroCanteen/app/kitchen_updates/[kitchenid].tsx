@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
+import { triggerDeliveryNotification } from '@/services/notifications'
+
+const GST_PERCENT = 12;
+const DELIVERY_FEE = 0;
+const PLATFORM_FEE = 0;
 
 export default function UpdateOrderScreen() {
   type Order = {
@@ -34,11 +39,51 @@ export default function UpdateOrderScreen() {
     const fetchOrder = async () => {
       try {
         const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
-        const orderData: Order = response.data;
+        
+        // Validate and clean the response data
+        let orderData: Order;
+        if (typeof response.data === 'string') {
+          // If response.data is a string, try to parse it as JSON
+          try {
+            orderData = JSON.parse(response.data);
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response data:', response.data);
+            throw new Error('Invalid JSON response from server');
+          }
+        } else {
+          orderData = response.data;
+        }
+        
+        // Validate required fields
+        if (!orderData || typeof orderData !== 'object') {
+          throw new Error('Invalid order data received');
+        }
+        
+        // Clean and validate string fields
+        if (orderData.itemName && typeof orderData.itemName === 'string') {
+          orderData.itemName = orderData.itemName.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.address && typeof orderData.address === 'string') {
+          orderData.address = orderData.address.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.orderedName && typeof orderData.orderedName === 'string') {
+          orderData.orderedName = orderData.orderedName.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.phoneNo && typeof orderData.phoneNo === 'string') {
+          orderData.phoneNo = orderData.phoneNo.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        
         setOrder(orderData);
         setDeliveryStatus(orderData.orderStatus ?? '');
       } catch (error) {
         console.error('Error fetching order:', error);
+        // Show user-friendly error message
+        Alert.alert(
+          "Error",
+          "Failed to load order details. Please try again.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
       } finally {
         setLoading(false);
       }
@@ -52,7 +97,14 @@ export default function UpdateOrderScreen() {
       await axiosInstance.patch(`orders/${kitchenid}/status`, null, {
         params: { orderStatus: deliveryStatus },
       });
-
+      //for notification
+      if (deliveryStatus === 'OUT_FOR_DELIVERY' && order) {
+        await triggerDeliveryNotification({
+          orderId: order.orderId,
+          itemName: order.itemName,
+          address: order.address
+        });
+      }
       // Fetch the updated order to ensure we have the latest data
       const response = await axiosInstance.get(`/orders/${kitchenid}`, { timeout: 8000 });
       const updatedOrder = response.data;
@@ -77,7 +129,11 @@ export default function UpdateOrderScreen() {
   const dateObj = new Date(order.orderDateTime);
   const formattedDate = dateObj.toLocaleDateString();
   const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const totalPrice = order.price;
+  const itemTotal = order.price;
+  
+  // Calculate grand total
+  // const gstAmount = (itemTotal * GST_PERCENT) / 100;
+  const grandTotal = itemTotal + DELIVERY_FEE + PLATFORM_FEE;
 
   // Determine payment status
   const paymentStatus = order.paymentType === 'UPI' ? 'COMPLETED' : (order.paymentRecived ? 'COMPLETED' : 'PENDING');
@@ -119,18 +175,30 @@ export default function UpdateOrderScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
-          {items.map((item, index) => (
-            <Text key={index} style={styles.itemText}>• {item}</Text>
-          ))}
+          {items.map((item, index) => {
+            // Try to parse name, category, and quantity if possible
+            const match = item.match(/^(.*) \((.*)\) X(\d+)$/);
+            if (match) {
+              return (
+                <Text key={index} style={styles.itemText}>• {match[1]} ({match[2]}) x{match[3]}</Text>
+              );
+            }
+            return <Text key={index} style={styles.itemText}>• {item}</Text>;
+          })}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Total Price</Text>
-          <Text style={styles.priceText}>₹{totalPrice.toFixed(2)}</Text>
+          <Text style={styles.sectionTitle}>Grand Total</Text>
+          <Text style={styles.priceText}>₹{grandTotal.toFixed(2)}</Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
+          {order.orderedName && (
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailText, {fontWeight: 'bold'}]}>Name: {order.orderedName}</Text>
+            </View>
+          )}
           <View style={styles.detailItem}>
             <MapPin size={20} color="#666" />
             <Text style={styles.detailText}>{order.address || 'No address provided'}</Text>
@@ -151,11 +219,17 @@ export default function UpdateOrderScreen() {
           <Text style={styles.sectionTitle}>Update Status</Text>
           <View style={styles.buttonGroup}>
             {['RECEIVED', 'PREPARED', 'OUT_FOR_DELIVERY'].map((status) => {
-              const isDisabled = 
-                (status === 'RECEIVED' && order.orderStatus !== null) ||
-                (status === 'PREPARED' && (!order.orderStatus || order.orderStatus === 'OUT_FOR_DELIVERY')) ||
-                (status === 'OUT_FOR_DELIVERY' && order.orderStatus !== 'PREPARED');
-
+              let isDisabled = false;
+              if (status === 'RECEIVED') {
+                // Only allow confirming if not already confirmed
+                isDisabled = order.orderStatus !== null;
+              } else if (status === 'PREPARED') {
+                // Allow 'Prepared' if order is confirmed and not already prepared or sent for delivery
+                isDisabled = !(order.orderStatus === 'RECEIVED');
+              } else if (status === 'OUT_FOR_DELIVERY') {
+                // Allow 'Send for Delivery' if order is confirmed or prepared, and not already sent for delivery
+                isDisabled = !(order.orderStatus === 'RECEIVED' || order.orderStatus === 'PREPARED');
+              }
               return (
                 <TouchableOpacity
                   key={status}
@@ -183,7 +257,7 @@ export default function UpdateOrderScreen() {
           {order.orderStatus === 'OUT_FOR_DELIVERY' && (
             <Text style={styles.disabledText}>Order has been sent for delivery. Status cannot be changed.</Text>
           )}
-          {order.orderStatus !== null && (
+          {order.orderStatus !== null && order.orderStatus !== 'OUT_FOR_DELIVERY' && (
             <Text style={styles.disabledText}>Order has been confirmed. Status cannot be changed back.</Text>
           )}
         </View>

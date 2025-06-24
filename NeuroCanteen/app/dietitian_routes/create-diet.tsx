@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,25 +7,28 @@ import {
   ScrollView, 
   TextInput,
   Switch,
-  Alert
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Plus, X, Check } from 'lucide-react-native';
+import { fetchMenuItems, getUniqueCategories } from '../services/menuService';
 
 export default function CreateDietScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>();
   
-  // Diet combination states
-  const [solidSelected, setSolidSelected] = useState(false);
-  const [semiSolidSelected, setSemiSolidSelected] = useState(false);
-  const [liquidSelected, setLiquidSelected] = useState(false);
+  // Dynamic diet consistency categories
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   
-  // Allergies and dislikes
-  const [allergies, setAllergies] = useState<string[]>([]);
-  const [allergyInput, setAllergyInput] = useState('');
+  // Diet types and dislikes
+  const [dietTypes, setDietTypes] = useState<string[]>([]);
+  const [dietTypeInput, setDietTypeInput] = useState('');
   
   const [dislikes, setDislikes] = useState<string[]>([]);
   const [dislikeInput, setDislikeInput] = useState('');
@@ -35,19 +38,63 @@ export default function CreateDietScreen() {
   const [diabeticDiet, setDiabeticDiet] = useState(false);
   const [vegetarian, setVegetarian] = useState(false);
   
-  // Add allergy
-  const addAllergy = () => {
-    if (allergyInput.trim()) {
-      setAllergies([...allergies, allergyInput.trim()]);
-      setAllergyInput('');
+  // Keyboard state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  
+  // Fetch categories from menu
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const menuItems = await fetchMenuItems();
+        const uniqueCategories = getUniqueCategories(menuItems);
+        setCategories(uniqueCategories);
+      } catch (error) {
+        setCategories(['Solid', 'Semi Solid', 'Liquid']); // fallback
+      }
+    };
+    fetchCategories();
+  }, []);
+  
+  // Keyboard event listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
+  }, []);
+  
+  // Add diet type
+  const addDietType = () => {
+    if (dietTypeInput.trim()) {
+      const dietType = dietTypeInput.trim();
+      // Check if already exists
+      if (dietTypes.includes(dietType)) {
+        Alert.alert("Duplicate", "This diet type is already added.");
+        return;
+      }
+      setDietTypes([...dietTypes, dietType]);
+      setDietTypeInput('');
     }
   };
   
-  // Remove allergy
-  const removeAllergy = (index: number) => {
-    const updatedAllergies = [...allergies];
-    updatedAllergies.splice(index, 1);
-    setAllergies(updatedAllergies);
+  // Remove diet type
+  const removeDietType = (index: number) => {
+    const updatedDietTypes = [...dietTypes];
+    updatedDietTypes.splice(index, 1);
+    setDietTypes(updatedDietTypes);
   };
   
   // Add dislike
@@ -67,22 +114,20 @@ export default function CreateDietScreen() {
   
   // Handle submit
   const handleSubmit = () => {
-    // Validate that at least one diet consistency is selected
-    if (!solidSelected && !semiSolidSelected && !liquidSelected) {
+    if (selectedCategories.length === 0) {
       Alert.alert(
         "Missing Information", 
         "Please select at least one diet consistency type."
       );
       return;
     }
-    
+    const consistencies: { [key: string]: boolean } = {};
+    categories.forEach(cat => {
+      consistencies[cat] = selectedCategories.includes(cat);
+    });
     const dietPlan = {
-      consistencies: {
-        solid: solidSelected,
-        semiSolid: semiSolidSelected,
-        liquid: liquidSelected
-      },
-      allergies,
+      consistencies,
+      dietTypes,
       dislikes,
       preferences: {
         lowSalt,
@@ -90,25 +135,28 @@ export default function CreateDietScreen() {
         vegetarian
       }
     };
-    
-    // console.log('Diet plan created:', dietPlan);
-    // router.push('/food');
     const navigateToFood = (diet: object) => {
-        navigation.navigate('food', { diet }); // pass as an object with a key
-      };
-      
-      navigateToFood(dietPlan);
-
-
+      navigation.navigate('food', { diet });
+    };
+    navigateToFood(dietPlan);
   };
   
   // Handle cancel
   const handleCancel = () => {
     router.back();
   };
+  
+  // Dismiss keyboard
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Create Patient Diet</Text>
@@ -125,71 +173,34 @@ export default function CreateDietScreen() {
           </Text>
           
           <View style={styles.consistencyOptions}>
-            <TouchableOpacity 
-              style={[
-                styles.consistencyOption, 
-                solidSelected && styles.consistencyOptionSelected
-              ]}
-              onPress={() => setSolidSelected(!solidSelected)}
-            >
-              <View style={styles.checkboxContainer}>
-                {solidSelected ? (
-                  <View style={styles.checkboxSelected}>
-                    <Check size={16} color="#fff" />
+            {categories.map((cat, idx) => {
+              const selected = selectedCategories.includes(cat);
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.consistencyOption,
+                    selected && styles.consistencyOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedCategories(selected
+                      ? selectedCategories.filter(c => c !== cat)
+                      : [...selectedCategories, cat]);
+                  }}
+                >
+                  <View style={styles.checkboxContainer}>
+                    {selected ? (
+                      <View style={styles.checkboxSelected}>
+                        <Check size={16} color="#fff" />
+                      </View>
+                    ) : (
+                      <View style={styles.checkbox} />
+                    )}
                   </View>
-                ) : (
-                  <View style={styles.checkbox} />
-                )}
-              </View>
-              <Text style={styles.consistencyLabel}>Solid</Text>
-              <Text style={styles.consistencyDescription}>
-                Regular diet with normal food textures
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.consistencyOption, 
-                semiSolidSelected && styles.consistencyOptionSelected
-              ]}
-              onPress={() => setSemiSolidSelected(!semiSolidSelected)}
-            >
-              <View style={styles.checkboxContainer}>
-                {semiSolidSelected ? (
-                  <View style={styles.checkboxSelected}>
-                    <Check size={16} color="#fff" />
-                  </View>
-                ) : (
-                  <View style={styles.checkbox} />
-                )}
-              </View>
-              <Text style={styles.consistencyLabel}>Semi Solid</Text>
-              <Text style={styles.consistencyDescription}>
-                Soft, mashed or minced food for easier chewing
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.consistencyOption, 
-                liquidSelected && styles.consistencyOptionSelected
-              ]}
-              onPress={() => setLiquidSelected(!liquidSelected)}
-            >
-              <View style={styles.checkboxContainer}>
-                {liquidSelected ? (
-                  <View style={styles.checkboxSelected}>
-                    <Check size={16} color="#fff" />
-                  </View>
-                ) : (
-                  <View style={styles.checkbox} />
-                )}
-              </View>
-              <Text style={styles.consistencyLabel}>Liquid</Text>
-              <Text style={styles.consistencyDescription}>
-                Clear or full liquids for patients with swallowing difficulties
-              </Text>
-            </TouchableOpacity>
+                  <Text style={styles.consistencyLabel}>{cat}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
         
@@ -242,33 +253,35 @@ export default function CreateDietScreen() {
           </View>
         </View> */}
         
-        {/* Allergies Section */}
+        {/* Diet Types Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Allergies</Text>
+          <Text style={styles.sectionTitle}>Diet Types</Text>
           <Text style={styles.sectionDescription}>
-            Add food items the patient is allergic to
+            Add diet types, Only foods matching these diet types will be shown.
           </Text>
           
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Add allergy"
-              value={allergyInput}
-              onChangeText={setAllergyInput}
+              placeholder="Add diet type "
+              value={dietTypeInput}
+              onChangeText={setDietTypeInput}
+              returnKeyType="done"
+              onSubmitEditing={addDietType}
             />
-            <TouchableOpacity style={styles.addButton} onPress={addAllergy}>
+            <TouchableOpacity style={styles.addButton} onPress={addDietType}>
               <Plus size={20} color="#fff" />
             </TouchableOpacity>
           </View>
           
-          {allergies.length > 0 && (
+          {dietTypes.length > 0 && (
             <View style={styles.tagsContainer}>
-              {allergies.map((allergy, index) => (
-                <View key={`allergy-${index}`} style={styles.tag}>
-                  <Text style={styles.tagText}>{allergy}</Text>
+              {dietTypes.map((dietType, index) => (
+                <View key={`dietType-${index}`} style={styles.tag}>
+                  <Text style={styles.tagText}>{dietType}</Text>
                   <TouchableOpacity 
                     style={styles.tagRemoveButton} 
-                    onPress={() => removeAllergy(index)}
+                    onPress={() => removeDietType(index)}
                   >
                     <X size={14} color="#64748b" />
                   </TouchableOpacity>
@@ -277,8 +290,8 @@ export default function CreateDietScreen() {
             </View>
           )}
           
-          {allergies.length === 0 && (
-            <Text style={styles.emptyStateText}>No allergies added</Text>
+          {dietTypes.length === 0 && (
+            <Text style={styles.emptyStateText}>No diet types added</Text>
           )}
         </View>
         
@@ -295,6 +308,8 @@ export default function CreateDietScreen() {
               placeholder="Add dislike"
               value={dislikeInput}
               onChangeText={setDislikeInput}
+              returnKeyType="done"
+              onSubmitEditing={addDislike}
             />
             <TouchableOpacity style={styles.addButton} onPress={addDislike}>
               <Plus size={20} color="#fff" />
@@ -322,25 +337,47 @@ export default function CreateDietScreen() {
           )}
         </View>
         
-        <View style={styles.spacer} />
+        <View style={[styles.spacer, { height: keyboardVisible ? 80 : 120 }]} />
       </ScrollView>
       
-      <View style={styles.actionContainer}>
-        <TouchableOpacity 
-          style={styles.submitButton}
-          onPress={handleSubmit}
-        >
-          <Text style={styles.submitButtonText}>Continue to Food Selection</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.cancelButton}
-          onPress={handleCancel}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      {!keyboardVisible && (
+        <View style={styles.actionContainer}>
+          <TouchableOpacity 
+            style={styles.submitButton}
+            onPress={handleSubmit}
+          >
+            <Text style={styles.submitButtonText}>Continue to Food Selection</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={handleCancel}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      {keyboardVisible && (
+        <View style={styles.floatingActionContainer}>
+          <View style={styles.floatingButtonRow}>
+            <TouchableOpacity 
+              style={styles.doneButton}
+              onPress={dismissKeyboard}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.floatingSubmitButton}
+              onPress={handleSubmit}
+            >
+              <Text style={styles.submitButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -558,5 +595,39 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 16,
     fontWeight: '500',
+  },
+  floatingActionContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  floatingButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  doneButton: {
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneButtonText: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  floatingSubmitButton: {
+    backgroundColor: '#166534',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

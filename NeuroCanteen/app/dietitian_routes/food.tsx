@@ -36,12 +36,8 @@ interface FoodItem {
 }
 
 interface DietFilter {
-  allergies: string[] | null;
-  consistencies: {
-    liquid: boolean;
-    semiSolid: boolean;
-    solid: boolean;
-  };
+  dietTypes: string[] | null;
+  consistencies: Record<string, boolean>;
   dislikes: string[];
 }
 
@@ -85,27 +81,59 @@ export default function FoodScreen() {
 
 
 function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
-  const allowedConsistencies: Record<FoodItem["category"], boolean> = {
-    Liquid: filters.consistencies.liquid,
-    "Semi Solid": filters.consistencies.semiSolid,
-    Solid: filters.consistencies.solid
-  };
+  // Get all selected consistencies (categories) from the diet plan
+  const selectedCategories = Object.keys(filters.consistencies).filter(
+    (cat) => filters.consistencies[cat]
+  );
 
-  const preferredDiets = filters.allergies?.map(d => d.toLowerCase()) || null;
+  const dietTypes = filters.dietTypes?.map(d => d.toLowerCase()) || [];
   const dislikedTerms = filters.dislikes.map(term => term.toLowerCase());
 
+  console.log('Filtering with:', {
+    selectedCategories,
+    dietTypes,
+    dislikedTerms,
+    totalItems: data.length
+  });
+
   return data.filter(item => {
-    if (preferredDiets && preferredDiets.length > 0) {
-      const itemDiets = (item.diet_type || "").toLowerCase().split(',').map(d => d.trim());
-      const hasPreferredDiet = preferredDiets.some(d => itemDiets.includes(d));
-      if (!hasPreferredDiet) return false;
+    // Only show food items whose category is in the selected consistencies
+    if (!selectedCategories.includes(item.category)) {
+      console.log(`Filtered out ${item.name} - category ${item.category} not in selected categories`);
+      return false;
     }
 
-    if (!allowedConsistencies[item.category]) return false;
+    // If diet types are specified, only show foods that have diet types matching the requirements
+    if (dietTypes.length > 0) {
+      const itemDiets = (item.diet_type || "").toLowerCase().split(',').map(d => d.trim());
+      const hasMatchingDiet = dietTypes.some(dietType => 
+        itemDiets.some(diet => {
+          // Check for exact match or partial match
+          return diet === dietType || 
+                 diet.includes(dietType) || 
+                 dietType.includes(diet) ||
+                 // Handle common variations
+                 (dietType === 'ckd' && (diet.includes('kidney') || diet.includes('renal'))) ||
+                 (dietType === 'diabetic' && (diet.includes('diabetes') || diet.includes('sugar'))) ||
+                 (dietType === 'low-salt' && (diet.includes('salt') || diet.includes('sodium')));
+        })
+      );
+      
+      if (!hasMatchingDiet) {
+        console.log(`Filtered out ${item.name} - diet types [${itemDiets}] don't match required [${dietTypes}]`);
+        return false;
+      }
+      
+      console.log(`Included ${item.name} - diet types [${itemDiets}] match required [${dietTypes}]`);
+    }
 
+    // Filter out disliked items
     const nameLower = item.name.toLowerCase();
     const hasDislike = dislikedTerms.some(dislike => nameLower.includes(dislike));
-    if (hasDislike) return false;
+    if (hasDislike) {
+      console.log(`Filtered out ${item.name} - contains disliked term`);
+      return false;
+    }
 
     return true;
   });
@@ -324,7 +352,7 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
   };
   
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 32}}>
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color="#64748b" style={styles.searchIcon} />
@@ -335,7 +363,6 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
             onChangeText={setSearchQuery}
           />
         </View>
-        
         <TouchableOpacity 
           style={styles.cartButton}
           onPress={() => setShowCart(!showCart)}
@@ -350,7 +377,27 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           )}
         </TouchableOpacity>
       </View>
-      
+      {/* Filter Indicators */}
+      {((diet.dietTypes && diet.dietTypes.length > 0) || (diet.dislikes && diet.dislikes.length > 0)) && (
+        <View style={styles.filterIndicatorContainer}>
+          <Text style={styles.filterIndicatorTitle}>Active Filters:</Text>
+          <View style={styles.filterTagsContainer}>
+            {diet.dietTypes?.map((dietType, index) => (
+              <View key={`diet-${index}`} style={styles.filterTag}>
+                <Text style={styles.filterTagText}>Diet: {dietType}</Text>
+              </View>
+            ))}
+            {diet.dislikes?.map((dislike, index) => (
+              <View key={`dislike-${index}`} style={styles.dislikeFilterTag}>
+                <Text style={styles.filterTagText}>Exclude: {dislike}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.filterSummary}>
+            Showing {filteredFoodItems.length} of {foodData.length} foods
+          </Text>
+        </View>
+      )}
       <View style={styles.categoryContainer}>
         <ScrollView 
           horizontal 
@@ -371,7 +418,6 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
               All
             </Text>
           </TouchableOpacity>
-          
           {categories.map((category, index) => (
             <TouchableOpacity 
               key={index}
@@ -391,15 +437,26 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           ))}
         </ScrollView>
       </View>
-      
-      <FlatList
-        data={filteredFoodItems}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderFoodItem}
-        numColumns={2}
-        contentContainerStyle={styles.foodGrid}
-        columnWrapperStyle={styles.foodRow}
-      />
+      <View style={styles.foodGrid}>
+        {filteredFoodItems.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.emptyStateTitle}>No foods found</Text>
+            <Text style={styles.emptyStateDescription}>
+              No foods match your current filters. Try adjusting your diet types or categories.
+            </Text>
+          </View>
+        ) : (
+          filteredFoodItems.reduce((rows: any[], item, idx) => {
+            if (idx % 2 === 0) rows.push([item]);
+            else rows[rows.length - 1].push(item);
+            return rows;
+          }, []).map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.foodRow}>
+              {row.map((item: FoodItem) => renderFoodItem({ item }))}
+            </View>
+          ))
+        )}
+      </View>
       
       {showDatePicker && (
         <DateTimePicker
@@ -508,7 +565,7 @@ function filterFoodItems(data: FoodItem[], filters: DietFilter): FoodItem[] {
           )}
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -865,5 +922,61 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 14,
     fontWeight: '500',
+  },
+  filterIndicatorContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  filterIndicatorTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+  filterTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  filterTag: {
+    padding: 4,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  filterTagText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#166534',
+  },
+  dislikeFilterTag: {
+    padding: 4,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  filterSummary: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 8,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#64748b',
+    marginBottom: 16,
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    color: '#64748b',
   },
 });

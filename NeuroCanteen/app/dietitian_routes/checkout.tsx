@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Image, Animated, Easing } from 'react-native';
-import { Check, CreditCard as Edit2 } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput, TouchableOpacity, Image, Animated, Easing, Alert } from 'react-native';
+import { Check, CreditCard as Edit2, Edit3, MapPin } from 'lucide-react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 // Types
@@ -105,8 +106,7 @@ function OrderSummary() {
         <View key={orderItem.item.id} style={styles.itemContainer}>
           <Image source={{ uri: orderItem.item.picture }} style={styles.itemImage} />
           <View style={styles.itemDetails}>
-            <Text style={styles.itemName}>{orderItem.item.name}</Text>
-            <Text style={styles.itemCategory}>{orderItem.item.category}</Text>
+            <Text style={styles.itemName}>{orderItem.item.name} ({orderItem.item.category}) x{orderItem.quantity}</Text>
             <Text style={styles.itemDescription}>{orderItem.item.description}</Text>
             {orderItem.scheduledTime && (
               <Text style={styles.scheduledTime}>
@@ -116,7 +116,6 @@ function OrderSummary() {
           </View>
           <View style={styles.priceContainer}>
             <Text style={styles.itemPrice}>₹{orderItem.item.dietitianPrice}</Text>
-            <Text style={styles.itemQuantity}>x{orderItem.quantity}</Text>
           </View>
         </View>
       ))}
@@ -158,6 +157,12 @@ function DeliveryDetails() {
 
     fetchPatientDetails();
   }, []);
+
+  useEffect(() => {
+    if (patientDetails && patientDetails.name) {
+      global.selectedPatientName = patientDetails.name;
+    }
+  }, [patientDetails]);
 
   return (
     <View style={styles.section}>
@@ -227,8 +232,11 @@ function CheckoutButton() {
   const [isLoading, setIsLoading] = useState(false);
   const route = useRoute();
   const { order_detailes } = route.params as { order_detailes: any };
-  const navigation = useNavigation<any>();
+  const router = useRouter();
   const scaleAnim = new Animated.Value(1);
+
+  // Get the selected patient name from global (set in DeliveryDetails)
+  const orderedName = typeof global !== 'undefined' && global.selectedPatientName ? global.selectedPatientName : undefined;
 
   const handlePress = async () => {
     Animated.sequence([
@@ -246,8 +254,9 @@ function CheckoutButton() {
 
         const order = {
           orderedRole: 'patient',
+          orderedName: global.selectedPatientName,
           orderedUserId: id,
-          itemName: order_detailes.items.map((i: OrderItem) => i.item.name + " x" + i.quantity).join(', '),
+          itemName: order_detailes.items.map((i: OrderItem) => i.item.name + " (" + i.item.category + ") X " + i.quantity).join(', '),
           quantity: order_detailes.items.reduce((sum:any, i:any) => sum + i.quantity, 0),
           category: order_detailes.items[0]?.item.category || 'General',
           price: toPay,
@@ -270,7 +279,7 @@ function CheckoutButton() {
 
         if (response.status === 200 || response.status === 201) {
           console.log()
-          navigation.navigate('order-success', { status: true });
+          router.replace('/dietitian_routes/order-success');
         }
       } catch (err) {
         console.log('Error submitting order:', err);
@@ -407,3 +416,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+declare global {
+  var selectedPatientName: string | undefined;
+}

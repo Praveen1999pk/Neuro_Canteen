@@ -22,6 +22,7 @@ type MenuItem = {
   id: number;
   name: string;
   staffPrice: number;
+  category?: string;
 };
 
 type CartItems = {
@@ -88,8 +89,33 @@ export default function StaffOrderCheckout() {
     fetchUserData();
   }, []);
 
-  const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
-  const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
+  const cartItems: CartItems = params.cartItems ? (() => {
+    try {
+      // Clean the cart items data to remove control characters
+      let cleanedCartItems = params.cartItems as string;
+      if (typeof cleanedCartItems === 'string') {
+        cleanedCartItems = cleanedCartItems.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      }
+      return JSON.parse(cleanedCartItems);
+    } catch (error) {
+      console.error('Error parsing cart items:', error);
+      return {};
+    }
+  })() : {};
+  
+  const menuItems: MenuItem[] = params.menuItems ? (() => {
+    try {
+      // Clean the menu items data to remove control characters
+      let cleanedMenuItems = params.menuItems as string;
+      if (typeof cleanedMenuItems === 'string') {
+        cleanedMenuItems = cleanedMenuItems.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      }
+      return JSON.parse(cleanedMenuItems);
+    } catch (error) {
+      console.error('Error parsing menu items:', error);
+      return [];
+    }
+  })() : [];
 
   const calculateItemTotal = (item: MenuItem, quantity: number) => {
     return item.staffPrice * quantity;
@@ -109,8 +135,9 @@ export default function StaffOrderCheckout() {
   const orderTotal = calculateOrderTotal();
   const deliveryFee = 0;
   const platformFee = 0;
-  const gstAndCharges = 0;
-  const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
+  const GST_PERCENT = 0;
+  const gstAmount = (orderTotal * GST_PERCENT) / 100;
+  const grandTotal = orderTotal + deliveryFee + platformFee +  + tip;
 
   const handleAddressSubmit = () => {
     if (!address.trim()) {
@@ -118,12 +145,13 @@ export default function StaffOrderCheckout() {
       return;
     }
     
-    setSubmittedAddress(address);
+    setSubmittedAddress(address.trim());
     setIsEditing(false);
+    console.log("Address submitted:", address.trim());
   };
 
   const handleAddressEdit = () => {
-      setAddress(submittedAddress);
+    setAddress(submittedAddress);
     setIsEditing(true);
   };
 
@@ -143,7 +171,7 @@ export default function StaffOrderCheckout() {
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -164,14 +192,11 @@ export default function StaffOrderCheckout() {
         orderDetails.paymentStatus = "COMPLETED";
         await axiosInstance.post("/orders", orderDetails);
         await AsyncStorage.removeItem('staff_cart');
-        router.push({
-          pathname: '/(staff)/order-success',
-          params: {
-            orderHistoryRedirect: '/(staff)/order-history',
-            orderedUserId: username,
-            orderedRole: 'Staff'
-          }
-        });
+        console.log("Navigating to order success page...");
+        
+        // Use replace to force fresh navigation and avoid stack issues
+        router.replace('/(staff)/order-success');
+        console.log("Navigation command executed");
       } else {
         Alert.alert("Error", "Payment verification failed!");
       }
@@ -182,8 +207,13 @@ export default function StaffOrderCheckout() {
   };
 
   const handleUPI = async () => {
-    if (!submittedAddress) {
-      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+    if (!submittedAddress || !submittedAddress.trim()) {
+      Alert.alert("Error", "Please enter the delivery address!");
+      return;
+    }
+
+    if (!username) {
+      Alert.alert("Error", "User information not loaded. Please try again.");
       return;
     }
 
@@ -204,7 +234,7 @@ export default function StaffOrderCheckout() {
           contact: "1234567890",
         },
         notes: {
-          address: submittedAddress,
+          address: submittedAddress.trim(),
         },
       };
 
@@ -224,8 +254,13 @@ export default function StaffOrderCheckout() {
   };
 
   const handleCOD = async () => {
-    if (!submittedAddress) {
-      Alert.alert("Error", "Please enter the mobile number and delivery address!");
+    if (!submittedAddress || !submittedAddress.trim()) {
+      Alert.alert("Error", "Please enter the delivery address!");
+      return;
+    }
+
+    if (!username) {
+      Alert.alert("Error", "User information not loaded. Please try again.");
       return;
     }
 
@@ -235,7 +270,7 @@ export default function StaffOrderCheckout() {
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -244,30 +279,49 @@ export default function StaffOrderCheckout() {
       paymentType: "COD",
       paymentStatus: null,
       orderDateTime: new Date().toISOString(),
-      address: submittedAddress,
+      address: submittedAddress.trim(),
       phoneNo: phoneNumber
     };
 
     try {
-      await axiosInstance.post("/orders", orderDetails);
+      console.log("=== Starting COD Order Submission ===");
+      console.log("Order details:", orderDetails);
+      console.log("Submitted address:", submittedAddress);
+      console.log("Username:", username);
+      
+      const response = await axiosInstance.post("/orders", orderDetails);
+      console.log("Order submitted successfully:", response.data);
+      
+      // Clear cart
       await AsyncStorage.removeItem('staff_cart');
-      router.push({
-        pathname: '/(staff)/order-success',
-        params: {
-          orderHistoryRedirect: '/(staff)/order-history',
-          orderedUserId: username,
-          orderedRole: 'Staff'
-        }
-      });
-    } catch (error) {
-      console.error("Order error:", error);
-      Alert.alert("Error", "There was an issue submitting your order.");
+      console.log("Cart cleared successfully");
+      
+      // Add a small delay to ensure everything is processed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log("Navigating to order success page...");
+      
+      // Use replace to force fresh navigation and avoid stack issues
+      router.replace('/(staff)/order-success');
+      console.log("Navigation command executed");
+      
+    } catch (error: any) {
+      console.error("=== COD Order Error ===");
+      console.error("Error details:", error);
+      console.error("Error message:", error.message);
+      console.error("Error response:", error.response?.data);
+      Alert.alert("Error", "There was an issue submitting your order. Please try again.");
     }
   };
 
   const handleCredit = async () => {
-    if (!submittedAddress) {
+    if (!submittedAddress || !submittedAddress.trim()) {
       Alert.alert("Error", "Please enter the delivery address first");
+      return;
+    }
+
+    if (!username) {
+      Alert.alert("Error", "User information not loaded. Please try again.");
       return;
     }
 
@@ -285,7 +339,7 @@ export default function StaffOrderCheckout() {
               orderedUserId: username,
               itemName: Object.keys(cartItems).map(itemId => {
                 const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-                return item ? `${item.name} X ${cartItems[parseInt(itemId)]}` : '';
+                return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
               }).join(", "),
               quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
               category: "South",
@@ -294,24 +348,26 @@ export default function StaffOrderCheckout() {
               paymentType: "CREDIT",
               paymentStatus: null,
               orderDateTime: new Date().toISOString(),
-              address: submittedAddress,
+              address: submittedAddress.trim(),
               phoneNo: phoneNumber
             };
 
             try {
-              await axiosInstance.post("/orders", orderDetails);
+              console.log("Submitting credit order with details:", orderDetails);
+              const response = await axiosInstance.post("/orders", orderDetails);
+              console.log("Credit order submitted successfully:", response.data);
+              
               await AsyncStorage.removeItem('staff_cart');
-              router.push({
-                pathname: '/(staff)/order-success',
-                params: {
-                  orderHistoryRedirect: '/(staff)/order-history',
-                  orderedUserId: username,
-                  orderedRole: 'Staff'
-                }
-              });
+              
+              // Navigate to order success page
+              console.log("Navigating to order success page...");
+              
+              // Use replace to force fresh navigation and avoid stack issues
+              router.replace('/(staff)/order-success');
+              console.log("Navigation command executed");
             } catch (error) {
               console.error("Order error:", error);
-              Alert.alert("Error", "There was an issue submitting your order.");
+              Alert.alert("Error", "There was an issue submitting your order. Please try again.");
             }
           }
         }
@@ -338,13 +394,27 @@ export default function StaffOrderCheckout() {
             <ShoppingCart size={20} color="#2E7D32" />
             <Text style={styles.sectionTitle}>Order Summary</Text>
           </View>
-          {Object.entries(cartItems).map(([itemId, quantity]) => {
+          <View style={styles.divider} />
+          
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableHeaderText}>Item</Text>
+            <Text style={styles.tableHeaderText}>Qty</Text>
+            <Text style={styles.tableHeaderText}>Price</Text>
+          </View>
+          
+          {Object.keys(cartItems).map((itemId, index) => {
             const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
             if (!item) return null;
             return (
-              <View key={itemId} style={styles.orderItem}>
-                <Text style={styles.itemName}>{item.name} x{quantity}</Text>
-                <Text style={styles.itemPrice}>₹{calculateItemTotal(item, quantity)}</Text>
+              <View key={itemId} style={[
+                styles.tableRow,
+                index % 2 === 0 && styles.tableRowEven
+              ]}>
+                <Text style={styles.tableCell}>
+                  {item.name} ({item.category})
+                </Text>
+                <Text style={styles.tableCell}>{cartItems[parseInt(itemId)]}</Text>
+                <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
               </View>
             );
           })}
@@ -410,6 +480,16 @@ export default function StaffOrderCheckout() {
           </View>
           
           <View style={styles.summaryRow}>
+            <Text>Platform Fee</Text>
+            <Text>₹{platformFee}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>GST ({GST_PERCENT}%)</Text>
+            <Text>₹{gstAmount.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
             <Text>Delivery Tip</Text>
             <View style={styles.tipContainer}>
               <TextInput
@@ -424,16 +504,6 @@ export default function StaffOrderCheckout() {
               />
               <Text style={styles.tipNote}>Max: ₹{MAX_TIP}</Text>
             </View>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>Platform Fee</Text>
-            <Text>₹{platformFee}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>GST and Charges</Text>
-            <Text>₹{gstAndCharges}</Text>
           </View>
           
           <View style={[styles.summaryRow, styles.totalRow]}>
@@ -668,5 +738,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     marginTop: 20,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingHorizontal: 8,
+  },
+  tableHeaderText: {
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#333',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  tableRowEven: {
+    backgroundColor: '#f9f9f9',
+  },
+  tableCell: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#666',
   },
 });

@@ -106,6 +106,15 @@ export default function DeliveryManagement() {
       return;
     }
 
+    if (!formData.contact) {
+      Alert.alert('Error', 'Contact is required');
+      return;
+    }
+    if (!/^\d{10}$/.test(formData.contact)) {
+      Alert.alert('Error', 'Contact must be exactly 10 digits');
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && currentUser) {

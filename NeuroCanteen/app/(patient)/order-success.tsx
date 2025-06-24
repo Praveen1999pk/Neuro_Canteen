@@ -3,24 +3,57 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CircleCheck, ShoppingBag } from 'lucide-react-native';
+import { Audio } from 'expo-av';
 
 export default function OrderSuccess() {
   const router = useRouter();
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const pageKey = Date.now(); // Force re-mount on each navigation
   
   useEffect(() => {
-    // Reset animation value to 0
-    animatedValue.setValue(0);
+    console.log("=== Patient Order Success Page Loaded ===");
+    console.log("Page key:", pageKey);
     
-    // Start animation sequence
-    Animated.sequence([
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      })
-    ]).start();
-  }, []);
+    let sound: Audio.Sound;
+    
+    const playSoundAndAnimate = async () => {
+      // Start animation immediately, don't wait for sound
+      animatedValue.setValue(0);
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        })
+      ]).start();
+      console.log("Animation started");
+      
+      // Try to play sound, but don't let it block the page
+      try {
+        console.log("Loading and playing success sound...");
+        // Load and play sound
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/success.mp3') // sound path
+        );
+        sound = newSound;
+        await sound.playAsync();
+        console.log("Success sound played successfully");
+      } catch (error) {
+        console.error("Error in playSoundAndAnimate:", error);
+        // Sound failed, but page should still work
+        console.log("Sound failed to play, but animation and page are working");
+      }
+    };
+    
+    playSoundAndAnimate();
+    
+    // Clean up the sound when component unmounts
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [pageKey]);
 
   const iconScale = animatedValue.interpolate({
     inputRange: [0, 0.5, 1],

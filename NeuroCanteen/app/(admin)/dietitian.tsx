@@ -90,8 +90,8 @@ export default function DietitianManagement() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.username) {
-      Alert.alert('Error', 'Name and Username are required');
+    if (!formData.name || !formData.username || !formData.password || !formData.specialization) {
+      Alert.alert('Error', 'All fields are mandatory. Please fill in Name, Username, Specialization, and Password.');
       return;
     }
 

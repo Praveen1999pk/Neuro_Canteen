@@ -22,6 +22,7 @@ type MenuItem = {
   id: number;
   name: string;
   patientPrice: number;
+  category?: string;
 };
 
 type CartItems = {
@@ -47,6 +48,7 @@ type OrderDetails = {
 
 export default function patientOrderCheckout() {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const params = useLocalSearchParams();
   const router = useRouter();
   const [tip, setTip] = useState(0);
@@ -76,8 +78,33 @@ export default function patientOrderCheckout() {
     fetchUsername();
   }, []);
 
-  const cartItems: CartItems = params.cartItems ? JSON.parse(params.cartItems as string) : {};
-  const menuItems: MenuItem[] = params.menuItems ? JSON.parse(params.menuItems as string) : [];
+  const cartItems: CartItems = params.cartItems ? (() => {
+    try {
+      // Clean the cart items data to remove control characters
+      let cleanedCartItems = params.cartItems as string;
+      if (typeof cleanedCartItems === 'string') {
+        cleanedCartItems = cleanedCartItems.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      }
+      return JSON.parse(cleanedCartItems);
+    } catch (error) {
+      console.error('Error parsing cart items:', error);
+      return {};
+    }
+  })() : {};
+  
+  const menuItems: MenuItem[] = params.menuItems ? (() => {
+    try {
+      // Clean the menu items data to remove control characters
+      let cleanedMenuItems = params.menuItems as string;
+      if (typeof cleanedMenuItems === 'string') {
+        cleanedMenuItems = cleanedMenuItems.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      }
+      return JSON.parse(cleanedMenuItems);
+    } catch (error) {
+      console.error('Error parsing menu items:', error);
+      return [];
+    }
+  })() : [];
 
   const calculateItemTotal = (item: MenuItem, quantity: number) => {
     return item.patientPrice * quantity;
@@ -88,7 +115,7 @@ export default function patientOrderCheckout() {
     for (const itemId in cartItems) {
       const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
       if (item) {
-        total += calculateItemTotal(item, cartItems[itemId]);
+        total += calculateItemTotal(item, cartItems[parseInt(itemId)]);
       }
     }
     return total;
@@ -97,20 +124,23 @@ export default function patientOrderCheckout() {
   const orderTotal = calculateOrderTotal();
   const deliveryFee = 0;
   const platformFee = 0;
-  const gstAndCharges = 0;
-  const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
+  const GST_PERCENT = 12;
+  const gstAmount = (orderTotal * GST_PERCENT) / 100;
+  const grandTotal = orderTotal + deliveryFee + platformFee + gstAmount;
 
   const handleAddressSubmit = () => {
+    if (!customerName.trim()) {
+      Alert.alert("Error", "Please enter your name");
+      return;
+    }
     if (!phoneNumber.trim()) {
       Alert.alert("Error", "Please enter your mobile number");
       return;
     }
-    
     if (!/^\d{10}$/.test(phoneNumber)) {
       Alert.alert("Error", "Please enter a valid 10-digit phone number");
       return;
     }
-    
     setSubmittedAddress(address);
     setIsEditing(false);
   };
@@ -190,13 +220,13 @@ export default function patientOrderCheckout() {
         key: "rzp_test_0oZHIWIDL59TxD",
         amount: amount * 100,
         currency: "INR",
-        name: "Your Company Name",
+        name: customerName,
         description: "Payment for Order",
         order_id: orderId,
         prefill: {
-          name: usernameToUse,
+          name: customerName,
           email: "user@example.com",
-          contact: "1234567890",
+          contact: phoneNumber,
         },
         notes: {
           address: submittedAddress,
@@ -241,12 +271,12 @@ export default function patientOrderCheckout() {
     }
 
     const orderDetails: OrderDetails = {
-      orderedRole: "out_patient",
-      orderedName: usernameToUse,
+      orderedRole: "Out_Patient",
+      orderedName: customerName,
       orderedUserId: usernameToUse,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -267,12 +297,12 @@ try {
     orderDetails.paymentStatus = "COMPLETED";
     await axiosInstance.post("/orders", orderDetails);
     await AsyncStorage.removeItem('patient_cart');
-        router.push({
+        router.replace({
           pathname: '/(patient)/order-success',
           params: {
             orderHistoryRedirect: '/(patient)/order-history',
             orderedUserId: usernameToUse,
-            orderedRole: 'out_patient'
+            orderedRole: 'Out_Patient'
           }
         });
   } else {
@@ -291,12 +321,12 @@ try {
     }
 
     const orderDetails = {
-      orderedRole: "out_patient",
-      orderedName: username,
+      orderedRole: "Out_Patient",
+      orderedName: customerName,
       orderedUserId: username,
       itemName: Object.keys(cartItems).map(itemId => {
         const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
-        return item ? `${item.name}  x${cartItems[itemId as unknown as number]}` : '';
+        return item ? `${item.name} (${item.category}) X ${cartItems[parseInt(itemId)]}` : '';
       }).join(", "),
       quantity: Object.values(cartItems).reduce((acc, qty) => acc + qty, 0),
       category: "South",
@@ -313,12 +343,12 @@ try {
     try {
       await axiosInstance.post("/orders", orderDetails);
       await AsyncStorage.removeItem('patient_cart');
-      router.push({
+      router.replace({
         pathname: '/(patient)/order-success',
         params: {
           orderHistoryRedirect: '/(patient)/order-history',
           orderedUserId: username,
-          orderedRole: 'out_patient'
+          orderedRole: 'Out_Patient'
         }
       });
     } catch (error) {
@@ -340,7 +370,7 @@ try {
           contentContainerStyle={styles.scrollViewContent}
         >
         {/* Order Summary */}
-        <View style={styles.section}>
+        <View style={[styles.section, { marginTop: 10 }]}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
           <View style={styles.divider} />
           
@@ -350,13 +380,17 @@ try {
             <Text style={styles.tableHeaderText}>Price</Text>
           </View>
           
-          {Object.keys(cartItems).map(itemId => {
+          {Object.keys(cartItems).map((itemId, index) => {
             const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
             if (!item) return null;
-            
             return (
-              <View key={itemId} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{item.name}</Text>
+              <View key={itemId} style={[
+                styles.tableRow,
+                index % 2 === 0 && styles.tableRowEven
+              ]}>
+                <Text style={styles.tableCell}>
+                  {item.name} ({item.category})
+                </Text>
                 <Text style={styles.tableCell}>{cartItems[parseInt(itemId)]}</Text>
                 <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
               </View>
@@ -371,6 +405,9 @@ try {
           
           {submittedAddress && !isEditing ? (
             <View style={styles.addressContainer}>
+              <View style={styles.nameContainer}>
+                <Text style={styles.nameLabel}>{customerName}</Text>
+              </View>
               <View style={styles.phoneContainer}>
                 <Phone size={20} color="#666" style={styles.phoneIcon} />
                 <Text style={styles.phoneNumber}>{phoneNumber}</Text>
@@ -382,6 +419,15 @@ try {
             </View>
           ) : (
             <View style={styles.addressInputContainer}>
+              <View style={styles.nameInputContainer}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={customerName}
+                  onChangeText={setCustomerName}
+                  placeholder="Name *"
+                />
+                <Text style={styles.requiredText}>* Required</Text>
+              </View>
               <View style={styles.phoneNumberContainer}>
                 <TextInput
                   style={styles.phoneNumberInput}
@@ -392,7 +438,6 @@ try {
                 />
                 <Text style={styles.requiredText}>* Required</Text>
               </View>
-              
               <TextInput
                 style={styles.addressInput}
                 value={address}
@@ -426,6 +471,16 @@ try {
           </View>
           
           <View style={styles.summaryRow}>
+            <Text>Platform Fee</Text>
+            <Text>₹{platformFee}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>GST ({GST_PERCENT}%)</Text>
+            <Text>₹{gstAmount.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
             <Text>Delivery Tip</Text>
             <View style={styles.tipContainer}>
               <TextInput
@@ -440,16 +495,6 @@ try {
               />
               <Text style={styles.tipNote}>Max: ₹{MAX_TIP}</Text>
             </View>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>Platform Fee</Text>
-            <Text>₹{platformFee}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>GST and Charges</Text>
-            <Text>₹{gstAndCharges}</Text>
           </View>
           
           <View style={[styles.summaryRow, styles.totalRow]}>
@@ -549,21 +594,31 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingHorizontal: 8,
   },
   tableHeaderText: {
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
+    fontSize: 14,
+    color: '#333',
   },
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  tableRowEven: {
+    backgroundColor: '#f9f9f9',
   },
   tableCell: {
     flex: 1,
     textAlign: 'center',
+    fontSize: 14,
+    color: '#666',
   },
   addressContainer: {
     marginBottom: 16,
@@ -769,5 +824,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  nameContainer: {
+    marginBottom: 16,
+  },
+  nameLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  nameInputContainer: {
+    marginBottom: 16,
+  },
+  nameInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 8,
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
 });

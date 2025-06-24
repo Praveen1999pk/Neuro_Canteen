@@ -4,6 +4,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide-react-native';
 import axiosInstance from '../api/axiosInstance';
 
+const GST_PERCENT = 12;
+const DELIVERY_FEE = 0;
+const PLATFORM_FEE = 0;
+
 export default function UpdateOrderScreen() {
   type Order = {
     orderId: number;
@@ -36,7 +40,41 @@ export default function UpdateOrderScreen() {
     const fetchOrder = async () => {
       try {
         const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
-        const orderData: Order = response.data;
+        
+        // Validate and clean the response data
+        let orderData: Order;
+        if (typeof response.data === 'string') {
+          // If response.data is a string, try to parse it as JSON
+          try {
+            orderData = JSON.parse(response.data);
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response data:', response.data);
+            throw new Error('Invalid JSON response from server');
+          }
+        } else {
+          orderData = response.data;
+        }
+        
+        // Validate required fields
+        if (!orderData || typeof orderData !== 'object') {
+          throw new Error('Invalid order data received');
+        }
+        
+        // Clean and validate string fields
+        if (orderData.itemName && typeof orderData.itemName === 'string') {
+          orderData.itemName = orderData.itemName.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.address && typeof orderData.address === 'string') {
+          orderData.address = orderData.address.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.orderedName && typeof orderData.orderedName === 'string') {
+          orderData.orderedName = orderData.orderedName.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        if (orderData.phoneNo && typeof orderData.phoneNo === 'string') {
+          orderData.phoneNo = orderData.phoneNo.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        }
+        
         setOrder(orderData);
         setCurrentPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
         setPendingPaymentStatus(orderData.paymentRecived ? "COMPLETED" : 'PENDING');
@@ -44,6 +82,12 @@ export default function UpdateOrderScreen() {
         setPendingDeliveryStatus(orderData.deliveryStatus ?? null);
       } catch (error) {
         console.error('Error fetching order:', error);
+        // Show user-friendly error message
+        Alert.alert(
+          "Error",
+          "Failed to load order details. Please try again.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
       } finally {
         setLoading(false);
       }
@@ -54,20 +98,58 @@ export default function UpdateOrderScreen() {
 
   const handleUpdateOrder = async () => {
     try {
-      await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+      // Check if there are any changes
+      if (pendingPaymentStatus !== currentPaymentStatus || pendingDeliveryStatus !== currentDeliveryStatus) {
+        // Validate delivery status before updating
+        if (pendingDeliveryStatus === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT') {
+          Alert.alert(
+            "Cannot Mark as Delivered",
+            "Payment must be completed before marking the order as delivered."
+          );
+          return;
+        }
+
+        // First update payment status
+        if (pendingPaymentStatus !== currentPaymentStatus) {
+          const paymentResponse = await axiosInstance.patch(`orders/${orderId}/payment-received`, null, {
+            params: { paymentReceived: pendingPaymentStatus === "COMPLETED" },
+          });
+
+          if (paymentResponse.status === 200) {
+            setCurrentPaymentStatus(pendingPaymentStatus);
+          }
+        }
+
+        // Then update delivery status
+        if (pendingDeliveryStatus !== currentDeliveryStatus) {
+          const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
             params: { deliveryStatus: pendingDeliveryStatus },
           });
           
-      // Fetch the updated order to ensure we have the latest data
-      const response = await axiosInstance.get(`/orders/${orderId}`, { timeout: 8000 });
-      const updatedOrder = response.data;
-      setOrder(updatedOrder);
-      setCurrentDeliveryStatus(updatedOrder.deliveryStatus);
+          if (deliveryResponse.status === 200) {
+            setCurrentDeliveryStatus(pendingDeliveryStatus);
+            // Reset pending status to allow re-confirmation
+            setPendingDeliveryStatus(pendingDeliveryStatus);
+          }
+        }
 
-      // Navigate back to the delivery dashboard
         router.back();
+      } else {
+        // If no changes, still allow the update to process
+        const deliveryResponse = await axiosInstance.patch(`orders/${orderId}/delivery-status`, null, {
+          params: { deliveryStatus: pendingDeliveryStatus },
+        });
+        
+        if (deliveryResponse.status === 200) {
+          setCurrentDeliveryStatus(pendingDeliveryStatus);
+          // Reset pending status to allow re-confirmation
+          setPendingDeliveryStatus(pendingDeliveryStatus);
+        }
+        router.back();
+      }
     } catch (error) {
       console.error('Error updating order:', error);
+      Alert.alert("Error", "Failed to update order status.");
     }
   };
 
@@ -83,7 +165,11 @@ export default function UpdateOrderScreen() {
   const dateObj = new Date(order.orderDateTime);
   const formattedDate = dateObj.toLocaleDateString();
   const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const totalPrice = order.price;
+  const itemTotal = order.price;
+  
+  // Calculate grand total
+  // const gstAmount = (itemTotal * GST_PERCENT) / 100;
+  const grandTotal = itemTotal + DELIVERY_FEE + PLATFORM_FEE ;
 
   return (
     <ScrollView style={styles.container}>
@@ -123,18 +209,30 @@ export default function UpdateOrderScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
-          {items.map((item, index) => (
-            <Text key={index} style={styles.itemText}>• {item}</Text>
-          ))}
+          {items.map((item, index) => {
+            // Try to parse name, category, and quantity if possible
+            const match = item.match(/^(.*) \((.*)\) X(\d+)$/);
+            if (match) {
+              return (
+                <Text key={index} style={styles.itemText}>• {match[1]} ({match[2]}) x{match[3]}</Text>
+              );
+            }
+            return <Text key={index} style={styles.itemText}>• {item}</Text>;
+          })}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Total Price</Text>
-          <Text style={styles.priceText}>₹{totalPrice.toFixed(2)}</Text>
+          <Text style={styles.sectionTitle}>Grand Total</Text>
+          <Text style={styles.priceText}>₹{grandTotal.toFixed(2)}</Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Details</Text>
+          {order.orderedName && (
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailText, {fontWeight: 'bold'}]}>Name: {order.orderedName}</Text>
+            </View>
+          )}
           <View style={styles.detailItem}>
             <MapPin size={20} color="#666" />
             <Text style={styles.detailText}>{order.address || 'No address provided'}</Text>
@@ -162,19 +260,19 @@ export default function UpdateOrderScreen() {
                 style={[
                   styles.button, 
                   pendingPaymentStatus === status && styles.activeButton,
-                  (order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED') && styles.disabledButton
+                  ((order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED' || !currentDeliveryStatus) && styles.disabledButton)
                 ]}
                 onPress={() => {
-                  if (order?.paymentType !== 'CREDIT' && currentPaymentStatus !== 'COMPLETED') {
+                  if (order?.paymentType !== 'CREDIT' && currentPaymentStatus !== 'COMPLETED' && currentDeliveryStatus) {
                     setPendingPaymentStatus(status);
                   }
                 }}
-                disabled={order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED'}
+                disabled={order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED' || !currentDeliveryStatus}
               >
                 <Text style={[
                   styles.buttonText, 
                   pendingPaymentStatus === status && styles.activeButtonText,
-                  (order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED') && styles.disabledButtonText
+                  ((order?.paymentType === 'CREDIT' || currentPaymentStatus === 'COMPLETED' || !currentDeliveryStatus) && styles.disabledButtonText)
                 ]}>
                   {status}
                 </Text>
@@ -191,10 +289,15 @@ export default function UpdateOrderScreen() {
           <Text style={styles.label}>Delivery Status</Text>
           <View style={styles.buttonGroup}>
             {['OrderReceived', 'OutForDelivery', 'Delivered', 'Cancelled'].map((status) => {
-              const isDisabled = 
-                currentDeliveryStatus === 'Delivered' || 
-                (status === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT');
-
+              let isDisabled = false;
+              // Only enable 'Confirm Delivery' if in waiting state; disable all others
+              if (!currentDeliveryStatus) {
+                isDisabled = status !== 'OrderReceived';
+              } else {
+                isDisabled = 
+                  currentDeliveryStatus === 'Delivered' || 
+                  (status === 'Delivered' && pendingPaymentStatus !== 'COMPLETED' && order?.paymentType !== 'CREDIT');
+              }
               return (
                 <TouchableOpacity
                   key={status}

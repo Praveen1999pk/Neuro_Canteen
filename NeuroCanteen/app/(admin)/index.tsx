@@ -21,6 +21,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -34,7 +35,19 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      if (!refreshing) setLoading(true);
+      setLoading(true);
+      
+      // Check if token exists before making requests
+      const token = await AsyncStorage.getItem('jwtToken');
+      if (!token) {
+        console.error('No authentication token found');
+        setStats({
+          totalOrders: 0,
+          totalStaff: 0,
+          totalPatients: 0,
+        });
+        return;
+      }
 
       const [ordersRes, staffRes, patientsRes] = await Promise.all([
         axiosInstance.get('/orders'),
@@ -47,8 +60,27 @@ export default function AdminDashboard() {
         totalStaff: staffRes.data.length || 0,
         totalPatients: patientsRes.data.length || 0,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stats:', error);
+      
+      // Handle specific error types
+      if (error.response?.status === 401) {
+        console.error('Authentication failed. Please login again.');
+        // You can add navigation to login here
+      } else if (error.response?.status === 403) {
+        console.error('Access denied. Insufficient permissions.');
+      } else if (error.code === 'NETWORK_ERROR') {
+        console.error('Network error. Please check your connection.');
+      } else {
+        console.error('Unknown error occurred:', error.message);
+      }
+      
+      // Set default stats on error
+      setStats({
+        totalOrders: 0,
+        totalStaff: 0,
+        totalPatients: 0,
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);

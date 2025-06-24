@@ -56,7 +56,7 @@ export default function StaffManagement() {
       setStaffList(response.data);
     } catch (error) {
       console.error('Error fetching staff:', error);
-      Alert.alert('Error', 'Failed to load staff data');
+      Alert.alert('Error', 'Failed to fetch staff data. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -118,6 +118,15 @@ export default function StaffManagement() {
 
     if (isDuplicate) {
       Alert.alert('Error', 'Employee ID already exists. Please use a different ID.');
+      return;
+    }
+
+    if (!formData.mobileNumber) {
+      Alert.alert('Error', 'Mobile Number is required');
+      return;
+    }
+    if (!/^\d{10}$/.test(formData.mobileNumber)) {
+      Alert.alert('Error', 'Mobile Number must be exactly 10 digits');
       return;
     }
 

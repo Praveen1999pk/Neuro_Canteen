@@ -18,6 +18,7 @@ export default function PatientLayout() {
         name="order"
         options={{
           title: 'Order Food',
+          headerShown: false,
           tabBarIcon: ({ size, color }) => (
             <Utensils size={size} color={color} />
           ),
@@ -45,7 +46,10 @@ export default function PatientLayout() {
       {/* 🚫 Hide unwanted screens */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="order-success" options={{ href: null }} />
-      <Tabs.Screen name="checkout" options={{ href: null }} />
+      <Tabs.Screen name="checkout" options={{ 
+        href: null,
+        headerShown: false 
+      }} />
     </Tabs>
   );
 }
