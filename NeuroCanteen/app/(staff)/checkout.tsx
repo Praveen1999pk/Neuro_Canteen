@@ -376,14 +376,18 @@ export default function StaffOrderCheckout() {
             <Text style={styles.tableHeaderText}>Price</Text>
           </View>
           
-          {Object.keys(cartItems).map(itemId => {
+          {Object.keys(cartItems).map((itemId, index) => {
             const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
             if (!item) return null;
             return (
-              <View key={itemId} style={styles.tableRow}>
+              <View key={itemId} style={[
+                styles.tableRow,
+                index % 2 === 0 && styles.tableRowEven
+              ]}>
                 <Text style={styles.tableCell}>
-                  {item.name} ({item.category}) x{cartItems[parseInt(itemId)]}
+                  {item.name} ({item.category})
                 </Text>
+                <Text style={styles.tableCell}>{cartItems[parseInt(itemId)]}</Text>
                 <Text style={styles.tableCell}>₹{calculateItemTotal(item, cartItems[parseInt(itemId)])}</Text>
               </View>
             );
@@ -712,17 +716,30 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingHorizontal: 8,
   },
   tableHeaderText: {
     fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#333',
   },
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  tableRowEven: {
+    backgroundColor: '#f9f9f9',
   },
   tableCell: {
     flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#666',
   },
 });

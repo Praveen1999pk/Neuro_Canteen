@@ -7,7 +7,10 @@ import {
   ScrollView, 
   TextInput,
   Switch,
-  Alert
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -35,6 +38,9 @@ export default function CreateDietScreen() {
   const [diabeticDiet, setDiabeticDiet] = useState(false);
   const [vegetarian, setVegetarian] = useState(false);
   
+  // Keyboard state
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  
   // Fetch categories from menu
   useEffect(() => {
     const fetchCategories = async () => {
@@ -47,6 +53,27 @@ export default function CreateDietScreen() {
       }
     };
     fetchCategories();
+  }, []);
+  
+  // Keyboard event listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
   }, []);
   
   // Add diet type
@@ -118,9 +145,18 @@ export default function CreateDietScreen() {
   const handleCancel = () => {
     router.back();
   };
+  
+  // Dismiss keyboard
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Create Patient Diet</Text>
@@ -227,9 +263,11 @@ export default function CreateDietScreen() {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Add diet type"
+              placeholder="Add diet type "
               value={dietTypeInput}
               onChangeText={setDietTypeInput}
+              returnKeyType="done"
+              onSubmitEditing={addDietType}
             />
             <TouchableOpacity style={styles.addButton} onPress={addDietType}>
               <Plus size={20} color="#fff" />
@@ -270,6 +308,8 @@ export default function CreateDietScreen() {
               placeholder="Add dislike"
               value={dislikeInput}
               onChangeText={setDislikeInput}
+              returnKeyType="done"
+              onSubmitEditing={addDislike}
             />
             <TouchableOpacity style={styles.addButton} onPress={addDislike}>
               <Plus size={20} color="#fff" />
@@ -297,25 +337,47 @@ export default function CreateDietScreen() {
           )}
         </View>
         
-        <View style={styles.spacer} />
+        <View style={[styles.spacer, { height: keyboardVisible ? 80 : 120 }]} />
       </ScrollView>
       
-      <View style={styles.actionContainer}>
-        <TouchableOpacity 
-          style={styles.submitButton}
-          onPress={handleSubmit}
-        >
-          <Text style={styles.submitButtonText}>Continue to Food Selection</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.cancelButton}
-          onPress={handleCancel}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      {!keyboardVisible && (
+        <View style={styles.actionContainer}>
+          <TouchableOpacity 
+            style={styles.submitButton}
+            onPress={handleSubmit}
+          >
+            <Text style={styles.submitButtonText}>Continue to Food Selection</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={handleCancel}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      {keyboardVisible && (
+        <View style={styles.floatingActionContainer}>
+          <View style={styles.floatingButtonRow}>
+            <TouchableOpacity 
+              style={styles.doneButton}
+              onPress={dismissKeyboard}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.floatingSubmitButton}
+              onPress={handleSubmit}
+            >
+              <Text style={styles.submitButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -533,5 +595,39 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 16,
     fontWeight: '500',
+  },
+  floatingActionContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  floatingButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  doneButton: {
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneButtonText: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  floatingSubmitButton: {
+    backgroundColor: '#166534',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
