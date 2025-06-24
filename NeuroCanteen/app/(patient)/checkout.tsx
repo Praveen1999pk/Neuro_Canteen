@@ -90,7 +90,7 @@ export default function patientOrderCheckout() {
     for (const itemId in cartItems) {
       const item = menuItems.find(menuItem => menuItem.id === parseInt(itemId));
       if (item) {
-        total += calculateItemTotal(item, cartItems[itemId]);
+        total += calculateItemTotal(item, cartItems[parseInt(itemId)]);
       }
     }
     return total;
@@ -99,8 +99,9 @@ export default function patientOrderCheckout() {
   const orderTotal = calculateOrderTotal();
   const deliveryFee = 0;
   const platformFee = 0;
-  const gstAndCharges = 0;
-  const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
+  const GST_PERCENT = 12;
+  const gstAmount = (orderTotal * GST_PERCENT) / 100;
+  const grandTotal = orderTotal + deliveryFee + platformFee + gstAmount;
 
   const handleAddressSubmit = () => {
     if (!customerName.trim()) {
@@ -445,6 +446,16 @@ try {
           </View>
           
           <View style={styles.summaryRow}>
+            <Text>Platform Fee</Text>
+            <Text>₹{platformFee}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>GST ({GST_PERCENT}%)</Text>
+            <Text>₹{gstAmount.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
             <Text>Delivery Tip</Text>
             <View style={styles.tipContainer}>
               <TextInput
@@ -459,16 +470,6 @@ try {
               />
               <Text style={styles.tipNote}>Max: ₹{MAX_TIP}</Text>
             </View>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>Platform Fee</Text>
-            <Text>₹{platformFee}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>GST and Charges</Text>
-            <Text>₹{gstAndCharges}</Text>
           </View>
           
           <View style={[styles.summaryRow, styles.totalRow]}>

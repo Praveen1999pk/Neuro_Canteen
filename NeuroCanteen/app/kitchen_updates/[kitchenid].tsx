@@ -5,6 +5,10 @@ import { MapPin, Phone, Calendar, Package, IndianRupee, ArrowLeft } from 'lucide
 import axiosInstance from '../api/axiosInstance';
 import { triggerDeliveryNotification } from '@/services/notifications'
 
+const GST_PERCENT = 12;
+const DELIVERY_FEE = 0; // Set to actual value if available
+const PLATFORM_FEE = 0; // Set to actual value if available
+
 export default function UpdateOrderScreen() {
   type Order = {
     orderId: number;
@@ -90,6 +94,9 @@ export default function UpdateOrderScreen() {
   // Determine payment status
   const paymentStatus = order.paymentType === 'UPI' ? 'COMPLETED' : (order.paymentRecived ? 'COMPLETED' : 'PENDING');
 
+  const gstAmount = (totalPrice * GST_PERCENT) / 100;
+  const grandTotal = totalPrice + DELIVERY_FEE + PLATFORM_FEE + gstAmount;
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -140,8 +147,15 @@ export default function UpdateOrderScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Total Price</Text>
-          <Text style={styles.priceText}>₹{totalPrice.toFixed(2)}</Text>
+          <Text style={styles.sectionTitle}>Order Charges</Text>
+          <View style={styles.chargeRow}><Text>Item Total</Text><Text>₹{totalPrice.toFixed(2)}</Text></View>
+          <View style={styles.chargeRow}><Text>Delivery Fee</Text><Text>₹{DELIVERY_FEE.toFixed(2)}</Text></View>
+          <View style={styles.chargeRow}><Text>Platform Fee</Text><Text>₹{PLATFORM_FEE.toFixed(2)}</Text></View>
+          <View style={styles.chargeRow}><Text>GST ({GST_PERCENT}%)</Text><Text>₹{gstAmount.toFixed(2)}</Text></View>
+          <View style={styles.chargeRow}>
+            <Text style={{ fontWeight: 'bold' }}>Grand Total</Text>
+            <Text style={{ fontWeight: 'bold' }}>₹{grandTotal.toFixed(2)}</Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -383,4 +397,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  chargeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
 });

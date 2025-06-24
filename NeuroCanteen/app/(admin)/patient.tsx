@@ -216,8 +216,8 @@ export default function PatientManagement() {
         age: parseInt(formData.age) || 0,
         primaryConsultant: formData.primaryConsultant,
         diagnosisDescription: formData.diagnosisDescription,
-        admissionDateTime: formData.admissionDateTime ? `${formData.admissionDateTime}:00` : null,
-        dischargeDateTime: formData.dischargeDateTime ? `${formData.dischargeDateTime}:00` : null,
+        admissionDateTime: formData.admissionDateTime || null,
+        dischargeDateTime: formData.dischargeDateTime || null,
         patientStatus: formData.patientStatus,
         roomNo: formData.roomNo,
         bedNo: formData.bedNo,
@@ -243,6 +243,7 @@ export default function PatientManagement() {
     } catch (error: any) {
       // Enhanced error handling for duplicate UHID
       if (error.response) {
+        console.log('Full error response:', error.response);
         if (error.response.status === 409) {
           Alert.alert('Duplicate UHID', 'A patient with this UHID already exists.');
           return;
@@ -254,6 +255,12 @@ export default function PatientManagement() {
           Alert.alert('Duplicate UHID', errorMessage);
           return;
         }
+        // Show full error message if available
+        Alert.alert('Error', JSON.stringify(error.response.data));
+        return;
+      } else {
+        console.log('Unknown error:', error);
+        Alert.alert('Error', error.message || 'Unknown error occurred');
       }
     } finally {
       setIsLoading(false);

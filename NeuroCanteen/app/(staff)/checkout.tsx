@@ -108,10 +108,11 @@ export default function StaffOrderCheckout() {
   };
   
   const orderTotal = calculateOrderTotal();
-  const deliveryFee = 0;
-  const platformFee = 0;
-  const gstAndCharges = 0;
-  const grandTotal = orderTotal + deliveryFee + platformFee + gstAndCharges + tip;
+  const deliveryFee = 30;
+  const platformFee = 5;
+  const GST_PERCENT = 12;
+  const gstAmount = (orderTotal * GST_PERCENT) / 100;
+  const grandTotal = orderTotal + deliveryFee + platformFee + gstAmount + tip;
 
   const handleAddressSubmit = () => {
     if (!address.trim()) {
@@ -454,6 +455,16 @@ export default function StaffOrderCheckout() {
           </View>
           
           <View style={styles.summaryRow}>
+            <Text>Platform Fee</Text>
+            <Text>₹{platformFee}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text>GST ({GST_PERCENT}%)</Text>
+            <Text>₹{gstAmount.toFixed(2)}</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
             <Text>Delivery Tip</Text>
             <View style={styles.tipContainer}>
               <TextInput
@@ -468,16 +479,6 @@ export default function StaffOrderCheckout() {
               />
               <Text style={styles.tipNote}>Max: ₹{MAX_TIP}</Text>
             </View>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>Platform Fee</Text>
-            <Text>₹{platformFee}</Text>
-          </View>
-          
-          <View style={styles.summaryRow}>
-            <Text>GST and Charges</Text>
-            <Text>₹{gstAndCharges}</Text>
           </View>
           
           <View style={[styles.summaryRow, styles.totalRow]}>

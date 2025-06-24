@@ -40,6 +40,10 @@ type Order = {
   phoneNo?: string | null;
 };
 
+const GST_PERCENT = 12;
+const DELIVERY_FEE = 0;
+const PLATFORM_FEE = 0;
+
 export default function OrderHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,6 +166,9 @@ export default function OrderHistory() {
   const renderOrderItem = ({ item }: { item: Order }) => {
     const orderItems = parseOrderItems(item);
     
+    const gstAmount = (item.price * GST_PERCENT) / 100;
+    const grandTotal = item.price + DELIVERY_FEE + PLATFORM_FEE + gstAmount;
+    
     return (
       <View style={styles.orderCard}>
         <View style={styles.orderHeader}>
@@ -185,25 +192,33 @@ export default function OrderHistory() {
           ))}
         </View>
         
-        <View style={styles.orderFooter}>
-          <View style={styles.priceContainer}>
-            <Text style={styles.priceLabel}>Total:</Text>
-            <Text style={styles.price}>₹{item.price.toFixed(2)}</Text>
+        <View style={styles.breakdownContainer}>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Total:</Text>
+            <Text style={styles.breakdownValue}>₹{item.price.toFixed(2)}</Text>
           </View>
-          
-          <View style={styles.statusContainer}>
-            <View style={styles.statusIconContainer}>
-              {getStatusIcon(item.orderStatus)}
-            </View>
-            <Text 
-              style={[
-                styles.statusText, 
-                { color: getStatusColor(item.orderStatus) }
-              ]}
-            >
-              {item.orderStatus || 'Pending'}
-            </Text>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>GST ({GST_PERCENT}%):</Text>
+            <Text style={styles.breakdownValue}>₹{gstAmount.toFixed(2)}</Text>
           </View>
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { fontWeight: 'bold' }]}>Grand Total:</Text>
+            <Text style={[styles.breakdownValue, { fontWeight: 'bold' }]}>₹{grandTotal.toFixed(2)}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.statusContainer}>
+          <View style={styles.statusIconContainer}>
+            {getStatusIcon(item.orderStatus)}
+          </View>
+          <Text 
+            style={[
+              styles.statusText, 
+              { color: getStatusColor(item.orderStatus) }
+            ]}
+          >
+            {item.orderStatus || 'Pending'}
+          </Text>
         </View>
         
         <View style={styles.paymentInfo}>
@@ -354,28 +369,26 @@ const styles = StyleSheet.create({
     flex: 1.5,
     textAlign: 'right',
   },
-  orderFooter: {
+  breakdownContainer: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    marginBottom: 12,
+    marginBottom: 2,
   },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  breakdownLabel: {
+    fontSize: 14,
+    color: '#333',
   },
-  priceLabel: {
-    fontSize: 15,
-    color: '#666',
-    marginRight: 4,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A8F47',
+  breakdownValue: {
+    fontSize: 14,
+    color: '#333',
   },
   statusContainer: {
     flexDirection: 'row',
